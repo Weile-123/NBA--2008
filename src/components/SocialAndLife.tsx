@@ -69,11 +69,10 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
           <button
             key={t.id}
             onClick={() => setActiveSubTab(t.id as any)}
-            className={`relative px-3 py-1.5 rounded text-xs font-bold uppercase tracking-tight transition-all whitespace-nowrap cursor-pointer ${
-              activeSubTab === t.id
+            className={`relative px-3 py-1.5 rounded text-xs font-bold uppercase tracking-tight transition-all whitespace-nowrap cursor-pointer ${activeSubTab === t.id
                 ? 'bg-amber-500 text-black italic shadow-md'
                 : 'bg-[#11141b] text-slate-400 hover:text-white border border-[#232834]'
-            }`}
+              }`}
           >
             <span>{t.label}</span>
             {t.hasDot && (
@@ -135,11 +134,10 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id as any)}
-                  className={`relative px-3 py-1.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
-                    selectedCategory === cat.id
+                  className={`relative px-3 py-1.5 rounded text-[11px] font-bold transition-all cursor-pointer ${selectedCategory === cat.id
                       ? 'bg-amber-500 text-black shadow-sm font-black'
                       : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
-                  }`}
+                    }`}
                 >
                   <span>{cat.label}</span>
                   {catHasSignable && (
@@ -159,24 +157,22 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
                 </div>
                 <div className="flex flex-wrap items-center gap-2 font-mono text-[10px]">
                   <span className="text-slate-400">统一签约门槛:</span>
-                  <span className={`px-1.5 py-0.5 rounded border font-bold ${
-                    player.ovr >= 75
+                  <span className={`px-1.5 py-0.5 rounded border font-bold ${player.ovr >= 75
                       ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                       : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                  }`}>
+                    }`}>
                     OVR 75
                   </span>
-                  <span className={`px-1.5 py-0.5 rounded border font-bold ${
-                    player.fansCount >= 50000
+                  <span className={`px-1.5 py-0.5 rounded border font-bold ${player.fansCount >= 50000
                       ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                       : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                  }`}>
+                    }`}>
                     5万 粉丝
                   </span>
                 </div>
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                球鞋品牌代言具有<strong>排他性（只能选一个）</strong>。各个球鞋品牌开出的代言费完全相同（每赛季固定
+                球鞋品牌代言<strong>只能选一个</strong>。各个球鞋品牌开出的代言费完全相同（每赛季固定
                 <span className="text-emerald-400 font-mono font-bold"> $180万 </span>），但签约后赠予的
                 <strong>专属签名战靴属性加成各有侧重</strong>。签约新球鞋品牌将自动解约旧品牌并替换属性加成。
               </p>
@@ -199,18 +195,17 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
               const isUnlocked = player.endorsements.some((e) => e.id === end.id);
               const canUnlock = player.ovr >= end.requiredOvr && player.fansCount >= end.requiredFans;
               const isSneakerCategory = end.category === 'sneaker';
-              
+
               // Determine if we show a "switch" or "sign" button
               const showSwitchBtn = isSneakerCategory && !isUnlocked && activeSneaker !== undefined;
 
               return (
                 <div
                   key={end.id}
-                  className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 transition-all relative overflow-hidden ${
-                    isUnlocked
+                  className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 transition-all relative overflow-hidden ${isUnlocked
                       ? 'bg-amber-500/10 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.06)]'
                       : 'bg-[#11141b] border-[#232834] hover:border-slate-700/60'
-                  }`}
+                    }`}
                 >
                   <div className="space-y-3">
                     {/* Header: Logo, Brand, Pay */}
@@ -220,11 +215,10 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
                           <div className="w-12 h-12 flex items-center justify-center">
                             <img
                               src={end.logoUrl}
-                              className={`brand-logo h-10 max-w-full object-contain ${
-                                ['nike', 'adidas', 'jordan', 'underarmour', 'puma', 'anta', 'lining'].includes(end.id)
+                              className={`brand-logo h-10 max-w-full object-contain ${['nike', 'adidas', 'jordan', 'underarmour', 'puma', 'anta', 'lining'].includes(end.id)
                                   ? 'brightness-0 invert'
                                   : ''
-                              }`}
+                                }`}
                               alt={end.brand}
                             />
                           </div>
@@ -257,18 +251,16 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
 
                           {/* Combined Requirements Info on Top Right */}
                           <div className="flex items-center gap-1.5 mt-1 font-mono text-[9px]">
-                            <span className={`px-1 py-0.5 rounded border ${
-                              player.ovr >= end.requiredOvr
+                            <span className={`px-1 py-0.5 rounded border ${player.ovr >= end.requiredOvr
                                 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                                 : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                            }`}>
+                              }`}>
                               OVR {end.requiredOvr}
                             </span>
-                            <span className={`px-1 py-0.5 rounded border ${
-                              player.fansCount >= end.requiredFans
+                            <span className={`px-1 py-0.5 rounded border ${player.fansCount >= end.requiredFans
                                 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                                 : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                            }`}>
+                              }`}>
                               {(end.requiredFans / 10000).toFixed(0)}万粉丝
                             </span>
                           </div>
@@ -292,13 +284,12 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
                               <button
                                 onClick={() => onUnlockEndorsement(end.id)}
                                 disabled={!canUnlock}
-                                className={`px-3 py-1.5 text-black font-black italic rounded text-[11px] uppercase transition-all transform active:scale-95 ${
-                                  !canUnlock
+                                className={`px-3 py-1.5 text-black font-black italic rounded text-[11px] uppercase transition-all transform active:scale-95 ${!canUnlock
                                     ? 'bg-[#202533] text-slate-500 cursor-not-allowed opacity-60'
                                     : showSwitchBtn
-                                    ? 'bg-cyan-500 hover:bg-cyan-400 text-black'
-                                    : 'bg-amber-500 hover:bg-amber-400 text-black'
-                                }`}
+                                      ? 'bg-cyan-500 hover:bg-cyan-400 text-black'
+                                      : 'bg-amber-500 hover:bg-amber-400 text-black'
+                                  }`}
                               >
                                 {canUnlock ? (showSwitchBtn ? '切换签约' : '签约代言') : '未达门槛'}
                               </button>
@@ -329,13 +320,12 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
                             <button
                               onClick={() => onUnlockEndorsement(end.id)}
                               disabled={!canUnlock}
-                              className={`px-3 py-1.5 text-black font-black italic rounded text-[11px] uppercase transition-all transform active:scale-95 ${
-                                !canUnlock
+                              className={`px-3 py-1.5 text-black font-black italic rounded text-[11px] uppercase transition-all transform active:scale-95 ${!canUnlock
                                   ? 'bg-[#202533] text-slate-500 cursor-not-allowed opacity-60'
                                   : showSwitchBtn
-                                  ? 'bg-cyan-500 hover:bg-cyan-400 text-black'
-                                  : 'bg-amber-500 hover:bg-amber-400 text-black'
-                              }`}
+                                    ? 'bg-cyan-500 hover:bg-cyan-400 text-black'
+                                    : 'bg-amber-500 hover:bg-amber-400 text-black'
+                                }`}
                             >
                               {canUnlock ? (showSwitchBtn ? '切换签约' : '签约代言') : '未达门槛'}
                             </button>
@@ -405,17 +395,15 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
                 <button
                   key={cat.id}
                   onClick={() => setSelectedAssetCategory(cat.id as any)}
-                  className={`relative px-2.5 py-1.5 rounded text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                    selectedAssetCategory === cat.id
+                  className={`relative px-2.5 py-1.5 rounded text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer ${selectedAssetCategory === cat.id
                       ? 'bg-amber-500 text-black shadow-sm font-black'
                       : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
-                  }`}
+                    }`}
                 >
                   <span>{cat.label}</span>
                   <span
-                    className={`text-[9px] px-1 rounded font-mono ${
-                      selectedAssetCategory === cat.id ? 'bg-black/10 text-black' : 'bg-[#1b212f] text-slate-400'
-                    }`}
+                    className={`text-[9px] px-1 rounded font-mono ${selectedAssetCategory === cat.id ? 'bg-black/10 text-black' : 'bg-[#1b212f] text-slate-400'
+                      }`}
                   >
                     {purchasedCount}/{catAssets.length}
                   </span>
@@ -437,11 +425,10 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
               return (
                 <div
                   key={asset.id}
-                  className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 transition-all ${
-                    isPurchased
+                  className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 transition-all ${isPurchased
                       ? 'bg-emerald-500/5 border-emerald-500/20 shadow-[0_0_12px_rgba(16,185,129,0.04)]'
                       : 'bg-[#11141b] border-[#232834] hover:border-slate-700'
-                  }`}
+                    }`}
                 >
                   <div className="space-y-2.5">
                     {/* Header: Logo, Asset Name, Cost */}
@@ -473,11 +460,10 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
                     </div>
 
                     {/* Reward Attributes Box with Embedded Action Button */}
-                    <div className={`p-2.5 rounded-lg border text-[11px] flex items-center justify-between gap-3 ${
-                      isPurchased 
-                        ? 'bg-emerald-500/10 border-emerald-500/20' 
+                    <div className={`p-2.5 rounded-lg border text-[11px] flex items-center justify-between gap-3 ${isPurchased
+                        ? 'bg-emerald-500/10 border-emerald-500/20'
                         : 'bg-[#161a23] border-[#232834]/80'
-                    }`}>
+                      }`}>
                       <div className="space-y-1 flex-1">
                         <div className={`font-bold flex items-center gap-1 ${isPurchased ? 'text-emerald-400' : 'text-amber-400'}`}>
                           <Sparkles className="w-3 h-3" /> 专属属性加成收益:
@@ -496,11 +482,10 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
                           <button
                             onClick={() => onBuyLuxuryItem(asset.cost, asset.id)}
                             disabled={!canBuy}
-                            className={`px-3 py-1.5 disabled:opacity-40 text-black font-black italic rounded text-[11px] uppercase transition-all transform active:scale-95 ${
-                              !hasMoney
+                            className={`px-3 py-1.5 disabled:opacity-40 text-black font-black italic rounded text-[11px] uppercase transition-all transform active:scale-95 ${!hasMoney
                                 ? 'bg-[#202533] text-slate-500 cursor-not-allowed opacity-60'
                                 : 'bg-amber-500 hover:bg-amber-400'
-                            }`}
+                              }`}
                           >
                             {hasMoney ? '点击购置' : '资金不足'}
                           </button>

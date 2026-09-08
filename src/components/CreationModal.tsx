@@ -383,11 +383,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                       setNameError(false);
                     }
                   }}
-                  className={`w-full bg-[#11141b] border rounded-xl px-4 py-2.5 text-white font-bold text-sm focus:outline-none transition-all ${
-                    nameError
-                      ? 'border-red-500 ring-2 ring-red-500/30'
-                      : 'border-[#232834] focus:border-amber-500'
-                  }`}
+                  className={`w-full bg-[#11141b] border rounded-xl px-4 py-2.5 text-white font-bold text-sm focus:outline-none transition-all ${nameError
+                    ? 'border-red-500 ring-2 ring-red-500/30'
+                    : 'border-[#232834] focus:border-amber-500'
+                    }`}
                   placeholder="请输入主角姓名"
                 />
                 {nameError && (
@@ -412,11 +411,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                         key={p.label}
                         type="button"
                         onClick={() => setBirthplace(p.label)}
-                        className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                          isSelected
-                            ? 'bg-amber-500/20 border-amber-400 text-amber-300 ring-1 ring-amber-400'
-                            : 'bg-[#11141b] border-[#232834] text-slate-400 hover:border-slate-600 hover:text-slate-200'
-                        }`}
+                        className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${isSelected
+                          ? 'bg-amber-500/20 border-amber-400 text-amber-300 ring-1 ring-amber-400'
+                          : 'bg-[#11141b] border-[#232834] text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                          }`}
                       >
                         <span>{p.icon}</span> <span>{p.label}</span>
                       </button>
@@ -439,11 +437,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                         key={bg.id}
                         type="button"
                         onClick={() => setFamilyBackground(bg.id)}
-                        className={`p-3 rounded-xl border text-left transition-all ${
-                          isSelected
-                            ? 'bg-amber-500/15 border-amber-400 text-white ring-1 ring-amber-400'
-                            : 'bg-[#11141b] border-[#232834] text-slate-400 hover:border-slate-600 hover:text-slate-200'
-                        }`}
+                        className={`p-3 rounded-xl border text-left transition-all ${isSelected
+                          ? 'bg-amber-500/15 border-amber-400 text-white ring-1 ring-amber-400'
+                          : 'bg-[#11141b] border-[#232834] text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                          }`}
                       >
                         <div className="text-xs font-black text-amber-300 mb-0.5">{bg.title}</div>
                         <div className="text-[11px] text-slate-400 leading-snug">{bg.desc}</div>
@@ -784,11 +781,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                       key={pos}
                       type="button"
                       onClick={() => handlePositionChange(pos)}
-                      className={`py-2 px-1 rounded-xl border text-center transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-amber-500 text-black border-amber-400 font-black shadow-lg ring-1 ring-amber-400'
-                          : 'bg-[#11141b] border-[#232834] text-slate-300 font-bold hover:border-slate-600'
-                      }`}
+                      className={`py-2 px-1 rounded-xl border text-center transition-all cursor-pointer ${isSelected
+                        ? 'bg-amber-500 text-black border-amber-400 font-black shadow-lg ring-1 ring-amber-400'
+                        : 'bg-[#11141b] border-[#232834] text-slate-300 font-bold hover:border-slate-600'
+                        }`}
                     >
                       <div className="text-xs italic">{pos}</div>
                       <div className="text-[9px] opacity-80">{posLabels[pos]}</div>
@@ -829,11 +825,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                     key={p.id}
                     type="button"
                     onClick={() => handlePresetSelect(p.id)}
-                    className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
-                      bodyShape === p.id
-                        ? 'bg-amber-500/20 border-amber-500 text-amber-300'
-                        : 'bg-[#11141b] border-[#232834] text-slate-400 hover:border-slate-700'
-                    }`}
+                    className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${bodyShape === p.id
+                      ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                      : 'bg-[#11141b] border-[#232834] text-slate-400 hover:border-slate-700'
+                      }`}
                   >
                     <div className="font-bold text-xs text-white flex items-center gap-1">
                       <span>{p.icon}</span> {p.name}
@@ -898,11 +893,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                     key={arch.id}
                     type="button"
                     onClick={() => setSelectedArchId(arch.id)}
-                    className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer ${
-                      selectedArchId === arch.id
-                        ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-md ring-1 ring-amber-500/50'
-                        : 'bg-[#11141b] border-[#232834] text-slate-400 hover:bg-[#181d29]'
-                    }`}
+                    className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer ${selectedArchId === arch.id
+                      ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-md ring-1 ring-amber-500/50'
+                      : 'bg-[#11141b] border-[#232834] text-slate-400 hover:bg-[#181d29]'
+                      }`}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-black text-xs text-white uppercase italic flex items-center gap-1">
@@ -1035,11 +1029,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                       key={conf}
                       type="button"
                       onClick={() => setTeamConfFilter(conf)}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        teamConfFilter === conf
-                          ? 'bg-amber-500 text-black font-black'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${teamConfFilter === conf
+                        ? 'bg-amber-500 text-black font-black'
+                        : 'text-slate-400 hover:text-white'
+                        }`}
                     >
                       {conf === 'ALL' ? '全部 (30)' : conf === 'East' ? '东部 (15)' : '西部 (15)'}
                     </button>
@@ -1059,7 +1052,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
               </div>
 
               {/* Teams Grid */}
-              <div className="flex-1 overflow-y-auto pr-1 grid grid-cols-2 sm:grid-cols-3 gap-2.5 custom-scrollbar min-h-[260px] max-h-[50vh]">
+              <div className="flex-1 overflow-y-auto pr-1 grid grid-cols-2 sm:grid-cols-3 gap-2.5 custom-scrollbar">
                 {filteredTeams.map((t) => {
                   const isSelected = t.id === favoriteTeamId;
                   return (
@@ -1070,11 +1063,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                         setFavoriteTeamId(t.id);
                         setShowTeamModal(false);
                       }}
-                      className={`p-2.5 rounded-xl border text-left transition-all flex items-center gap-2.5 relative overflow-hidden cursor-pointer ${
-                        isSelected
-                          ? 'bg-amber-500/20 border-amber-400 text-white shadow-lg ring-1 ring-amber-400'
-                          : 'bg-[#0d1017] border-[#232834] text-slate-300 hover:border-amber-500/50 hover:bg-[#181d29]'
-                      }`}
+                      className={`p-2.5 rounded-xl border text-left transition-all flex items-center gap-2.5 relative cursor-pointer ${isSelected
+                        ? 'bg-amber-500/20 border-amber-400 text-white shadow-lg ring-1 ring-amber-400'
+                        : 'bg-[#0d1017] border-[#232834] text-slate-300 hover:border-amber-500/50 hover:bg-[#181d29]'
+                        }`}
                     >
                       <TeamLogo
                         logo={t.logo}
@@ -1087,7 +1079,6 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                       <div className="min-w-0 flex-1">
                         <div className="text-xs font-bold truncate leading-tight flex items-center justify-between">
                           <span>{t.name}</span>
-                          {isSelected && <span className="text-[9px] text-amber-400 font-bold">✓ 已选</span>}
                         </div>
                         <div className="text-[10px] text-slate-500 font-mono truncate mt-0.5">
                           {t.abbrev} · {t.conference === 'East' ? '东部' : '西部'}

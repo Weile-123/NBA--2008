@@ -6,7 +6,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "波士顿凯尔特人",
     "city": "Boston",
     "abbrev": "BOS",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/bos.png",
+    "logo": "/logos/bos.png",
     "primaryColor": "#008348",
     "secondaryColor": "#BB9753",
     "rating": 93,
@@ -190,7 +190,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "洛杉矶湖人",
     "city": "Los Angeles",
     "abbrev": "LAL",
-    "logo": "https://upload.wikimedia.org/wikipedia/commons/3/3c/Los_Angeles_Lakers_logo.svg",
+    "logo": "/logos/lal.svg",
     "primaryColor": "#552583",
     "secondaryColor": "#FDB927",
     "rating": 94,
@@ -311,7 +311,7 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 72,
         "role": "轮换替补"
       },
-      
+
       {
         "id": "l9",
         "name": "乔丹·法玛尔",
@@ -334,7 +334,7 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 70,
         "role": "饮水机守门员"
       },
-      
+
       {
         "id": "l15",
         "name": "约什·平克斯",
@@ -353,7 +353,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "克利夫兰骑士",
     "city": "Cleveland",
     "abbrev": "CLE",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/cle.png",
+    "logo": "/logos/cle.png",
     "primaryColor": "#860038",
     "secondaryColor": "#FDBB30",
     "rating": 92,
@@ -536,7 +536,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "奥兰多魔术",
     "city": "Orlando",
     "abbrev": "ORL",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/orl.png",
+    "logo": "/logos/orl.png",
     "primaryColor": "#0077C0",
     "secondaryColor": "#C4CED4",
     "rating": 90,
@@ -592,7 +592,7 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 85,
         "role": "绝对首发"
       },
-      
+
       {
         "id": "o8",
         "name": "迈克尔·皮特鲁斯",
@@ -710,7 +710,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "休斯顿火箭",
     "city": "Houston",
     "abbrev": "HOU",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/hou.png",
+    "logo": "/logos/hou.png",
     "primaryColor": "#CE1141",
     "secondaryColor": "#C4CED4",
     "rating": 91,
@@ -798,7 +798,7 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 76,
         "role": "轮换替补"
       },
-      
+
       {
         "id": "h14",
         "name": "詹姆斯·怀特",
@@ -883,7 +883,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "圣安东尼奥马刺",
     "city": "San Antonio",
     "abbrev": "SAS",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/sas.png",
+    "logo": "/logos/sas.png",
     "primaryColor": "#C4CED4",
     "secondaryColor": "#000000",
     "rating": 92,
@@ -1067,7 +1067,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "丹佛掘金",
     "city": "Denver",
     "abbrev": "DEN",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/den.png",
+    "logo": "/logos/den.png",
     "primaryColor": "#0E2240",
     "secondaryColor": "#FEC524",
     "rating": 91,
@@ -1250,7 +1250,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "波特兰开拓者",
     "city": "Portland",
     "abbrev": "POR",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/por.png",
+    "logo": "/logos/por.png",
     "primaryColor": "#E03A3E",
     "secondaryColor": "#000000",
     "rating": 89,
@@ -1433,7 +1433,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "达拉斯独行侠",
     "city": "Dallas",
     "abbrev": "DAL",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/dal.png",
+    "logo": "/logos/dal.png",
     "primaryColor": "#00538C",
     "secondaryColor": "#0066B3",
     "rating": 90,
@@ -1510,8 +1510,8 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 79,
         "role": "第六人"
       },
-      
-      
+
+
       {
         "id": "d6",
         "name": "J.J. 巴里亚",
@@ -1596,7 +1596,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "菲尼克斯太阳",
     "city": "Phoenix",
     "abbrev": "PHX",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/phx.png",
+    "logo": "/logos/phx.png",
     "primaryColor": "#1D1160",
     "secondaryColor": "#E56020",
     "rating": 89,
@@ -1779,7 +1779,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "犹他爵士",
     "city": "Utah",
     "abbrev": "UTA",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/utah.png",
+    "logo": "/logos/utah.png",
     "primaryColor": "#002B5C",
     "secondaryColor": "#F9A01B",
     "rating": 89,
@@ -1962,7 +1962,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "新奥尔良黄蜂",
     "city": "New Orleans",
     "abbrev": "NOH",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/no.png",
+    "logo": "/logos/nop.png",
     "primaryColor": "#00778B",
     "secondaryColor": "#280071",
     "rating": 90,
@@ -2145,7 +2145,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "亚特兰大老鹰",
     "city": "Atlanta",
     "abbrev": "ATL",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/atl.png",
+    "logo": "/logos/atl.png",
     "primaryColor": "#E13A3E",
     "secondaryColor": "#C4D600",
     "rating": 88,
@@ -2328,7 +2328,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "迈阿密热火",
     "city": "Miami",
     "abbrev": "MIA",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/mia.png",
+    "logo": "/logos/mia.png",
     "primaryColor": "#98002E",
     "secondaryColor": "#F9A01B",
     "rating": 88,
@@ -2511,7 +2511,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "芝加哥公牛",
     "city": "Chicago",
     "abbrev": "CHI",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/chi.png",
+    "logo": "/logos/chi.png",
     "primaryColor": "#CE1141",
     "secondaryColor": "#000000",
     "rating": 87,
@@ -2566,7 +2566,7 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 83,
         "role": "绝对首发"
       },
-      
+
       {
         "id": "ch13",
         "name": "提姆·托马斯",
@@ -2644,7 +2644,7 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 70,
         "role": "饮水机守门员"
       },
-      
+
       {
         "id": "ch15",
         "name": "德里克·布朗",
@@ -2674,7 +2674,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "费城76人",
     "city": "Philadelphia",
     "abbrev": "PHI",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/phi.png",
+    "logo": "/logos/phi.png",
     "primaryColor": "#006BB6",
     "secondaryColor": "#ED174C",
     "rating": 87,
@@ -2857,7 +2857,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "底特律活塞",
     "city": "Detroit",
     "abbrev": "DET",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/det.png",
+    "logo": "/logos/det.png",
     "primaryColor": "#C8102E",
     "secondaryColor": "#006BB6",
     "rating": 88,
@@ -3040,7 +3040,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "多伦多猛龙",
     "city": "Toronto",
     "abbrev": "TOR",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/tor.png",
+    "logo": "/logos/tor.png",
     "primaryColor": "#CE1141",
     "secondaryColor": "#000000",
     "rating": 86,
@@ -3183,7 +3183,7 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 71,
         "role": "饮水机守门员"
       },
-      
+
       {
         "id": "tr15",
         "name": "哈桑·亚当斯",
@@ -3201,7 +3201,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "新泽西网",
     "city": "New Jersey",
     "abbrev": "NJN",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/bkn.png",
+    "logo": "/logos/bkn.png",
     "primaryColor": "#000000",
     "secondaryColor": "#FFFFFF",
     "rating": 85,
@@ -3384,7 +3384,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "印第安纳步行者",
     "city": "Indiana",
     "abbrev": "IND",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/ind.png",
+    "logo": "/logos/ind.png",
     "primaryColor": "#002D62",
     "secondaryColor": "#FDBB30",
     "rating": 85,
@@ -3566,7 +3566,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "密尔沃基雄鹿",
     "city": "Milwaukee",
     "abbrev": "MIL",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/mil.png",
+    "logo": "/logos/mil.png",
     "primaryColor": "#00471B",
     "secondaryColor": "#EEE1C6",
     "rating": 85,
@@ -3632,7 +3632,7 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 79,
         "role": "绝对首发"
       },
-      
+
       {
         "id": "mk12",
         "name": "查理·贝尔",
@@ -3655,7 +3655,7 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 75,
         "role": "轮换替补"
       },
-      
+
       {
         "id": "mk15",
         "name": "达蒙·琼斯",
@@ -3729,7 +3729,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "华盛顿奇才",
     "city": "Washington",
     "abbrev": "WAS",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/wsh.png",
+    "logo": "/logos/wsh.png",
     "primaryColor": "#002B5C",
     "secondaryColor": "#E31837",
     "rating": 84,
@@ -3912,7 +3912,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "萨克拉门托国王",
     "city": "Sacramento",
     "abbrev": "SAC",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/sac.png",
+    "logo": "/logos/sac.png",
     "primaryColor": "#5A2D81",
     "secondaryColor": "#63666A",
     "rating": 84,
@@ -3966,8 +3966,8 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 78,
         "role": "绝对首发"
       },
-      
-      
+
+
       {
         "id": "sc8",
         "name": "鲍比·杰克逊",
@@ -3979,8 +3979,8 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 74,
         "role": "轮换替补"
       },
-      
-      
+
+
       {
         "id": "sc5",
         "name": "贾森·汤普森",
@@ -3992,7 +3992,7 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 71,
         "role": "轮换替补"
       },
-      
+
       {
         "id": "sc4",
         "name": "斯宾塞·霍伊斯",
@@ -4044,7 +4044,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "夏洛特山猫",
     "city": "Charlotte",
     "abbrev": "CHA",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/cha.png",
+    "logo": "/logos/cha.png",
     "primaryColor": "#1D1160",
     "secondaryColor": "#00859B",
     "rating": 85,
@@ -4077,7 +4077,7 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 85,
         "role": "绝对首发"
       },
-      
+
       {
         "id": "ch5",
         "name": "拉贾·贝尔",
@@ -4122,7 +4122,7 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 76,
         "role": "轮换替补"
       },
-      
+
       {
         "id": "ch9",
         "name": "亚当·莫里森",
@@ -4207,7 +4207,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "洛杉矶快船",
     "city": "Los Angeles",
     "abbrev": "LAC",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/lac.png",
+    "logo": "/logos/lac.png",
     "primaryColor": "#C8102E",
     "secondaryColor": "#1D428A",
     "rating": 85,
@@ -4283,7 +4283,7 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 79,
         "role": "第六人"
       },
-      
+
       {
         "id": "lc2",
         "name": "埃里克·戈登",
@@ -4296,7 +4296,7 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 74,
         "role": "轮换替补"
       },
-      
+
       {
         "id": "lc10",
         "name": "布赖恩·斯金纳",
@@ -4370,7 +4370,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "孟菲斯灰熊",
     "city": "Memphis",
     "abbrev": "MEM",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/mem.png",
+    "logo": "/logos/mem.png",
     "primaryColor": "#5D76A9",
     "secondaryColor": "#12173F",
     "rating": 85,
@@ -4553,7 +4553,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "明尼苏达森林狼",
     "city": "Minnesota",
     "abbrev": "MIN",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/min.png",
+    "logo": "/logos/min.png",
     "primaryColor": "#0C2340",
     "secondaryColor": "#236192",
     "rating": 84,
@@ -4736,7 +4736,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "俄克拉荷马雷霆",
     "city": "Oklahoma City",
     "abbrev": "OKC",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/okc.png",
+    "logo": "/logos/okc.png",
     "primaryColor": "#007AC1",
     "secondaryColor": "#EF3B24",
     "rating": 85,
@@ -4890,7 +4890,7 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 68,
         "role": "饮水机守门员"
       },
-      
+
       {
         "id": "ok12",
         "name": "D.J. 怀特",
@@ -4909,7 +4909,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "纽约尼克斯",
     "city": "New York",
     "abbrev": "NYK",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/ny.png",
+    "logo": "/logos/ny.png",
     "primaryColor": "#006BB6",
     "secondaryColor": "#F58426",
     "rating": 85,
@@ -5092,7 +5092,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "金州勇士",
     "city": "Golden State",
     "abbrev": "GSW",
-    "logo": "https://a.espncdn.com/i/teamlogos/nba/500/gsw.png",
+    "logo": "/logos/gsw.png",
     "primaryColor": "#1D428A",
     "secondaryColor": "#FFC72C",
     "rating": 86,
@@ -5147,7 +5147,7 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 79,
         "role": "绝对首发"
       },
-      
+
       {
         "id": "gw5",
         "name": "安东尼·莫罗",
@@ -5203,7 +5203,7 @@ export const NBA_TEAMS_2008: Team[] = [
         "ovr": 71,
         "role": "轮换替补"
       },
-      
+
       {
         "id": "gw13",
         "name": "马库斯·威廉姆斯",
@@ -5514,24 +5514,9 @@ export const INITIAL_ENDORSEMENTS: Endorsement[] = [
     unlocked: false,
     description: '佩戴 Beats 耳机帅气入场，引领联盟最酷的潮人音乐文化风向！',
     logo: '🎧',
-    logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/1/17/Beats_Electronics_logo.svg',
+    logoUrl: '/logos/beats.svg',
     rewardDesc: '控球 +1',
     rewardAttributes: { ballHandle: 1 },
-  },
-  {
-    id: 'supreme',
-    brand: 'Supreme',
-    category: 'fashion_electronics',
-    categoryLabel: '时尚与电子',
-    perSeasonPay: 900000,
-    requiredOvr: 79,
-    requiredFans: 100000,
-    unlocked: false,
-    description: '穿戴 Supreme 最新一季限定联名服饰，成为球场内外的绝对弄潮儿！',
-    logo: '🧣',
-    logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/2/28/Supreme_Logo.svg',
-    rewardDesc: '速度 +2 · 弹跳 +2',
-    rewardAttributes: { speed: 2, vertical: 2 },
   },
   {
     id: '2ksports',
@@ -5544,7 +5529,7 @@ export const INITIAL_ENDORSEMENTS: Endorsement[] = [
     unlocked: false,
     description: '荣登下赛季 NBA 2K 官方游戏封面，名字与虚拟游戏世界完美重合！',
     logo: '🎮',
-    logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/3/33/2K_2018_Logo.svg',
+    logoUrl: '/logos/2k.svg',
     rewardDesc: '控球 +4 · 传球 +3 · 中投 +2',
     rewardAttributes: { ballHandle: 4, passing: 3, midRange: 2 },
   },
@@ -5561,7 +5546,7 @@ export const INITIAL_ENDORSEMENTS: Endorsement[] = [
     unlocked: false,
     description: '“Just Do It”！耐克专属球鞋科技，极致的缓震与启动反馈。',
     logo: '⚡',
-    logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/a/a6/Logo_NIKE.svg',
+    logoUrl: '/logos/nike.svg',
     rewardDesc: '专属战靴：速度 +3 · 上篮 +3',
     rewardAttributes: { speed: 3, layup: 3 },
   },
@@ -5576,7 +5561,7 @@ export const INITIAL_ENDORSEMENTS: Endorsement[] = [
     unlocked: false,
     description: '“Impossible is Nothing”！三条纹家族的掌控科技，极佳的动作稳定性。',
     logo: '👟',
-    logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/2/20/Adidas_Logo.svg',
+    logoUrl: '/logos/adidas.svg',
     rewardDesc: '专属战靴：控球 +3 · 中投 +3',
     rewardAttributes: { ballHandle: 3, midRange: 3 },
   },
@@ -5591,7 +5576,7 @@ export const INITIAL_ENDORSEMENTS: Endorsement[] = [
     unlocked: false,
     description: '飞翔意志的传承者！迈克尔·乔丹手签，极致腾空与制空表现。',
     logo: '🐐',
-    logoUrl: 'https://upload.wikimedia.org/wikipedia/zh/0/01/Jumpman_logo.png',
+    logoUrl: '/logos/jordan.png',
     rewardDesc: '专属战靴：扣篮 +4 · 力量 +2',
     rewardAttributes: { dunk: 4, strength: 2 },
   },
@@ -5606,7 +5591,7 @@ export const INITIAL_ENDORSEMENTS: Endorsement[] = [
     unlocked: false,
     description: '无拘无束，精准投射！极致贴地感与外线三分柔和出手加持。',
     logo: '🎯',
-    logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/4/44/Under_armour_logo.svg',
+    logoUrl: '/logos/adm.svg',
     rewardDesc: '专属战靴：三分球 +4 · 速度 +2',
     rewardAttributes: { threePoint: 4, speed: 2 },
   },
@@ -5621,7 +5606,7 @@ export const INITIAL_ENDORSEMENTS: Endorsement[] = [
     unlocked: false,
     description: '野兽本能，疾速掠食！超轻量化材料加持突破和变向撕扯。',
     logo: '🐆',
-    logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/a/ae/Puma-logo-%28text%29.svg',
+    logoUrl: '/logos/puma.svg',
     rewardDesc: '专属战靴：速度 +4 · 扣篮 +2',
     rewardAttributes: { speed: 4, dunk: 2 },
   },
@@ -5636,7 +5621,7 @@ export const INITIAL_ENDORSEMENTS: Endorsement[] = [
     unlocked: false,
     description: '一切皆有可能！搭载国潮「䨻」缓震科技，攻防一体全能王。',
     logo: '🔥',
-    logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/3/31/Li-Ning_logo_red.svg',
+    logoUrl: '/logos/lining.svg',
     rewardDesc: '专属战靴：外线防守 +3 · 力量 +3',
     rewardAttributes: { perimeterDef: 3, strength: 3 },
   },
@@ -5651,7 +5636,7 @@ export const INITIAL_ENDORSEMENTS: Endorsement[] = [
     unlocked: false,
     description: '永不止步，国货之光！搭载最新氮科技中底，带来稳健的侧向急停支持。',
     logo: '🏔️',
-    logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/2/29/Anta_logo.svg',
+    logoUrl: '/logos/anta.svg',
     rewardDesc: '专属战靴：中投 +4 · 外线防守 +2',
     rewardAttributes: { midRange: 4, perimeterDef: 2 },
   },
@@ -5668,7 +5653,7 @@ export const INITIAL_ENDORSEMENTS: Endorsement[] = [
     unlocked: false,
     description: '渴望无限，年轻人的动能可乐！在休赛期拍摄全美轮播视频广告。',
     logo: '🥤',
-    logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/0/0f/Pepsi_logo_2014.svg',
+    logoUrl: '/logos/pepsi.svg',
     rewardDesc: '力量 +1 · 耐力/体能 +1',
     rewardAttributes: { strength: 1, stamina: 1 },
   },
@@ -5683,7 +5668,7 @@ export const INITIAL_ENDORSEMENTS: Endorsement[] = [
     unlocked: false,
     description: '科学流体体能补充！比赛和训练疲劳度下降，极佳地保障场上耐力表现。',
     logo: '🥤',
-    logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/3/37/UCL_21-22_RGB_Gatorade.png',
+    logoUrl: '/logos/gdl.png',
     rewardDesc: '耐力/体能 +2 · 速度 +1',
     rewardAttributes: { stamina: 2, speed: 1 },
   },
@@ -5698,7 +5683,7 @@ export const INITIAL_ENDORSEMENTS: Endorsement[] = [
     unlocked: false,
     description: '代言巨型硬派悍马 SUV 家族，彰显统治力，全美高速路硬广铺满！',
     logo: '🚗',
-    logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/73/GMC_logo_with_motto_%282016%29.svg',
+    logoUrl: '/logos/gmc.svg',
     rewardDesc: '力量 +3 · 内线防守 +2',
     rewardAttributes: { strength: 3, interiorDef: 2 },
   }];
