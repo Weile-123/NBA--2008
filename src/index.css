@@ -1,0 +1,153 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Lock browser page from bouncing/moving */
+    overscroll-behavior: none; /* Block pull-to-refresh & rubber-banding */
+    touch-action: manipulation; /* Disable double-tap zoom, keep fast tap response */
+    -webkit-user-select: none; /* Prevent accidental text highlighting during fast clicks */
+    user-select: none;
+    -webkit-tap-highlight-color: transparent; /* Remove blue/gray highlight box on mobile tap */
+    background-color: #0a0c10;
+    color: #e0e6ed;
+    color-scheme: dark;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  }
+
+  /* Re-enable text selection for text inputs, textareas, and editable content */
+  input, textarea, select, [contenteditable="true"] {
+    -webkit-user-select: text;
+    user-select: text;
+    touch-action: auto;
+  }
+
+  #root {
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: none; /* Prevent scroll propagation to body */
+    -webkit-overflow-scrolling: touch; /* Smooth inertia scrolling on iOS */
+  }
+}
+
+/* Hide native webkit scrollbar arrows globally */
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Custom High Density Theme Scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #232a3c #090c12;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #090c12;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb {
+  background: #232834;
+  border-radius: 9999px;
+  border: 1px solid #151a24;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #f59e0b;
+}
+
+/* Sleek Gold Accent Custom Scrollbar for Draft / Modals */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #f59e0b #0d111a;
+  color-scheme: dark;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #0d111a;
+  border-radius: 9999px;
+  border: 1px solid #1e2638;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #d97706 0%, #f59e0b 100%);
+  border-radius: 9999px;
+  border: 1px solid #1a202c;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #f59e0b 0%, #fbbf24 100%);
+}
+.scrollbar-thin::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+@keyframes ticker-scroll {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-ticker {
+  display: flex;
+  width: max-content;
+  animation: ticker-scroll 24s linear infinite;
+}
+
+.animate-ticker:hover {
+  animation-play-state: paused;
+}
+.scrollbar-thin::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+

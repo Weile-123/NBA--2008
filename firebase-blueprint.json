@@ -1,0 +1,36 @@
+{
+  "entities": {
+    "global_hall_of_fame": {
+      "title": "Global Hall of Fame",
+      "description": "Public leaderboard of retired players ordered by GOAT score",
+      "type": "collection",
+      "path": "/global_hall_of_fame/{legendId}",
+      "schema": {
+        "properties": {
+          "id": { "type": "string" },
+          "retireDate": { "type": "string" },
+          "player": { "type": "object" },
+          "retireAge": { "type": "number" },
+          "peakOvr": { "type": "number" },
+          "finalOvr": { "type": "number" },
+          "goatScore": { "type": "number" },
+          "seasonsPlayed": { "type": "number" },
+          "startYear": { "type": "number" },
+          "endYear": { "type": "number" },
+          "totalGames": { "type": "number" },
+          "totalPoints": { "type": "number" },
+          "totalRebounds": { "type": "number" },
+          "totalAssists": { "type": "number" },
+          "avgPpg": { "type": "number" },
+          "avgRpg": { "type": "number" },
+          "avgApg": { "type": "number" },
+          "careerAccolades": { "type": "object" },
+          "retiredJerseys": { "type": "array" },
+          "timeline": { "type": "array" },
+          "epilogueStory": { "type": "string" }
+        },
+        "required": ["id", "goatScore"]
+      }
+    }
+  }
+}

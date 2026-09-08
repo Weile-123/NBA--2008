@@ -1,0 +1,8 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /global_hall_of_fame/{legendId} {
+      allow read, write: if true;
+    }
+  }
+}
