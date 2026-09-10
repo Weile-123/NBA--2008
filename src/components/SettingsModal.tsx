@@ -58,7 +58,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               <div className="grid grid-cols-2 gap-2 text-xs font-mono text-slate-400 bg-[#11141b] p-3 rounded-lg border border-[#232834]">
                 <div>
-                  <span className="text-[10px] text-slate-500 block">球员能力 (OVR)</span>
+                  <span className="text-[10px] text-slate-500 block">球员能力</span>
                   <span className="text-amber-400 font-bold">{player.ovr} OVR · {player.position}</span>
                 </div>
                 <div>
@@ -111,7 +111,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
 
           <p className="text-[10px] text-slate-500 text-center flex items-center justify-center gap-1 pt-2 border-t border-[#232834]">
-            <ShieldCheck className="w-3.5 h-3.5 text-slate-400" /> NBA 2K2008 MyCareer Simulation Engine
+            <ShieldCheck className="w-3.5 h-3.5 text-slate-400" /> 篮坛传奇：重返2008
           </p>
         </div>
       </div>

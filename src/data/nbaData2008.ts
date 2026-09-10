@@ -190,7 +190,7 @@ export const NBA_TEAMS_2008: Team[] = [
     "name": "洛杉矶湖人",
     "city": "Los Angeles",
     "abbrev": "LAL",
-    "logo": "/logos/lal.svg",
+    "logo": "/logos/lal.png",
     "primaryColor": "#552583",
     "secondaryColor": "#FDB927",
     "rating": 94,
@@ -5263,7 +5263,7 @@ export const HISTORICAL_SEASONS: HistoricalSeason[] = [
     description: '科比率领湖人战胜魔术夺得后沙克时代首冠；勒布朗·詹姆斯拿下载入史册的常规模MVP；新秀德里克·罗斯在季后赛首轮大战绿军惊艳全美！',
     majorEvents: [
       '科比·布莱恩特夺得生涯第4冠与首个FMVP',
-      '德里克·罗斯全票夺得最佳新秀 (ROY)',
+      '德里克·罗斯全票夺得最佳新秀',
       '勒布朗·詹姆斯带领骑士取得66胜斩获常规模MVP'],
   },
   {
@@ -5289,7 +5289,7 @@ export const HISTORICAL_SEASONS: HistoricalSeason[] = [
     description: '勒布朗、韦德、波什迈阿密聚首组建三巨头；22岁的德里克·罗斯成为史上最年轻MVP；德克·诺维茨基季后赛单核封神击败热火！',
     majorEvents: [
       '德克·诺维茨基带队力克热火三巨头夺得队史首冠',
-      '德里克·罗斯成为NBA历史最年轻MVP (22岁)',
+      '德里克·罗斯成为联盟历史最年轻MVP (22岁)',
       '格里芬以扣篮大赛跃过汽车夺得ROY'],
   },
   {
@@ -5303,7 +5303,7 @@ export const HISTORICAL_SEASONS: HistoricalSeason[] = [
     majorEvents: [
       '勒布朗·詹姆斯斩获个人首个总冠军与FMVP',
       '雷霆青年军闯入总决赛',
-      '“林疯狂” (Linsanity) 席卷纽约与全球'],
+      '“林疯狂” 席卷纽约与全球'],
   },
   {
     year: 2012,
@@ -5353,8 +5353,8 @@ export const HISTORICAL_SEASONS: HistoricalSeason[] = [
     realROY: '卡尔-安东尼·唐斯',
     description: '勇士创下73胜9负历史第一战绩，库里全票MVP；科比告别战爆砍60分完美的退役；总决赛骑士1-3落后创造历史级翻盘！',
     majorEvents: [
-      '科比·布莱恩特退役战爆砍60分告别NBA',
-      '勇士创下73胜9负NBA常规赛历史最佳战绩',
+      '科比·布莱恩特退役战爆砍60分告别联盟',
+      '勇士创下73胜9负联盟常规赛历史最佳战绩',
       '骑士在1-3落后绝境下逆转勇士，捧起克里夫兰队史首冠'],
   },
   {
@@ -5419,7 +5419,7 @@ export const HISTORICAL_SEASONS: HistoricalSeason[] = [
     description: '尼古拉·约基奇以首轮秀身份创神话夺得首个MVP；保罗率太阳杀进总决赛，但最终字母哥在总决赛第六战爆砍50分，率雄鹿时隔50年再夺冠！',
     majorEvents: [
       '字母哥总决赛单场50分并捧杯斩获FMVP',
-      '尼古拉·约基奇成为NBA历史上选秀顺位最低的常规赛MVP',
+      '尼古拉·约基奇成为联盟历史上选秀顺位最低的常规赛MVP',
       '克里斯·保罗率领菲尼克斯太阳时隔28年重返总决赛'],
   },
   {
@@ -5520,16 +5520,16 @@ export const INITIAL_ENDORSEMENTS: Endorsement[] = [
   },
   {
     id: '2ksports',
-    brand: 'NBA 2K',
+    brand: '篮坛传奇：重返2008',
     category: 'fashion_electronics',
     categoryLabel: '时尚与电子',
     perSeasonPay: 2000000,
     requiredOvr: 85,
     requiredFans: 350000,
     unlocked: false,
-    description: '荣登下赛季 NBA 2K 官方游戏封面，名字与虚拟游戏世界完美重合！',
+    description: '荣登下赛季 篮坛传奇：重返2008 官方游戏封面，名字与虚拟游戏世界完美重合！',
     logo: '🎮',
-    logoUrl: '/logos/2k.svg',
+    logoUrl: '/logos/league.svg',
     rewardDesc: '控球 +4 · 传球 +3 · 中投 +2',
     rewardAttributes: { ballHandle: 4, passing: 3, midRange: 2 },
   },

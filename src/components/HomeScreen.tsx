@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Play, PlusCircle, FolderOpen, Settings, Trophy, Shield, Sparkles, UserCheck, Flame, Download, Upload, ArrowRight, AlertTriangle, Globe, Loader2 } from 'lucide-react';
 import { SaveSlotMeta, getAllSaveSlotsMeta } from '../utils/storage';
 import { TeamLogo } from './TeamLogo';
-import { fetchGlobalHallOfFame } from '../lib/firebase';
-import { TOP_50_LEGENDS } from '../utils/calc2k';
+import { fetchGlobalHallOfFame } from '../lib/globalLeaderboard';
 
 interface HomeScreenProps {
   hasActiveSave: boolean;
@@ -44,12 +43,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             if (records && records.length > 0 && records[0]?.player?.name) {
               setTopLegendName(records[0].player.name);
               setTopLegendScore(records[0].goatScore || null);
-            } else {
-              const defaultTop = TOP_50_LEGENDS[0];
-              const cleanName = defaultTop.name.split(' (')[0];
-              setTopLegendName(cleanName);
-              setTopLegendScore(defaultTop.score);
-            }
+            } else { setTopLegendName(''); setTopLegendScore(null); }
             setIsBannerLoading(false);
             setIsBannerTimeout(false);
           }
@@ -62,14 +56,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               setIsBannerLoading(true);
               setIsBannerTimeout(true);
               retryTimer = setTimeout(loadTopLegend, 3500);
-            } else {
-              const defaultTop = TOP_50_LEGENDS[0];
-              const cleanName = defaultTop.name.split(' (')[0];
-              setTopLegendName(cleanName);
-              setTopLegendScore(defaultTop.score);
-              setIsBannerLoading(false);
-              setIsBannerTimeout(false);
-            }
+            } else { setTopLegendName(''); setTopLegendScore(null); setIsBannerLoading(false); setIsBannerTimeout(false); }
           }
         });
     };
@@ -82,8 +69,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     };
   }, []);
 
-  const displayTopName = topLegendName || TOP_50_LEGENDS[0].name.split(' (')[0];
-  const displayTopScore = topLegendScore !== null ? topLegendScore : TOP_50_LEGENDS[0].score;
+  const displayTopName = topLegendName;
+  const displayTopScore = topLegendScore;
 
   const handleNewCareerClick = () => {
     const hasAnySave = hasActiveSave || getAllSaveSlotsMeta().some((s) => !s.isEmpty);
@@ -129,9 +116,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     </>
                   ) : (
                     <>
-                      <span className="text-amber-100 font-bold">
-                        恭喜【<span className="text-amber-300 font-black text-sm italic">{displayTopName}</span>】登顶传奇榜！
-                      </span>
+                      <span className="text-amber-100 font-bold">{displayTopName ? <>恭喜【<span className="text-amber-300 font-black text-sm italic">{displayTopName}</span>】登顶传奇榜！</> : '全网传奇榜等待首位传奇球员入榜'}</span>
                       {displayTopScore && (
                         <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 font-mono text-[11px] font-bold">
                           GOAT 积分: {displayTopScore} 分
@@ -161,11 +146,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <header className="relative z-10 w-full max-w-5xl flex items-center justify-between py-2 border-b border-amber-500/20 text-xs text-amber-300/80 uppercase font-mono tracking-widest">
           <div className="flex items-center gap-2 font-bold">
             <Flame className="w-4 h-4 text-amber-500 animate-pulse" />
-            <span>NBA 2K2008 MYCAREER SIMULATOR</span>
+            <span>篮坛传奇：重返2008</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-[10px]">
-              LOCAL STORAGE READY
+              本地存档已就绪
             </span>
             <span className="hidden sm:inline text-slate-500">v2.50</span>
           </div>
@@ -173,15 +158,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
         {/* Hero Title & Subtitle Area */}
         <main className="relative z-10 w-full max-w-4xl flex flex-col items-center my-auto py-8 text-center">
-          {/* Main 2K Emblem */}
+          <img src="/logos/league.svg" alt="篮坛传奇：篮球与篮筐" className="w-16 h-16 sm:w-20 sm:h-20 mb-4" />
           <div className="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/20 via-amber-400/10 to-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-black tracking-widest uppercase shadow-lg">
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             <span>黄金时代 ·  2008-2025</span>
           </div>
 
           {/* Title Heading */}
-          <h1 className="text-4xl sm:text-7xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white via-amber-100 to-amber-500 drop-shadow-[0_10px_20px_rgba(245,158,11,0.2)] mb-2">
-            NBA 2K2008
+          <h1 className="px-4 text-3xl sm:text-5xl lg:text-6xl leading-tight font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-amber-100 to-amber-500 drop-shadow-[0_10px_20px_rgba(245,158,11,0.2)] mb-2">
+            篮坛传奇：<span className="inline-block">重返2008</span>
           </h1>
           <h2 className="text-xl sm:text-3xl font-black uppercase italic tracking-widest text-slate-300 mb-6 drop-shadow">
             我的职业生涯 · <span className="text-amber-400">MY CAREER</span>
@@ -284,7 +269,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         {/* Bottom Footer Info */}
         <footer className="relative z-10 w-full max-w-4xl flex flex-col sm:flex-row items-center justify-between gap-2 py-3 border-t border-[#1e2535] text-[11px] text-slate-500">
           <div>
-            NBA 2K2008 MyCareer Web Engine · 提示：全过程自动本地快照，支持无网离线运行
+            篮坛传奇：重返2008 · 提示：全过程自动本地快照，支持无网离线运行
           </div>
           <div className="flex items-center gap-4">
             <span>2008 - 2025 年真实赛季模拟</span>
@@ -307,7 +292,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed bg-[#181e2b] p-3.5 rounded-xl border border-[#263147]">
-              检测到您本地已有 NBA 2K2008 的生涯存档数据。新建球员将<strong className="text-amber-400 font-bold">覆盖并清空旧的存档记录</strong>。是否确认继续新建？
+              检测到您本地已有 篮坛传奇：重返2008 的生涯存档数据。新建球员将<strong className="text-amber-400 font-bold">覆盖并清空旧的存档记录</strong>。是否确认继续新建？
             </p>
 
             <div className="flex items-center justify-end gap-3 pt-2">

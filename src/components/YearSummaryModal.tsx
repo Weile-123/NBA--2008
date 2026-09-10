@@ -49,7 +49,7 @@ export const YearSummaryModal: React.FC<YearSummaryModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
             <div className={`p-2.5 rounded-lg border ${userWonChampion ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold' : 'bg-[#11141b] border-[#232834] text-slate-400'}`}>
-              <div className="text-[9px] text-slate-500 uppercase">NBA总冠军</div>
+              <div className="text-[9px] text-slate-500 uppercase">联盟总冠军</div>
               <div className="text-xs font-black text-white">{userWonChampion ? `🏆 ${player.name} (${player.currentTeamId.toUpperCase()})` : historicalSeason.realChampion}</div>
             </div>
 

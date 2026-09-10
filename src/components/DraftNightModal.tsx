@@ -60,11 +60,11 @@ export const DraftNightModal: React.FC<DraftNightModalProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                {currentYear} NBA DRAFT
+                {currentYear} 联盟选秀
               </span>
             </div>
             <h2 className="text-base sm:text-xl font-black italic uppercase text-white mt-0.5 sm:mt-1">
-              {currentYear}年 NBA 选秀大会
+              {currentYear}年 联盟 选秀大会
             </h2>
           </div>
         </div>

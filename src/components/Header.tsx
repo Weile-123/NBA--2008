@@ -205,7 +205,7 @@ export const Header: React.FC<HeaderProps> = ({
             { id: 'standings', label: '📊 数据面板' },
             { id: 'roster', label: '🔄 球队与交易' },
             { id: 'social', label: '📲 场外社交与代言', hasDot: hasSocialNotification },
-            { id: 'timeline', label: '📅 NBA 时间线' },
+            { id: 'timeline', label: '📅 联盟 时间线' },
             { id: 'milestones', label: '🎖️ 历史里程碑' },
             { id: 'hof', label: '🏆 名人堂与纪录' },
           ].map((tab) => (
@@ -346,7 +346,7 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <Calendar className="w-5 h-5 text-amber-400 shrink-0" />
                 <div>
-                  <div className="text-xs font-bold">📅 NBA 时间线</div>
+                  <div className="text-xs font-bold">📅 联盟 时间线</div>
                   <div className="text-[10px] text-slate-400">大事件与巨星轨迹</div>
                 </div>
               </button>

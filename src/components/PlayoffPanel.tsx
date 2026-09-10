@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Team, PlayerProfile } from '../types';
+import { getPersistentValue, hydratePersistentValues, removePersistentValue, setPersistentValue } from '../lib/persistentStorage';
 import { TeamLogo } from './TeamLogo';
 import { calculateMatchScores, getCompleteTeamRoster, calculateTeamPowerRating, getShortTeamName } from '../utils/leagueLogic';
 import { Play, Pause, Trophy, Flame, ShieldAlert, ChevronRight, Sparkles, Crown, Award, Star, CheckCircle2 } from 'lucide-react';
@@ -27,55 +28,18 @@ interface SavedPlayoffState {
   champion: Team | null;
 }
 
+function playoffKey(year: number) { return `${PLAYOFF_STORAGE_KEY_PREFIX}${year}`; }
 function loadPlayoffState(year: number): SavedPlayoffState | null {
-  try {
-    const raw = localStorage.getItem(`${PLAYOFF_STORAGE_KEY_PREFIX}${year}`);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed && Array.isArray(parsed.seriesList) && parsed.seriesList.length > 0) {
-      return {
-        currentYear: parsed.currentYear || year,
-        currentRound: parsed.currentRound || 1,
-        seriesList: parsed.seriesList,
-        champion: parsed.champion || null,
-      };
-    }
-  } catch (err) {
-    console.error('Failed to load playoff state:', err);
-  }
-  return null;
+  const parsed = getPersistentValue<SavedPlayoffState>(playoffKey(year));
+  return parsed && Array.isArray(parsed.seriesList) && parsed.seriesList.length > 0 ? parsed : null;
 }
 
 function savePlayoffState(year: number, currentRound: 1 | 2 | 3 | 4, seriesList: PlayoffSeries[], champion: Team | null) {
-  try {
-    if (seriesList.length === 0) return;
-    const data: SavedPlayoffState = {
-      currentYear: year,
-      currentRound,
-      seriesList,
-      champion,
-    };
-    localStorage.setItem(`${PLAYOFF_STORAGE_KEY_PREFIX}${year}`, JSON.stringify(data));
-  } catch (err) {
-    console.error('Failed to save playoff state:', err);
-  }
+  if (seriesList.length > 0) setPersistentValue(playoffKey(year), { currentYear: year, currentRound, seriesList, champion });
 }
 
 export function clearPlayoffStorage(year?: number) {
-  try {
-    if (year) {
-      localStorage.removeItem(`${PLAYOFF_STORAGE_KEY_PREFIX}${year}`);
-    } else {
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith(PLAYOFF_STORAGE_KEY_PREFIX)) {
-          localStorage.removeItem(key);
-        }
-      }
-    }
-  } catch (err) {
-    console.error('Failed to clear playoff storage:', err);
-  }
+  if (year) removePersistentValue(playoffKey(year));
 }
 
 interface PlayoffPanelProps {
@@ -112,6 +76,13 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
 
   const autoSimTimerRef = useRef<NodeJS.Timeout | null>(null);
   const treeContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    void hydratePersistentValues([playoffKey(currentYear)]).then(() => {
+      const saved = loadPlayoffState(currentYear);
+      if (saved) { setCurrentRound(saved.currentRound); setSeriesList(saved.seriesList); setChampion(saved.champion); }
+    });
+  }, [currentYear]);
 
   // Compute current/active series ID for user team in the bracket tree to focus properly
   const activeUserSeriesId = (() => {
@@ -476,7 +447,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
       case 3:
         return '分区决赛';
       case 4:
-        return 'NBA 总决赛';
+        return '联盟 总决赛';
       default:
         return '季后赛';
     }
@@ -546,7 +517,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
         ppg,
         rpg,
         apg,
-        reason: `在总决赛攻防两端大发神威，系列赛场均砍下 ${ppg} 分，统治攻防两端，荣膺总决赛最有价值球员 (FMVP)！`,
+        reason: `在总决赛攻防两端大发神威，系列赛场均砍下 ${ppg} 分，统治攻防两端，荣膺总决赛最有价值球员！`,
       };
     }
   };
@@ -670,7 +641,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 border-b border-[#232834] pb-3 sm:pb-4">
           <div>
             <div className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] sm:text-[10px] font-black uppercase">
-              <Trophy className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" /> {currentYear}-{currentYear + 1} 季后赛模式 (PLAYOFFS)
+              <Trophy className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" /> {currentYear}-{currentYear + 1} 季后赛模式
             </div>
             <h3 className="text-base sm:text-xl font-black italic uppercase text-white mt-1">
               当前阶段: {getRoundLabel(currentRound)}
@@ -693,11 +664,11 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
                 >
                   {isAutoSimulating ? (
                     <>
-                      <Pause className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current shrink-0" /> 暂停模拟 (PAUSE)
+                      <Pause className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current shrink-0" /> 暂停模拟
                     </>
                   ) : (
                     <>
-                      <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current shrink-0" /> 开始模拟 (SIM)
+                      <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current shrink-0" /> 开始模拟
                     </>
                   )}
                 </button>
@@ -709,7 +680,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
                   className="flex-1 sm:flex-none justify-center px-3.5 sm:px-5 py-2 sm:py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black italic rounded-xl transition-all flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs uppercase tracking-tight shadow-lg shadow-amber-500/20 cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-black fill-current shrink-0" />
-                  模拟本轮 (ROUND)
+                  模拟本轮
                 </button>
               </>
             ) : (
@@ -744,7 +715,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
           </div>
 
           <div className="text-amber-400 font-bold text-[10px] sm:text-xs">
-            赛制: 七场四胜制 (BEST-OF-7)
+            赛制: 七场四胜制
           </div>
         </div>
       </div>
@@ -753,7 +724,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
       {champion && (
         <div className="bg-gradient-to-r from-amber-500/20 via-amber-900/30 to-amber-500/20 border-2 border-amber-400 rounded-2xl p-4 sm:p-6 text-center space-y-2.5 sm:space-y-3 shadow-2xl animate-scaleIn flex flex-col items-center justify-center">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-amber-500 text-black font-black text-[10px] sm:text-xs uppercase">
-            <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /> {currentYear}-{currentYear + 1} NBA 总冠军诞生！
+            <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /> {currentYear}-{currentYear + 1} 联盟 总冠军诞生！
           </div>
           <div className="flex items-center justify-center gap-2.5 sm:gap-4">
             <TeamLogo
@@ -779,7 +750,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
       <div className="bg-[#11141b] border border-[#232834] rounded-2xl p-3.5 sm:p-5 shadow-xl space-y-3 sm:space-y-4">
         <div className="flex items-center justify-between border-b border-[#232834] pb-2.5 sm:pb-3 gap-2">
           <h4 className="text-xs sm:text-xs font-black italic uppercase text-white flex items-center gap-1.5 sm:gap-2">
-            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 shrink-0" /> 季后赛树状图 (BRACKET TREE)
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 shrink-0" /> 季后赛树状图
           </h4>
           <div className="flex items-center gap-2">
             {userMadePlayoffs && (
@@ -807,7 +778,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
             {/* Col 1: East R1 */}
             <div className="flex flex-col space-y-3 w-40">
               <div className="text-[11px] font-black uppercase text-blue-400 bg-blue-500/10 py-1 rounded border border-blue-500/20">
-                东首轮 (E-R1)
+                东首轮
               </div>
               <div className="flex flex-col space-y-3">
                 {renderSeriesCard(eastR1Series[0], '东部 1 vs 8')}
@@ -834,7 +805,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
             {/* Col 2: East Semis */}
             <div className="flex flex-col space-y-3 w-40">
               <div className="text-[11px] font-black uppercase text-blue-400 bg-blue-500/10 py-1 rounded border border-blue-500/20">
-                东半决 (E-R2)
+                东半决
               </div>
               <div className="flex flex-col justify-around space-y-12 my-auto">
                 {renderSeriesCard(eastR2Series[0], '等待首轮胜者')}
@@ -851,7 +822,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
             {/* Col 3: East Finals */}
             <div className="flex flex-col space-y-3 w-40 my-auto">
               <div className="text-[11px] font-black uppercase text-blue-400 bg-blue-500/10 py-1 rounded border border-blue-500/20">
-                东决 (E-R3)
+                东决
               </div>
               <div className="my-auto">{renderSeriesCard(eastR3Series[0], '等待半决胜者')}</div>
             </div>
@@ -862,7 +833,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
             {/* CENTER: NBA Finals */}
             <div className="flex flex-col space-y-3 w-44 bg-amber-500/5 p-2 rounded-2xl border border-amber-500/30 my-auto shadow-xl">
               <div className="text-[11px] font-black uppercase text-amber-300 bg-amber-500/20 py-1 rounded border border-amber-500/40 flex items-center justify-center gap-1">
-                <Trophy className="w-3.5 h-3.5 text-amber-400" /> 总决赛 (FINALS)
+                <Trophy className="w-3.5 h-3.5 text-amber-400" /> 总决赛
               </div>
               <div>{renderSeriesCard(finalsSeries, '等待东西部冠军')}</div>
             </div>
@@ -873,7 +844,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
             {/* Col 5: West Finals */}
             <div className="flex flex-col space-y-3 w-40 my-auto">
               <div className="text-[11px] font-black uppercase text-purple-400 bg-purple-500/10 py-1 rounded border border-purple-500/20">
-                西决 (W-R3)
+                西决
               </div>
               <div className="my-auto">{renderSeriesCard(westR3Series[0], '等待半决胜者')}</div>
             </div>
@@ -887,7 +858,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
             {/* Col 6: West Semis */}
             <div className="flex flex-col space-y-3 w-40">
               <div className="text-[11px] font-black uppercase text-purple-400 bg-purple-500/10 py-1 rounded border border-purple-500/20">
-                西半决 (W-R2)
+                西半决
               </div>
               <div className="flex flex-col justify-around space-y-12 my-auto">
                 {renderSeriesCard(westR2Series[0], '等待首轮胜者')}
@@ -912,7 +883,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
             {/* Col 7: West R1 */}
             <div className="flex flex-col space-y-3 w-40">
               <div className="text-[11px] font-black uppercase text-purple-400 bg-purple-500/10 py-1 rounded border border-purple-500/20">
-                西首轮 (W-R1)
+                西首轮
               </div>
               <div className="flex flex-col space-y-3">
                 {renderSeriesCard(westR1Series[0], '西部 1 vs 8')}
@@ -948,7 +919,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
               <div className="bg-gradient-to-br from-amber-500/15 via-[#181e2b] to-[#0d1017] p-3.5 sm:p-5 rounded-2xl border border-amber-500/40 space-y-2 sm:space-y-3 shadow-xl">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] sm:text-xs font-black uppercase text-amber-400 flex items-center gap-1.5">
-                    <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 fill-amber-400 shrink-0" /> NBA 总冠军 (CHAMPION)
+                    <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 fill-amber-400 shrink-0" /> 联盟 总冠军
                   </span>
                   <span className="text-[10px] sm:text-xs font-mono text-slate-400 font-bold">
                     {champion.conference === 'East' ? '东部冠军' : '西部冠军'}
@@ -966,7 +937,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
                   <div>
                     <h3 className="text-lg sm:text-2xl font-black italic uppercase text-white">{champion.name}</h3>
                     <p className="text-[11px] sm:text-xs text-amber-300 font-mono mt-0.5 sm:mt-1">
-                      {champion.id === userTeam.id ? '🎉 恭喜玩家率领团队加冕 NBA 总冠军！' : `🎉 ${champion.name} 夺得本赛季总冠军！`}
+                      {champion.id === userTeam.id ? '🎉 恭喜玩家率领团队加冕 联盟 总冠军！' : `🎉 ${champion.name} 夺得本赛季总冠军！`}
                     </p>
                   </div>
                 </div>
@@ -976,7 +947,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
               <div className="bg-[#181e2b] p-3.5 sm:p-5 rounded-2xl border border-amber-500/30 space-y-2.5 sm:space-y-3 shadow-xl">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] sm:text-xs font-black uppercase text-amber-300 flex items-center gap-1.5">
-                    <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 fill-amber-400 shrink-0" /> 总决赛 MVP (FMVP)
+                    <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 fill-amber-400 shrink-0" /> 总决赛 MVP
                   </span>
                   <span className="text-[9px] sm:text-xs font-mono text-amber-400 font-bold px-1.5 sm:px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30">
                     FINALS MVP
@@ -1024,7 +995,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
                             seasonStr: `${currentYear}-${currentYear + 1}`,
                             title: `总决赛 FMVP`,
                             type: 'FMVP',
-                            description: `荣膺 ${currentYear}-${currentYear + 1} 赛季 NBA 总决赛 FMVP`,
+                            description: `荣膺 ${currentYear}-${currentYear + 1} 赛季 联盟 总决赛 FMVP`,
                           },
                         ];
                       }
@@ -1037,9 +1008,9 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
                           {
                             year: currentYear,
                             seasonStr: `${currentYear}-${currentYear + 1}`,
-                            title: `NBA总冠军`,
+                            title: `联盟总冠军`,
                             type: 'CHAMPION',
-                            description: `随【${champion.name}】夺得 ${currentYear}-${currentYear + 1} 赛季 NBA 总冠军`,
+                            description: `随【${champion.name}】夺得 ${currentYear}-${currentYear + 1} 赛季 联盟 总冠军`,
                           },
                         ];
                       }
@@ -1050,7 +1021,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
                   }}
                   className="w-full py-3 sm:py-4 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-black font-black italic text-xs sm:text-sm rounded-2xl transition-all shadow-2xl flex items-center justify-center gap-2 uppercase tracking-wide cursor-pointer"
                 >
-                  <Trophy className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" /> 进入休赛期 (ENTER OFFSEASON) <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  <Trophy className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" /> 进入休赛期 <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
                 </button>
               </div>
 

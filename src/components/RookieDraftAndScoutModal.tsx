@@ -33,7 +33,7 @@ function getScoutTemplate(position: Position, archetype: string, ovr: number): S
         similarity: 95,
         grade: 'A+ (状元热门)',
         strengths: ['历史级变向起步爆发力', '高压下杀入禁区终结能力', '大心脏关键球决断'],
-        weaknesses: ['外线三分稳定性仍需雕琢', '防守端经验需适应NBA对抗'],
+        weaknesses: ['外线三分稳定性仍需雕琢', '防守端经验需适应联盟对抗'],
         scoutComment: '拥有罕见的双腿爆发力与持球突破破坏力，在试训中展现出全场顶级领袖气质，是乐透区球队建队核心首选。',
       };
     }
@@ -247,7 +247,7 @@ export const RookieDraftAndScoutModal: React.FC<RookieDraftAndScoutModalProps> =
                   <span className="text-2xl">{scout.avatar}</span>
                   <div>
                     <span className="text-[10px] text-amber-400 font-mono uppercase font-black tracking-wider block">
-                      NBA 球星发展模板
+                      联盟 球星发展模板
                     </span>
                     <h4 className="text-sm sm:text-base font-black text-white italic">
                       {scout.starName}
@@ -268,7 +268,7 @@ export const RookieDraftAndScoutModal: React.FC<RookieDraftAndScoutModalProps> =
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="bg-[#0a0d14] p-3 rounded-xl border border-emerald-500/30 space-y-1.5">
                   <span className="text-[11px] font-black text-emerald-400 flex items-center gap-1.5 uppercase">
-                    <Flame className="w-3.5 h-3.5 text-emerald-400" /> 核心优点与球场特质 (STRENGTHS)
+                    <Flame className="w-3.5 h-3.5 text-emerald-400" /> 核心优点与球场特质
                   </span>
                   <ul className="space-y-1 text-slate-300 text-[11px]">
                     {scout.strengths.map((st, idx) => (
@@ -282,7 +282,7 @@ export const RookieDraftAndScoutModal: React.FC<RookieDraftAndScoutModalProps> =
 
                 <div className="bg-[#0a0d14] p-3 rounded-xl border border-amber-500/30 space-y-1.5">
                   <span className="text-[11px] font-black text-amber-400 flex items-center gap-1.5 uppercase">
-                    <Target className="w-3.5 h-3.5 text-amber-400" /> 需调整与提升短板 (WEAKNESSES)
+                    <Target className="w-3.5 h-3.5 text-amber-400" /> 需调整与提升短板
                   </span>
                   <ul className="space-y-1 text-slate-300 text-[11px]">
                     {scout.weaknesses.map((wk, idx) => (
@@ -323,13 +323,13 @@ export const RookieDraftAndScoutModal: React.FC<RookieDraftAndScoutModalProps> =
 
             <div className="space-y-1 relative z-10">
               <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-black uppercase tracking-wider">
-                <Radio className="w-3.5 h-3.5 text-amber-400 animate-ping" /> 2008 NBA DRAFT LIVE · MADISON SQUARE GARDEN
+                <Radio className="w-3.5 h-3.5 text-amber-400 animate-ping" /> 2008 联盟选秀 LIVE · MADISON SQUARE GARDEN
               </div>
               <h2 className="text-2xl sm:text-3xl font-black italic text-white uppercase tracking-tight">
                 选秀大会聚光灯舞台
               </h2>
               <p className="text-xs text-slate-400">
-                NBA总裁大卫·斯特恩走进发言台，全场闪光灯聚焦于绿室！
+                联盟总裁大卫·斯特恩走进发言台，全场闪光灯聚焦于绿室！
               </p>
             </div>
 
@@ -341,10 +341,10 @@ export const RookieDraftAndScoutModal: React.FC<RookieDraftAndScoutModalProps> =
                 </div>
                 <div className="text-left">
                   <span className="text-[10px] text-amber-400 font-mono uppercase block font-bold">
-                    NBA 联盟总裁讲话 (DAVID STERN)
+                    联盟总裁讲话
                   </span>
                   <span className="text-xs font-bold text-slate-200">
-                    “ With the {getPickOrdinal(pick)} Pick in the 2008 NBA Draft, the {draftTeam.name} select... ”
+                    “ With the {getPickOrdinal(pick)} Pick in the 2008 联盟 Draft, the {draftTeam.name} select... ”
                   </span>
                 </div>
               </div>

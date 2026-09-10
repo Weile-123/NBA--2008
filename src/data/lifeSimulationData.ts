@@ -23,7 +23,7 @@ export function get15LifeSimulationEvents(
   // Helper background context strings
   let originIntro = '';
   if (bg === '篮球世家') {
-    originIntro = `作为来自${city}的篮球世家传人，你从小在曾是NBA职业球员的父辈与私人名师严格调教下长大，血液里淌着职业篮球DNA。`;
+    originIntro = `作为来自${city}的篮球世家传人，你从小在曾是联盟职业球员的父辈与私人名师严格调教下长大，血液里淌着职业篮球DNA。`;
   } else if (bg === '学霸') {
     originIntro = `作为来自${city}的学霸球员，你不仅GPA保持全A，更将运动科学与战术数据分析融会贯通，拥有同龄人难以企及的极高球商。`;
   } else if (bg === '普通人') {
@@ -43,7 +43,7 @@ export function get15LifeSimulationEvents(
     stage1Story = `${originIntro}15岁那年，全美数家高中篮球圣地同时为你抛出橄榄枝。你可以凭借世家资源做出抉择：`;
     stage1Options = [
       {
-        text: '加盟橡树山高中 (Oak Hill Academy)：全美封闭篮球圣地，接受最严苛的职业级战术与纪律磨砺',
+        text: '加盟橡树山高中：全美封闭篮球圣地，接受最严苛的职业级战术与纪律磨砺',
         scoreDelta: 0.67,
         effectDesc: '基本功与战术执行力达到同龄全美顶级！球探报告提升！',
         tag: '严律学徒',
@@ -66,13 +66,13 @@ export function get15LifeSimulationEvents(
     stage1Story = `${originIntro}15岁那年，全美顶级名校被你的高球商比赛录像与全A学业成绩所震惊。你的高中选择是：`;
     stage1Options = [
       {
-        text: '加盟塞拉峡谷高中 (Sierra Canyon)：引入全套战术数据分析实验室与顶级运动科学特训',
+        text: '加盟塞拉峡谷高中：引入全套战术数据分析实验室与顶级运动科学特训',
         scoreDelta: 0.67,
         effectDesc: '比赛阅读能力与战术分析水平达到顶级！',
         tag: '战术大脑',
       },
       {
-        text: '加盟菲利普斯埃克塞特学院 (Exeter Prep)：顶级名门学府，获得常春藤联盟保送名额',
+        text: '加盟菲利普斯埃克塞特学院：顶级名门学府，获得常春藤联盟保送名额',
         scoreDelta: 0.50,
         effectDesc: '战术素养严谨克制，高压下情绪控制极其出色！',
         tag: '学府智将',
@@ -113,13 +113,13 @@ export function get15LifeSimulationEvents(
     stage1Story = `${originIntro}15岁那年，你称霸了${city}所有露天水泥球场，全美高中球探被你狂野撕咬的打法所震撼。你的选择是：`;
     stage1Options = [
       {
-        text: '加盟纽约林肯高中 (Lincoln High)：街头硬核篮球圣地，在黑网铁笼对抗中磨炼肉搏单打',
+        text: '加盟纽约林肯高中：街头硬核篮球圣地，在黑网铁笼对抗中磨炼肉搏单打',
         scoreDelta: 0.67,
         effectDesc: '攻防两端极具狂暴撕咬性！身体对抗能力暴涨！',
         tag: '街头铁笼王者',
       },
       {
-        text: '加盟洛杉矶克伦肖高中 (Crenshaw High)：融入极致跑轰快攻，用飞人扣篮轰炸全场',
+        text: '加盟洛杉矶克伦肖高中：融入极致跑轰快攻，用飞人扣篮轰炸全场',
         scoreDelta: 0.50,
         effectDesc: '快攻推进与爆发力炸裂，球风极其吸睛！',
         tag: '快攻飞人',
@@ -136,19 +136,19 @@ export function get15LifeSimulationEvents(
   // 2. Stage 6: College Choice (3 Distinct Styled Colleges)
   const stage6Options: [LifeOption, LifeOption, LifeOption] = [
     {
-      text: '加盟杜克大学 (Duke) · 蓝魔战术大本营：在顶级名帅麾下锤炼顶尖战术素养、防守纪律与比赛阅读',
+      text: '加盟杜克大学 · 蓝魔战术大本营：在顶级名帅麾下锤炼顶尖战术素养、防守纪律与比赛阅读',
       scoreDelta: 0.67,
-      effectDesc: '战术执行力与球场防守智商达到NBA级别！',
+      effectDesc: '战术执行力与球场防守智商达到联盟级别！',
       tag: '蓝魔战术基石',
     },
     {
-      text: '加盟肯塔基大学 (Kentucky) · 野猫造星工厂：汇聚全美顶尖天才，在极高压力的1v1单打竞争中淬炼死角杀招',
+      text: '加盟肯塔基大学 · 野猫造星工厂：汇聚全美顶尖天才，在极高压力的1v1单打竞争中淬炼死角杀招',
       scoreDelta: 0.50,
       effectDesc: '单打爆破能力与高压适应性达到极佳状态！',
       tag: '野猫单打杀手',
     },
     {
-      text: '加盟冈萨加大学 (Gonzaga) · 团队黑马圣地：融入极致无私传球与团队战术，成长为全场进攻大脑',
+      text: '加盟冈萨加大学 · 团队黑马圣地：融入极致无私传球与团队战术，成长为全场进攻大脑',
       scoreDelta: 0.33,
       effectDesc: '助攻与团队串联能力出众，战术适应力强。',
       tag: '团队战术大脑',
@@ -232,7 +232,7 @@ export function get15LifeSimulationEvents(
         {
           text: '婉拒派对邀请：晚上10点按时休息，清晨6点第一个出现在球馆投篮',
           scoreDelta: 0.67,
-          effectDesc: '极度自律职业态度令所有NBA高管肃然起敬！',
+          effectDesc: '极度自律职业态度令所有联盟高管肃然起敬！',
           tag: '极度自律',
         },
         {
@@ -255,7 +255,7 @@ export function get15LifeSimulationEvents(
       stage: 5,
       timeLabel: '高中四年级 · 麦当劳全美全明星',
       title: '芝加哥全美五星高中生对决',
-      story: `你作为${city}代表入选麦当劳全美全明星赛。看台上云集了全美所有NBA总经理与传奇巨星球探。`,
+      story: `你作为${city}代表入选麦当劳全美全明星赛。看台上云集了全美所有联盟总经理与传奇巨星球探。`,
       options: [
         {
           text: '开启全攻全守模式：在攻防两端全面展现个人单打与领防统治力',
@@ -381,7 +381,7 @@ export function get15LifeSimulationEvents(
         {
           text: '全力配合战术转型：苦练无球跑位与多位置错位换防',
           scoreDelta: 0.67,
-          effectDesc: '转型为现代NBA最青睐的顶级全能战士！',
+          effectDesc: '转型为现代联盟最青睐的顶级全能战士！',
           tag: '全能防守战士',
         },
         {
@@ -402,7 +402,7 @@ export function get15LifeSimulationEvents(
     // Stage 11: 疯狂三月 32强关头
     {
       stage: 11,
-      timeLabel: '疯狂三月 (March Madness) · 32强',
+      timeLabel: '疯狂三月 · 32强',
       title: '疯狂三月一败即淘汰生死线',
       story: '疯狂三月32强战，比赛最后45秒平分。对方主力后卫强行突破内线，你正处于补防协防关键位置。',
       options: [
@@ -432,7 +432,7 @@ export function get15LifeSimulationEvents(
       stage: 12,
       timeLabel: 'Final Four 最终四强 · 天王山',
       title: '7万观众前面的Final Four总决赛',
-      story: `在超级巨型球馆7万名观众面前，NCAA总决赛最后1.5分钟球队落后2分。全美所有NBA总经理都在看台上屏息注视来自${city}的你。`,
+      story: `在超级巨型球馆7万名观众面前，NCAA总决赛最后1.5分钟球队落后2分。全美所有联盟总经理都在看台上屏息注视来自${city}的你。`,
       options: [
         {
           text: '果断干拔跳投：后撤步拉开空间超远三分拔起出手',
@@ -458,9 +458,9 @@ export function get15LifeSimulationEvents(
     // Stage 13: NBA 选秀联合体测 Combine
     {
       stage: 13,
-      timeLabel: 'NBA 选秀联合体测 · Combine',
+      timeLabel: '联盟 选秀联合体测 · Combine',
       title: '芝加哥选秀联合体测聚光灯',
-      story: `你来到了芝加哥NBA选秀联合体测现场。在臂展、助跑弹跳与三分投篮测试中，球探报告特别标注了你的出身故事：【${city} · ${bg}】。`,
+      story: `你来到了芝加哥联盟选秀联合体测现场。在臂展、助跑弹跳与三分投篮测试中，球探报告特别标注了你的出身故事：【${city} · ${bg}】。`,
       options: [
         {
           text: '全力冲刺助跑弹跳测试：在垂直与助跑弹跳测试中展现炸裂身体天赋',
@@ -487,7 +487,7 @@ export function get15LifeSimulationEvents(
     {
       stage: 14,
       timeLabel: '选秀前一周 · 试训与经纪人博弈',
-      title: 'NBA乐透区球队单独试训',
+      title: '联盟乐透区球队单独试训',
       story: '顶级经纪人为你争取到了多支手握首轮乐透签球队的单独试训邀请。面对高压1v1单挑对抗，你如何应对？',
       options: [
         {
@@ -516,7 +516,7 @@ export function get15LifeSimulationEvents(
       stage: 15,
       timeLabel: '2008 选秀前夜 · 麦迪逊花园',
       title: '选秀前夜纽约红毯表态',
-      story: `选秀前夜，纽约麦迪逊广场花园红毯上，TNT记者将麦克风递到你面前：“从${city}走到2008 NBA选秀大会，作为【${bg}】的代表，你对新秀赛季有什么话想对全世界说？”`,
+      story: `选秀前夜，纽约麦迪逊广场花园红毯上，TNT记者将麦克风递到你面前：“从${city}走到2008 联盟选秀大会，作为【${bg}】的代表，你对新秀赛季有什么话想对全世界说？”`,
       options: [
         {
           text: '“我不只是来适应这个联盟的，我是来建立属于我的传奇时代的！”',

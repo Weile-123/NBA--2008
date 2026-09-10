@@ -9,7 +9,7 @@ interface GoatCalculatorModalProps {
 // Preset historic player templates for testing real-time calculator
 const PLAYER_PRESETS = [
   {
-    name: '迈克尔·乔丹 (Michael Jordan)',
+    name: '迈克尔·乔丹',
     avatar: '🐐',
     mvp: 5,
     fmvp: 6,
@@ -34,7 +34,7 @@ const PLAYER_PRESETS = [
     blk: 893,
   },
   {
-    name: '勒布朗·詹姆斯 (LeBron James)',
+    name: '勒布朗·詹姆斯',
     avatar: '👑',
     mvp: 4,
     fmvp: 4,
@@ -59,7 +59,7 @@ const PLAYER_PRESETS = [
     blk: 1111,
   },
   {
-    name: '科比·布莱恩特 (Kobe Bryant)',
+    name: '科比·布莱恩特',
     avatar: '🐍',
     mvp: 1,
     fmvp: 2,
@@ -84,7 +84,7 @@ const PLAYER_PRESETS = [
     blk: 640,
   },
   {
-    name: '斯蒂芬·库里 (Stephen Curry)',
+    name: '斯蒂芬·库里',
     avatar: '🎯',
     mvp: 2,
     fmvp: 1,
@@ -109,7 +109,7 @@ const PLAYER_PRESETS = [
     blk: 235,
   },
   {
-    name: '沙奎尔·奥尼尔 (Shaquille O\'Neal)',
+    name: '沙奎尔·奥尼尔',
     avatar: '💥',
     mvp: 1,
     fmvp: 3,
@@ -205,7 +205,7 @@ export const GoatCalculatorModal: React.FC<GoatCalculatorModalProps> = ({ isOpen
     const totalScore = Math.round(sHonor + sAllNba + sEfficiency + sTotals);
 
     // Rank title
-    let rankTitle = 'NBA角色球员';
+    let rankTitle = '联盟角色球员';
     if (totalScore >= 4500) rankTitle = 'GOAT (历史至尊神级)';
     else if (totalScore >= 3000) rankTitle = '历史前10传奇巨星';
     else if (totalScore >= 2000) rankTitle = '历史级名人堂球星';
@@ -295,7 +295,7 @@ export const GoatCalculatorModal: React.FC<GoatCalculatorModalProps> = ({ isOpen
             </div>
             <div>
               <h3 className="text-base font-black text-white italic tracking-wide flex items-center gap-2">
-                NBA 历史球星 GOAT 积分计算器
+                联盟 历史球星 GOAT 积分计算器
                 <span className="text-[10px] bg-amber-500/20 text-amber-300 font-mono font-bold px-2 py-0.5 rounded border border-amber-500/30 not-italic">
                   最新算法 v2.0
                 </span>
@@ -400,7 +400,7 @@ export const GoatCalculatorModal: React.FC<GoatCalculatorModalProps> = ({ isOpen
             <div className="bg-[#121724] border border-[#232a3f] rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between border-b border-[#21293e] pb-2">
                 <h4 className="text-xs font-black text-amber-400 flex items-center gap-2">
-                  <Trophy className="w-4 h-4 shrink-0" /> 1. 统治荣誉分 (S_honor)
+                  <Trophy className="w-4 h-4 shrink-0" /> 1. 统治荣誉分
                 </h4>
                 <span className="text-xs font-bold text-amber-300 font-mono">
                   共计 +{calcResults.sHonor} 分
@@ -438,7 +438,7 @@ export const GoatCalculatorModal: React.FC<GoatCalculatorModalProps> = ({ isOpen
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
-                    <span>总冠军 (Champion)</span>
+                    <span>总冠军</span>
                     <span className="text-[10px] text-amber-400/80 font-mono">120分/个</span>
                   </label>
                   <input
@@ -466,7 +466,7 @@ export const GoatCalculatorModal: React.FC<GoatCalculatorModalProps> = ({ isOpen
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
-                    <span>得分王 (Scoring)</span>
+                    <span>得分王</span>
                     <span className="text-[10px] text-amber-400/80 font-mono">80分/次</span>
                   </label>
                   <input
@@ -484,7 +484,7 @@ export const GoatCalculatorModal: React.FC<GoatCalculatorModalProps> = ({ isOpen
             <div className="bg-[#121724] border border-[#232a3f] rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between border-b border-[#21293e] pb-2">
                 <h4 className="text-xs font-black text-blue-400 flex items-center gap-2">
-                  <Shield className="w-4 h-4 shrink-0" /> 2. 阵容与防守分 (S_all_nba)
+                  <Shield className="w-4 h-4 shrink-0" /> 2. 阵容与防守分
                 </h4>
                 <span className="text-xs font-bold text-blue-300 font-mono">
                   共计 +{calcResults.sAllNba} 分
@@ -550,7 +550,7 @@ export const GoatCalculatorModal: React.FC<GoatCalculatorModalProps> = ({ isOpen
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
-                    <span>全明星 (All-Star)</span>
+                    <span>全明星</span>
                     <span className="text-[10px] text-blue-400/80 font-mono">15分/次</span>
                   </label>
                   <input
@@ -568,7 +568,7 @@ export const GoatCalculatorModal: React.FC<GoatCalculatorModalProps> = ({ isOpen
             <div className="bg-[#121724] border border-[#232a3f] rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between border-b border-[#21293e] pb-2">
                 <h4 className="text-xs font-black text-emerald-400 flex items-center gap-2">
-                  <Zap className="w-4 h-4 shrink-0" /> 3. 巅峰效率分 (S_efficiency = PPG_reset × 8)
+                  <Zap className="w-4 h-4 shrink-0" /> 3. 巅峰效率分 （重置场均得分 × 8）
                 </h4>
                 <span className="text-xs font-bold text-emerald-300 font-mono">
                   共计 +{calcResults.sEfficiency} 分
@@ -582,7 +582,7 @@ export const GoatCalculatorModal: React.FC<GoatCalculatorModalProps> = ({ isOpen
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
-                    <span>场均得分 (PPG)</span>
+                    <span>场均得分</span>
                     <span className="text-[10px] text-emerald-400/80 font-mono">×1.2</span>
                   </label>
                   <input
@@ -597,7 +597,7 @@ export const GoatCalculatorModal: React.FC<GoatCalculatorModalProps> = ({ isOpen
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
-                    <span>场均篮板 (RPG)</span>
+                    <span>场均篮板</span>
                     <span className="text-[10px] text-emerald-400/80 font-mono">×1.0</span>
                   </label>
                   <input
@@ -612,7 +612,7 @@ export const GoatCalculatorModal: React.FC<GoatCalculatorModalProps> = ({ isOpen
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
-                    <span>场均助攻 (APG)</span>
+                    <span>场均助攻</span>
                     <span className="text-[10px] text-emerald-400/80 font-mono">×1.2</span>
                   </label>
                   <input
@@ -627,7 +627,7 @@ export const GoatCalculatorModal: React.FC<GoatCalculatorModalProps> = ({ isOpen
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
-                    <span>场均抢断 (SPG)</span>
+                    <span>场均抢断</span>
                     <span className="text-[10px] text-emerald-400/80 font-mono">×2.0</span>
                   </label>
                   <input
@@ -642,7 +642,7 @@ export const GoatCalculatorModal: React.FC<GoatCalculatorModalProps> = ({ isOpen
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
-                    <span>场均盖帽 (BPG)</span>
+                    <span>场均盖帽</span>
                     <span className="text-[10px] text-emerald-400/80 font-mono">×2.0</span>
                   </label>
                   <input
@@ -657,7 +657,7 @@ export const GoatCalculatorModal: React.FC<GoatCalculatorModalProps> = ({ isOpen
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
-                    <span>场均失误 (TOPG)</span>
+                    <span>场均失误</span>
                     <span className="text-[10px] text-red-400/80 font-mono">-1.5</span>
                   </label>
                   <input
@@ -676,7 +676,7 @@ export const GoatCalculatorModal: React.FC<GoatCalculatorModalProps> = ({ isOpen
             <div className="bg-[#121724] border border-[#232a3f] rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between border-b border-[#21293e] pb-2">
                 <h4 className="text-xs font-black text-purple-400 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 shrink-0" /> 4. 累计数据分 (S_totals)
+                  <BarChart3 className="w-4 h-4 shrink-0" /> 4. 累计数据分
                 </h4>
                 <span className="text-xs font-bold text-purple-300 font-mono">
                   共计 +{calcResults.sTotals} 分

@@ -103,8 +103,8 @@ export function generateTweets(
     { author: 'Shaquille O\'Neal', handle: '@SHAQ', avatar: '👑' },
     { author: 'ESPN Stats & Info', handle: '@ESPNStatsInfo', avatar: '📊' },
     { author: 'Kobe Bryant', handle: '@kobebryant', avatar: '🐍' },
-    { author: 'NBA Central', handle: '@TheNBACentral', avatar: '🏀' },
-    { author: 'Woj (Adrian Wojnarowski)', handle: '@wojespn', avatar: '💣' },
+    { author: '联盟 Central', handle: '@The联盟Central', avatar: '🏀' },
+    { author: 'Woj', handle: '@wojespn', avatar: '💣' },
   ];
 
   const tweets: SocialTweet[] = [];
@@ -158,8 +158,8 @@ export function generateTweets(
 
     tweets.push({
       id: `tw_${Date.now()}_5`,
-      author: 'NBA Central',
-      handle: '@TheNBACentral',
+      author: '联盟 Central',
+      handle: '@The联盟Central',
       avatar: '🏀',
       content: `💔 惜败！${userTeam.name} ${userScore}-${oppScore} 不敌 ${oppTeam.name}。${player.name} 拿下 ${pts}分 ${ast}助攻，球队防守端仍需提升。`,
       time: '30分钟前',

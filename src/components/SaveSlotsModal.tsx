@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, Save, FolderOpen, Download, Upload, Trash2, CheckCircle2, UserCheck, AlertTriangle, ShieldCheck, Flame } from 'lucide-react';
 import { SaveSlotId, SaveSlotMeta, getAllSaveSlotsMeta, loadGameFromStorage, saveGameToStorage, exportSaveToFile, importSaveFromJson, clearSlotStorage, SavedData } from '../utils/storage';
 
@@ -24,6 +24,10 @@ export const SaveSlotsModal: React.FC<SaveSlotsModalProps> = ({
   const [slots, setSlots] = useState<SaveSlotMeta[]>(() => getAllSaveSlotsMeta());
   const [confirmDeleteSlot, setConfirmDeleteSlot] = useState<SaveSlotId | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen) setSlots(getAllSaveSlotsMeta());
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

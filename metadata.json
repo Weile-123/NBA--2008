@@ -1,6 +1,8 @@
 {
-  "name": "NBA传奇生涯",
-  "description": "从2008年开始的真实NBA职业生涯文字扮演模拟游戏，包含选秀属性分配、真实赛季演变、82场常规赛与季后赛模拟、伤病系统、社交与代言、名人堂与历史榜单。",
+  "name": "篮坛传奇：重返2008",
+  "description": "从2008年开始的真实联盟职业生涯文字扮演模拟游戏，包含选秀属性分配、真实赛季演变、82场常规赛与季后赛模拟、伤病系统、社交与代言、名人堂与历史榜单。",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

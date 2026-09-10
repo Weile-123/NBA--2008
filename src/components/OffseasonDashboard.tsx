@@ -469,7 +469,7 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
               }`}
             >
               <Trophy className={`w-4 h-4 shrink-0 ${!isContractExpired && isAllMonthsComplete ? 'text-black fill-black' : 'text-slate-500'}`} />
-              <span>进入下赛季 <span className="hidden sm:inline">(ENTER NEXT SEASON)</span></span>
+              <span>进入下赛季 </span>
               <ChevronRight className="w-4 h-4 shrink-0" />
             </button>
             {(isContractExpired || !isAllMonthsComplete) && (
@@ -505,7 +505,7 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
                 : isDraftCompleted
                 ? '✓ 1.选秀大会 (已完成)'
                 : '1.选秀大会'}
-              <span className="hidden sm:inline"> (DRAFT)</span>
+
             </span>
           </button>
 
@@ -558,7 +558,7 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
                   {isTrainingLocked
                     ? `🔒 ${isContractExpired ? '3.休赛期计划' : '2.休赛期计划'}`
                     : `${isContractExpired ? '3.休赛期计划' : '2.休赛期计划'}`}
-                  <span className="hidden sm:inline"> (TRAINING)</span>
+
                 </span>
               </button>
             );
@@ -1181,7 +1181,7 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-amber-400" />
                 <h3 className="text-base font-black italic text-white uppercase tracking-wider">
-                  正式签约协议 (CONTRACT AGREEMENT)
+                  正式签约协议
                 </h3>
               </div>
               <button
@@ -1265,7 +1265,7 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
                 className="px-6 py-2.5 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-black font-black italic text-xs rounded-xl uppercase transition-all shadow-xl flex items-center gap-1.5 cursor-pointer ring-2 ring-amber-300/50"
               >
                 <CheckCircle2 className="w-4 h-4 text-black fill-black" />
-                <span>✍️ 签署合同并加盟 (SIGN CONTRACT)</span>
+                <span>✍️ 签署合同并加盟</span>
               </button>
             </div>
           </div>
@@ -1313,7 +1313,7 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
               onClick={handleAcceptEventReward}
               className="w-full py-3 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-black font-black italic text-xs rounded-xl transition-all uppercase tracking-wide cursor-pointer shadow-lg flex items-center justify-center gap-1.5"
             >
-              <CheckCircle2 className="w-4 h-4" /> 确认收下奖励 (ACCEPT REWARD)
+              <CheckCircle2 className="w-4 h-4" /> 确认收下奖励
             </button>
           </div>
         </div>

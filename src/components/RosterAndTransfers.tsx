@@ -316,7 +316,7 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
               <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-2.5">
                 <HelpCircle className="w-4.5 h-4.5 text-amber-400 flex-shrink-0 mt-0.5" />
                 <div className="text-xs text-slate-300 leading-relaxed">
-                  <p className="font-bold text-amber-300">💡 交易提示 (TRADE POLICY)</p>
+                  <p className="font-bold text-amber-300">💡 交易提示</p>
                   <p className="text-[11px] text-slate-400 mt-0.5">
                     以下 5 支追求球队已同意支付相应的筹码，并为您奉上全新的合同保障。接受任一报价后，您将正式被交易并换签对应的新合同。本赛季的申请结果将终身保留。
                   </p>

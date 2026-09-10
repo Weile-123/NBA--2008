@@ -277,8 +277,8 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({
       const userMvp = userAccs.some((a) => a.type === 'MVP' || a.title === '常规赛 MVP' || a.title.includes('最有价值球员'));
       const userScoringLeader = userAccs.some((a) => a.type === 'SCORING_TITLE' || a.title === '常规赛得分王' || a.title.includes('得分王') || a.title.includes('Scoring Leader'));
       const userFmvp = userAccs.some((a) => a.type === 'FMVP' || a.title === '总决赛 FMVP' || a.title.includes('FMVP') || a.title.includes('总决赛MVP'));
-      const userDpoy = userAccs.some((a) => a.type === 'DPOY' || a.title === '最佳防守球员 (DPOY)' || (a.title.includes('DPOY') && !a.title.includes('阵容') && !a.title.includes('阵')) || a.title.includes('最佳防守球员'));
-      const userRoy = userAccs.some((a) => a.type === 'ROY' || a.title === '最佳新秀 (ROY)' || (a.title.includes('ROY') && !a.title.includes('阵容')) || (a.title.includes('最佳新秀') && !a.title.includes('阵容')));
+      const userDpoy = userAccs.some((a) => a.type === 'DPOY' || a.title === '最佳防守球员' || (a.title.includes('DPOY') && !a.title.includes('阵容') && !a.title.includes('阵')) || a.title.includes('最佳防守球员'));
+      const userRoy = userAccs.some((a) => a.type === 'ROY' || a.title === '最佳新秀' || (a.title.includes('ROY') && !a.title.includes('阵容')) || (a.title.includes('最佳新秀') && !a.title.includes('阵容')));
 
       return {
         ...hist,
@@ -299,7 +299,7 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({
         userYearAccolades: Array.from(
           new Set(
             userAccs.map((a) => {
-              if (a.title.includes('冠军') || a.title.includes('Champion')) return 'NBA总冠军';
+              if (a.title.includes('冠军') || a.title.includes('Champion')) return '联盟总冠军';
               if (a.title.includes('FMVP') || a.title.includes('总决赛MVP')) return '总决赛 FMVP';
               return a.title;
             })
@@ -313,7 +313,7 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#232834] pb-3">
         <div>
           <h4 className="text-sm font-black italic uppercase text-white flex items-center gap-1.5">
-            <History className="w-4 h-4 text-amber-400" /> NBA 时间线历史荣誉列表
+            <History className="w-4 h-4 text-amber-400" /> 联盟 时间线历史荣誉列表
           </h4>
         </div>
         <span className="text-[11px] px-2.5 py-1 rounded bg-[#181d28] text-amber-300 border border-amber-500/20 font-mono">
@@ -395,7 +395,7 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({
                       )}
                       <div className="flex flex-col">
                         <span className="text-[9px] text-amber-400/80 font-black tracking-widest uppercase">
-                          🏆 NBA 总冠军
+                          🏆 联盟 总冠军
                         </span>
                         <span className={`text-xs font-black tracking-wide ${isUserTeamChampion ? 'text-amber-300' : 'text-white'}`}>
                           {t.champion}

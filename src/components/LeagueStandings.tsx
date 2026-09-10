@@ -615,13 +615,13 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
                 <th className="py-2 sm:py-2.5 px-2 sm:px-3 whitespace-nowrap">球队</th>
                 {showPowerRating && (
                   <th className="py-2 sm:py-2.5 px-2 sm:px-3 text-center whitespace-nowrap text-amber-400 font-black">
-                    实力评分 (OVR)
+                    实力评分
                   </th>
                 )}
-                <th className="py-2 sm:py-2.5 px-2 sm:px-3 text-center whitespace-nowrap">胜 (W)</th>
-                <th className="py-2 sm:py-2.5 px-2 sm:px-3 text-center whitespace-nowrap">负 (L)</th>
+                <th className="py-2 sm:py-2.5 px-2 sm:px-3 text-center whitespace-nowrap">胜</th>
+                <th className="py-2 sm:py-2.5 px-2 sm:px-3 text-center whitespace-nowrap">负</th>
                 <th className="py-2 sm:py-2.5 px-2 sm:px-3 text-center whitespace-nowrap">胜率</th>
-                <th className="py-2 sm:py-2.5 px-2 sm:px-3 text-center whitespace-nowrap hidden sm:table-cell">胜场差 (GB)</th>
+                <th className="py-2 sm:py-2.5 px-2 sm:px-3 text-center whitespace-nowrap hidden sm:table-cell">胜场差</th>
                 <th className="py-2 sm:py-2.5 px-2 sm:px-3 text-right whitespace-nowrap hidden sm:table-cell">阵容详情</th>
               </tr>
             </thead>
@@ -947,7 +947,7 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
                   </thead>
                   <tbody className="divide-y divide-[#232834]/50 font-mono text-[11px] sm:text-xs">
                     <tr className="hover:bg-[#181d29]/50">
-                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">出场数 (GP)</td>
+                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">出场数</td>
                       {allSeasons.map((s) => (
                         <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-slate-200">{s.games}场</td>
                       ))}
@@ -955,7 +955,7 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
                       <td className="py-2 px-2 sm:px-3 text-center text-slate-400 bg-amber-500/5">-</td>
                     </tr>
                     <tr className="hover:bg-[#181d29]/50">
-                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">得分 (PTS)</td>
+                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">得分</td>
                       {allSeasons.map((s) => (
                         <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-amber-400 font-bold">{s.ppg}分</td>
                       ))}
@@ -963,7 +963,7 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
                       <td className="py-2 px-2 sm:px-3 text-center text-amber-400 font-bold bg-amber-500/5">{cPpg}分</td>
                     </tr>
                     <tr className="hover:bg-[#181d29]/50">
-                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">篮板 (REB)</td>
+                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">篮板</td>
                       {allSeasons.map((s) => (
                         <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-blue-400 font-bold">{s.rpg}个</td>
                       ))}
@@ -971,7 +971,7 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
                       <td className="py-2 px-2 sm:px-3 text-center text-blue-400 font-bold bg-amber-500/5">{cRpg}个</td>
                     </tr>
                     <tr className="hover:bg-[#181d29]/50">
-                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">助攻 (AST)</td>
+                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">助攻</td>
                       {allSeasons.map((s) => (
                         <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-emerald-400 font-bold">{s.apg}次</td>
                       ))}
@@ -979,7 +979,7 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
                       <td className="py-2 px-2 sm:px-3 text-center text-emerald-400 font-bold bg-amber-500/5">{cApg}次</td>
                     </tr>
                     <tr className="hover:bg-[#181d29]/50">
-                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">抢断 (STL)</td>
+                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">抢断</td>
                       {allSeasons.map((s) => (
                         <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-purple-400 font-bold">{s.spg}次</td>
                       ))}
@@ -987,7 +987,7 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
                       <td className="py-2 px-2 sm:px-3 text-center text-purple-400 font-bold bg-amber-500/5">{cSpg}次</td>
                     </tr>
                     <tr className="hover:bg-[#181d29]/50">
-                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">盖帽 (BLK)</td>
+                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">盖帽</td>
                       {allSeasons.map((s) => (
                         <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-cyan-400 font-bold">{s.bpg}次</td>
                       ))}
@@ -995,7 +995,7 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
                       <td className="py-2 px-2 sm:px-3 text-center text-cyan-400 font-bold bg-amber-500/5">{cBpg}次</td>
                     </tr>
                     <tr className="hover:bg-[#181d29]/50">
-                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">投篮命中 (FG%)</td>
+                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">投篮命中</td>
                       {allSeasons.map((s) => (
                         <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-slate-200">{s.fgPct}</td>
                       ))}
@@ -1003,7 +1003,7 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
                       <td className="py-2 px-2 sm:px-3 text-center text-slate-300 bg-amber-500/5">{cFgPct}</td>
                     </tr>
                     <tr className="hover:bg-[#181d29]/50">
-                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">三分命中 (3P%)</td>
+                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">三分命中</td>
                       {allSeasons.map((s) => (
                         <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-amber-300">{s.t3pPct}</td>
                       ))}
@@ -1011,7 +1011,7 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
                       <td className="py-2 px-2 sm:px-3 text-center text-amber-300 bg-amber-500/5">{c3pPct}</td>
                     </tr>
                     <tr className="hover:bg-[#181d29]/50">
-                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">罚球命中 (FT%)</td>
+                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">罚球命中</td>
                       {allSeasons.map((s) => (
                         <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-emerald-300">{s.ftPct}</td>
                       ))}
@@ -1019,7 +1019,7 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
                       <td className="py-2 px-2 sm:px-3 text-center text-emerald-300 bg-amber-500/5">{cFtPct}</td>
                     </tr>
                     <tr className="hover:bg-[#181d29]/50">
-                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">场均时间 (MPG)</td>
+                      <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">场均时间</td>
                       {allSeasons.map((s) => (
                         <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-slate-300">{s.mpg}分</td>
                       ))}
@@ -1108,7 +1108,7 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
                             : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                         }`}
                       >
-                        {isUserWin ? '胜 (WIN)' : '负 (LOSS)'}
+                        {isUserWin ? '胜' : '负'}
                       </span>
                     </div>
 

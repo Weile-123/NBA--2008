@@ -1,9 +1,10 @@
+import { brandText, LEAGUE_LOGO } from '../utils/branding';
 import React, { useState } from 'react';
 import { NBA_TEAMS_2008 } from '../data/nbaData2008';
 
 const ESPN_LOGO_MAP: Record<string, string> = {
   BOS: '/logos/bos.png',
-  LAL: '/logos/lal.svg',
+  LAL: '/logos/lal.png',
   CLE: '/logos/cle.png',
   ORL: '/logos/orl.png',
   HOU: '/logos/hou.png',
@@ -37,7 +38,7 @@ const ESPN_LOGO_MAP: Record<string, string> = {
   GSW: '/logos/gsw.png',
 };
 
-const DEFAULT_NBA_LOGO = 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png';
+const DEFAULT_LEAGUE_LOGO = LEAGUE_LOGO;
 
 interface TeamLogoProps {
   team?: {
@@ -89,7 +90,7 @@ export const TeamLogo: React.FC<TeamLogoProps> = ({
     ''
   ).toUpperCase();
   const finalAlt =
-    alt || name || team?.name || matchedTeam?.name || finalAbbrev || 'NBA Team Logo';
+    alt || name || team?.name || matchedTeam?.name || finalAbbrev || '联盟球队图标';
 
   let sizeClass = 'w-8 h-8 object-contain';
   if (size === 'xs') sizeClass = 'w-5 h-5 object-contain shrink-0';
@@ -102,17 +103,17 @@ export const TeamLogo: React.FC<TeamLogoProps> = ({
   // Primary source: team.logo or ESPN CDN matching abbrev
   let primarySource = finalLogo;
   if (!primarySource || primarySource.startsWith('/logos/')) {
-    primarySource = ESPN_LOGO_MAP[finalAbbrev] || DEFAULT_NBA_LOGO;
+    primarySource = ESPN_LOGO_MAP[finalAbbrev] || DEFAULT_LEAGUE_LOGO;
   }
 
   const currentSource = hasError
-    ? ESPN_LOGO_MAP[finalAbbrev] || DEFAULT_NBA_LOGO
+    ? ESPN_LOGO_MAP[finalAbbrev] || DEFAULT_LEAGUE_LOGO
     : primarySource;
 
   return (
     <img
-      src={currentSource}
-      alt={finalAlt}
+      src={/\/nba\.(png|svg)([?#]|$)/i.test(currentSource || '') ? LEAGUE_LOGO : currentSource}
+      alt={brandText(finalAlt)}
       className={finalClassName}
       referrerPolicy="no-referrer"
       onError={() => {

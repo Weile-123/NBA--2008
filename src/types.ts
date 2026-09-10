@@ -186,6 +186,7 @@ export interface PlayerProfile {
   peakAge?: number;
   peakOvr?: number;
   peakDuration?: number;
+  adRewardUses?: number;
   isRookie?: boolean;
 }
 
@@ -459,5 +460,6 @@ export interface RetiredPlayerRecord {
     apg: number;
     accolades: string[];
   }[];
+  /** Legacy imported records may contain this field; it is no longer rendered. */
   epilogueStory?: string;
 }

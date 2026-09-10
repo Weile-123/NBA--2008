@@ -1007,7 +1007,7 @@ export function getCompleteTeamRoster(
     categoryRatings: userCatRatings,
     age: userPlayer.age || 19,
     peakAge: userPlayer.peakAge || 26,
-    peakOvr: userPlayer.peakOvr || 98,
+    peakOvr: userPlayer.peakOvr || userPlayer.ovr,
     peakDuration: userPlayer.peakDuration || 8,
     minutes: userMinutes,
     role: userRole,
@@ -1661,4 +1661,3 @@ export function generateFullMatchRosterStats(
     awayPlayers,
   };
 }
-

@@ -1,17 +1,17 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { Position, PlayerProfile, Attributes } from '../types';
-import {
-  BODY_SHAPE_PRESETS,
-  POSITION_ARCHETYPES,
-  calculateAttributesAndCaps,
-} from '../utils/attributeCalculator';
+import { AlertCircle,ArrowRight,Award,CheckCircle2,Eye,Globe,Heart,Home,MonitorPlay,RotateCcw,Search,Sliders,Sparkles,Trophy,User,X,Zap } from 'lucide-react';
+import React,{ useCallback,useEffect,useMemo,useRef,useState } from 'react';
+import { get15LifeSimulationEvents,LifeEvent,LifeOption } from '../data/lifeSimulationData';
 import { NBA_TEAMS_2008 } from '../data/nbaData2008';
-import { get15LifeSimulationEvents, LifeEvent, LifeOption } from '../data/lifeSimulationData';
+import { createRandomChineseName,getPlayerIdentity,isHupuAppEnvironment } from '../lib/hupuUser';
+import { Attributes,PlayerProfile,Position } from '../types';
+import {
+BODY_SHAPE_PRESETS,
+calculateAttributesAndCaps,
+POSITION_ARCHETYPES,
+} from '../utils/attributeCalculator';
 import { calculateUserDraftPick } from '../utils/draftLogic';
-import { validateSensitiveName } from '../utils/sensitiveWords';
-import { WeChatPayModal } from './WeChatPayModal';
 import { TeamLogo } from './TeamLogo';
-import { Sparkles, Zap, Sliders, User, Trophy, Heart, Globe, Award, CheckCircle2, ArrowRight, RotateCcw, X, Search, Eye, AlertCircle, Home } from 'lucide-react';
+import { GameNotice } from './GameNotice';
 
 interface CreationModalProps {
   onComplete: (player: PlayerProfile) => void;
@@ -43,38 +43,39 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
 
   // Step 1: Basic identity & immersion background before simulation
   const [name, setName] = useState('');
-  const [nameError, setNameError] = useState(false);
-  const [nameErrorMsg, setNameErrorMsg] = useState('');
-  const nameInputRef = useRef<HTMLInputElement>(null);
+  const [isUserLoading, setIsUserLoading] = useState(true);
+  const [nameSource, setNameSource] = useState<'hupu' | 'random'>('random');
+  const [identityNotice, setIdentityNotice] = useState('');
+  const randomNameRef = useRef('');
   const [birthplace, setBirthplace] = useState('纽约');
   const [familyBackground, setFamilyBackground] = useState('街头球手');
 
-  // Name validation helper
-  const validateName = (): boolean => {
-    if (!name.trim()) {
-      setNameError(true);
-      setNameErrorMsg('主角姓名未填写，请输入后再继续！');
-      if (nameInputRef.current) {
-        nameInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        nameInputRef.current.focus();
-      }
-      return false;
-    }
+  const loadHupuUser = useCallback(async (forceRefresh = false) => {
+    setIsUserLoading(true);
+    const identity = await getPlayerIdentity(forceRefresh, randomNameRef.current || undefined);
+    if (identity.source === 'random') randomNameRef.current = identity.name;
+    setName(identity.name);
+    setNameSource(identity.source);
+    setIdentityNotice(identity.reason || '已同步当前虎扑账号昵称');
+    setIsUserLoading(false);
+  }, []);
 
-    const check = validateSensitiveName(name);
-    if (!check.isValid) {
-      setNameError(true);
-      setNameErrorMsg(check.errorMsg || '输入包含敏感词汇，请重新输入');
-      if (nameInputRef.current) {
-        nameInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        nameInputRef.current.focus();
-      }
-      return false;
-    }
+  useEffect(() => {
+    void loadHupuUser();
+  }, [loadHupuUser]);
 
-    setNameError(false);
-    setNameErrorMsg('');
-    return true;
+  const hasPlayerName = !isUserLoading && !!name.trim();
+  const isHupuEnvironment = isHupuAppEnvironment();
+
+  const refreshRandomName = () => {
+    let nextName = createRandomChineseName();
+    for (let attempt = 0; attempt < 4 && nextName === name; attempt += 1) {
+      nextName = createRandomChineseName();
+    }
+    randomNameRef.current = nextName;
+    setName(nextName);
+    setNameSource('random');
+    setIdentityNotice('未检测到虎扑环境，已生成随机姓名');
   };
 
   // Step 2: 15 Life Simulation State
@@ -98,7 +99,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
 
   // Skip simulation handler (Directly set baseOvr to 69 and proceed to customization)
   const handleSkipSimulation = (targetOvr: number = 69) => {
-    if (!validateName()) return;
+    if (!hasPlayerName) return;
     setBaseOvr(targetOvr);
     setIsSkippedSimulation(true);
     setStep('customize');
@@ -120,7 +121,8 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
 
   // Paid OVR boost state
   const [paidBoostOvr, setPaidBoostOvr] = useState(0);
-  const [showWeChatModal, setShowWeChatModal] = useState(false);
+  const [isWatchingCreationAd, setIsWatchingCreationAd] = useState(false);
+  const [creationNotice, setCreationNotice] = useState('');
 
   // Mobile H5 UI Modal States (Team selection & Full Attributes preview)
   const [showTeamModal, setShowTeamModal] = useState(false);
@@ -131,7 +133,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
   // Start / Restart Simulation
   const handleStartSimulation = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateName()) return;
+    if (!hasPlayerName) return;
     const newEvents = get15LifeSimulationEvents(birthplace, familyBackground);
     setEvents(newEvents);
     setCurrentEventIndex(0);
@@ -269,6 +271,16 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
 
     onComplete(newPlayer);
   };
+  const handleCreationAd = async () => {
+    if (isWatchingCreationAd || paidBoostOvr >= 10) return;
+    setIsWatchingCreationAd(true);
+    try {
+      const result = await window.ColorboxAI?.ad?.watchRewardedVideo?.();
+      if (!result || (result.code !== undefined && result.code !== 200)) throw Error('ad unavailable');
+      setPaidBoostOvr(10);
+    } catch { setCreationNotice('请前往虎扑App看广告'); }
+    finally { setIsWatchingCreationAd(false); }
+  };
 
   const attrLabels: { key: keyof Attributes; label: string; icon: string }[] = [
     { key: 'midRange', label: '中投', icon: '🎯' },
@@ -363,36 +375,47 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
               </div>
               <h3 className="text-2xl sm:text-3xl font-black italic text-white">打造你的球员背景档案</h3>
               <p className="text-xs text-slate-400 max-w-lg mx-auto">
-                设定主角姓名、出身城市与成长出身。你的起源故事将奠定15个高中与NCAA关键选秀事件的基调。
+                在虎扑 App 内使用你的虎扑昵称，其他环境自动生成中文姓名。你的起源故事将奠定15个高中与NCAA关键选秀事件的基调。
               </p>
             </div>
 
             <div className="bg-[#0d1017] p-4 sm:p-5 rounded-2xl border border-[#232834] space-y-4 max-w-2xl mx-auto">
-              {/* Name */}
+              {/* Hupu account identity */}
               <div>
                 <label className="block text-xs font-bold uppercase text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <User className="w-4 h-4 text-amber-400" /> 主角姓名 (PLAYER NAME)
+                  <User className="w-4 h-4 text-amber-400" /> 主角姓名
                 </label>
-                <input
-                  ref={nameInputRef}
-                  type="text"
-                  value={name}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    if (nameError && e.target.value.trim()) {
-                      setNameError(false);
-                    }
-                  }}
-                  className={`w-full bg-[#11141b] border rounded-xl px-4 py-2.5 text-white font-bold text-sm focus:outline-none transition-all ${nameError
-                    ? 'border-red-500 ring-2 ring-red-500/30'
-                    : 'border-[#232834] focus:border-amber-500'
-                    }`}
-                  placeholder="请输入主角姓名"
-                />
-                {nameError && (
-                  <p className="text-xs text-red-400 font-bold flex items-center gap-1.5 mt-2 animate-bounce">
-                    <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
-                    <span>{nameErrorMsg || '主角姓名未填写，请输入后再继续！'}</span>
+                <div className="w-full min-h-11 bg-[#11141b] border border-[#232834] rounded-xl px-4 py-2.5 flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex items-center gap-2">
+                    {isUserLoading && <RotateCcw className="w-4 h-4 text-amber-400 animate-spin shrink-0" />}
+                    <span className={`font-bold text-sm truncate ${name ? 'text-white' : 'text-slate-500'}`}>
+                      {isUserLoading ? '正在获取虎扑昵称…' : name || '暂未获取到虎扑昵称'}
+                    </span>
+                  </div>
+                  {!isUserLoading && nameSource === 'random' && !isHupuEnvironment && (
+                    <button
+                      type="button"
+                      onClick={refreshRandomName}
+                      className="shrink-0 px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[11px] font-bold hover:bg-amber-500/25 flex items-center gap-1"
+                      aria-label="刷新随机中文姓名"
+                    >
+                      <RotateCcw className="w-3 h-3" /> 换一个
+                    </button>
+                  )}
+                  {!isUserLoading && nameSource === 'random' && isHupuEnvironment && (
+                    <button
+                      type="button"
+                      onClick={() => void loadHupuUser(true)}
+                      className="shrink-0 px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[11px] font-bold hover:bg-amber-500/25"
+                    >
+                      重新同步
+                    </button>
+                  )}
+                </div>
+                {!isUserLoading && identityNotice && (
+                  <p className={`text-xs font-bold flex items-center gap-1.5 mt-2 ${nameSource === 'hupu' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {nameSource === 'hupu' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+                    <span>{nameSource === 'hupu' ? identityNotice : `当前使用随机姓名；${identityNotice}`}</span>
                   </p>
                 )}
               </div>
@@ -400,7 +423,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
               {/* Birthplace / City */}
               <div>
                 <label className="block text-xs font-bold uppercase text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <Globe className="w-4 h-4 text-amber-400" /> 出身城市 (BIRTH CITY)
+                  <Globe className="w-4 h-4 text-amber-400" /> 出身城市
                 </label>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -426,7 +449,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
               {/* Origin & Family Background */}
               <div>
                 <label className="block text-xs font-bold uppercase text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <Award className="w-4 h-4 text-amber-400" /> 出身背景 (FAMILY BACKGROUND)
+                  <Award className="w-4 h-4 text-amber-400" /> 出身背景
                 </label>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -454,15 +477,17 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
             <div className="flex flex-col sm:flex-row gap-3 w-full max-w-2xl mx-auto pt-1">
               <button
                 type="submit"
-                className="flex-1 py-3.5 bg-amber-500 hover:bg-amber-400 text-black font-black italic rounded-xl text-xs uppercase tracking-tight shadow-xl transition-transform active:scale-95 cursor-pointer"
+                disabled={!hasPlayerName}
+                className="flex-1 py-3.5 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-black font-black italic rounded-xl text-xs uppercase tracking-tight shadow-xl transition-transform active:scale-95 cursor-pointer"
               >
-                开启15阶段人生模拟历程 (START 15 LIFE EVENTS) →
+                开启15阶段人生模拟历程 →
               </button>
 
               <button
                 type="button"
                 onClick={() => handleSkipSimulation(69)}
-                className="py-3.5 px-5 bg-slate-800 hover:bg-slate-700 text-amber-300 font-black italic rounded-xl text-xs uppercase tracking-tight shadow-xl border border-amber-500/40 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                disabled={!hasPlayerName}
+                className="py-3.5 px-5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-amber-300 font-black italic rounded-xl text-xs uppercase tracking-tight shadow-xl border border-amber-500/40 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Zap className="w-4 h-4 text-amber-400" />
                 <span>跳过人生选择 (初始评分直接69)</span>
@@ -656,7 +681,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
             {/* Base OVR Badge */}
             <div className="bg-gradient-to-r from-amber-500/20 via-amber-500/30 to-amber-500/20 p-5 rounded-2xl border-2 border-amber-400 max-w-sm mx-auto shadow-2xl">
               <span className="text-xs font-black uppercase tracking-wider text-amber-300 block">
-                解锁基础综合能力评级 (BASE OVR)
+                解锁基础综合能力评级
               </span>
               <div className="text-5xl font-black italic font-mono text-white my-1 drop-shadow-md">
                 {baseOvr} <span className="text-lg text-amber-400">OVR</span>
@@ -707,7 +732,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                 onClick={() => setStep('customize')}
                 className="flex-1 py-3 px-2.5 bg-amber-500 hover:bg-amber-400 text-black font-black italic rounded-xl text-xs uppercase tracking-tight shadow-xl flex items-center justify-center gap-1.5 transition-transform active:scale-95"
               >
-                继续定制身材与位置 (CUSTOMIZE PROFILE) <ArrowRight className="w-4 h-4" />
+                继续定制身材与位置 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -766,7 +791,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
             {/* Section 1: Position */}
             <div className="bg-[#0d1017] p-3.5 rounded-xl border border-[#232834] space-y-2.5">
               <h3 className="text-xs font-black italic uppercase text-white flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-amber-400" /> 1. 场上位置 (POSITION)
+                <User className="w-3.5 h-3.5 text-amber-400" /> 1. 场上位置
               </h3>
 
               {/* Mobile Quick Pills for 1-Tap Switching */}
@@ -841,7 +866,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#11141b] p-3 rounded-lg border border-[#232834]">
                 <div>
                   <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-slate-400">身高 (Height)</span>
+                    <span className="text-slate-400">身高</span>
                     <span className="font-mono font-bold text-white">{heightCm} cm</span>
                   </div>
                   <input
@@ -859,7 +884,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
 
                 <div>
                   <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-slate-400">体重 (Weight)</span>
+                    <span className="text-slate-400">体重</span>
                     <span className="font-mono font-bold text-white">{weightKg} kg</span>
                   </div>
                   <input
@@ -992,6 +1017,14 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
 
             {/* Submit Button */}
             <button
+              type="button"
+              onClick={handleCreationAd}
+              disabled={isWatchingCreationAd || paidBoostOvr >= 10}
+              className="w-full py-3 rounded-xl border border-violet-400/50 bg-violet-500/15 hover:bg-violet-500/25 disabled:opacity-50 text-violet-200 font-black text-xs transition-all cursor-pointer"
+            >
+              <span className="flex items-center justify-center gap-1.5"><MonitorPlay className="w-3.5 h-3.5" />{isWatchingCreationAd ? '广告加载中…' : paidBoostOvr >= 10 ? '已获得综评 +10' : '综评额外+10'}</span>
+            </button>
+            <button
               type="submit"
               className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-black font-black italic rounded-xl text-xs uppercase tracking-tight shadow-xl transition-all cursor-pointer"
             >
@@ -999,6 +1032,8 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
             </button>
           </form>
         )}
+
+        {creationNotice && <GameNotice message={creationNotice} onClose={() => setCreationNotice('')} />}
 
         {/* TEAM SELECTION POPUP MODAL */}
         {showTeamModal && (
@@ -1156,12 +1191,6 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
           </div>
         )}
 
-        {/* WeChat Pay Modal */}
-        {showWeChatModal && (
-          <WeChatPayModal
-            onClose={() => setShowWeChatModal(false)}
-          />
-        )}
       </div>
     </div>
   );

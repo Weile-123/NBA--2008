@@ -4,7 +4,7 @@
 
 export const REAL_TEAM_LOGO_MAP: Record<string, string> = {
   BOS: '/logos/bos.png',
-  LAL: '/logos/lal.svg',
+  LAL: '/logos/lal.png',
   CLE: '/logos/cle.png',
   ORL: '/logos/orl.png',
   HOU: '/logos/hou.png',
@@ -40,7 +40,7 @@ export const REAL_TEAM_LOGO_MAP: Record<string, string> = {
 
 export function getRealTeamLogoUrl(abbrev: string): string {
   const safeAbbrev = (abbrev || '').toUpperCase();
-  return REAL_TEAM_LOGO_MAP[safeAbbrev] || 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png';
+  return REAL_TEAM_LOGO_MAP[safeAbbrev] || '/logos/league.svg';
 }
 
 export function getTeamLogoSvgDataUrl(

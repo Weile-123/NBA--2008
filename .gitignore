@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+credentials.json
+env-detail.json
+*-cloudbase.cjs

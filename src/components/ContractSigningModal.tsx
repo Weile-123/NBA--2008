@@ -65,7 +65,7 @@ export const ContractSigningModal: React.FC<ContractSigningModalProps> = ({
           </div>
           <div>
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] font-bold uppercase">
-              <FileText className="w-3.5 h-3.5 text-amber-400" /> 2008 NBA 新秀保障合同
+              <FileText className="w-3.5 h-3.5 text-amber-400" /> 2008 联盟 新秀保障合同
             </div>
             <h2 className="text-xl font-black italic uppercase text-white mt-1">
               {team.name} 签约仪式

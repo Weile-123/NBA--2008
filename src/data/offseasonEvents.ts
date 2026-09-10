@@ -89,7 +89,7 @@ export const OFFSEASON_EVENTS: OffseasonEvent[] = [
   },
   {
     id: 'drew_league',
-    title: '德鲁联赛(Drew League)压轴战',
+    title: '德鲁联赛压轴战',
     category: '商业',
     story: '在洛杉矶德鲁联赛压轴登场，展现碾压级统治力狂砍48分并完成压哨超远三分绝杀，全场球迷冲入球场狂欢！',
     rewardText: '奖金 +$200,000 · 粉丝 +70,000',

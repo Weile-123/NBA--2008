@@ -85,7 +85,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
         {/* Match Result Banner */}
         <div className="text-center">
           <div className="inline-block px-3 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold uppercase mb-1">
-            赛后数据与总结 (POST-MATCH RECAP)
+            赛后数据与总结
           </div>
           <h2 className="text-xl sm:text-2xl font-black italic uppercase text-white">
             {isWin ? '🏆 取得精彩胜利！' : '💔 遗憾惜败'}
@@ -125,7 +125,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
             <Sparkles className="w-6 h-6 text-amber-400 shrink-0" />
             <div>
               <div className="text-amber-300 font-black text-sm uppercase italic flex items-center gap-1.5">
-                🔥 终场压哨绝杀爆火成功！(BUZZER BEATER REWARD)
+                🔥 终场压哨绝杀爆火成功！
               </div>
               <div className="text-xs text-amber-100/90 mt-0.5">
                 做到了！终场哨响压哨绝杀带走比赛！结算获得 <span className="font-bold text-emerald-400">3倍粉丝积累加成</span> 以及 <span className="font-bold text-amber-300">+3 点属性点</span>！
@@ -168,7 +168,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
         <div className="bg-[#0d1017] p-4 rounded-xl border border-amber-500/30 space-y-2">
           <div className="flex items-center justify-between text-xs font-bold">
             <span className="text-amber-300 flex items-center gap-1.5">
-              <Zap className="w-4 h-4 text-amber-400" /> 本场比赛经验值收益 (MATCH XP)
+              <Zap className="w-4 h-4 text-amber-400" /> 本场比赛经验值收益
             </span>
             <span className="text-amber-400 font-mono">+{xpEarned} XP</span>
           </div>
@@ -193,7 +193,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
                 <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
                 <span>🏀 赛季历练成长 ({isEarlySeasons ? '前3赛季每2场+1' : '每3场+1'} · 已出战 {gamesPlayed} 场)</span>
               </span>
-              <span className="font-mono text-amber-400 font-black">+ 1 属性点 (SP)</span>
+              <span className="font-mono text-amber-400 font-black">+ 1 属性点</span>
             </div>
           )}
 
@@ -203,14 +203,14 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
                 <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
                 <span>⚡ 战术抉择奖励</span>
               </span>
-              <span className="font-mono text-amber-400 font-black">+ {tacticalSp} 属性点 (SP)</span>
+              <span className="font-mono text-amber-400 font-black">+ {tacticalSp} 属性点</span>
             </div>
           )}
 
           {isLevelUp && (
             <div className="p-2.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-2 animate-bounce">
               <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>🎉 经验满格等级提升！额外解锁 +1 属性升级点 (SP)！</span>
+              <span>🎉 经验满格等级提升！额外解锁 +1 属性升级点！</span>
             </div>
           )}
         </div>
@@ -218,7 +218,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
         {/* Press Conference Section */}
         <div className="bg-[#0d1017] p-4 rounded-xl border border-[#232834] space-y-2">
           <h4 className="text-xs font-black italic text-white uppercase tracking-wider flex items-center gap-1.5">
-            <MessageSquare className="w-3.5 h-3.5 text-amber-400" /> 赛后新闻发布会 (PRESS CONFERENCE)
+            <MessageSquare className="w-3.5 h-3.5 text-amber-400" /> 赛后新闻发布会
           </h4>
           <p className="text-xs text-slate-300 italic">{pressQuestion.question}</p>
 
@@ -251,7 +251,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
           onClick={handleFinish}
           className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-black font-black italic rounded-xl text-xs uppercase tracking-tight shadow-xl transition-transform active:scale-95"
         >
-          领取代言与经验收益 · 返回赛季大厅 (CONTINUE) →
+          领取代言与经验收益 · 返回赛季大厅 →
         </button>
       </div>
     </div>

@@ -16,8 +16,8 @@ export const DraftWaitingAnimationModal: React.FC<DraftWaitingAnimationModalProp
   const newsTickers = [
     `📊 联盟30支球队高层已齐聚麦迪逊广场花园，正在进行最后体测报告核对...`,
     `🎲 乐透抽签结果公布完毕，首轮 1-30 顺位归属正式锁存！`,
-    `⚡ 绿室（Green Room）新秀就座完毕，本届热门新秀悉数到场！`,
-    `🎙️ 提词器启动，NBA总裁大卫·斯特恩即走向发言台...`,
+    `⚡ 绿室新秀就座完毕，本届热门新秀悉数到场！`,
+    `🎙️ 提词器启动，联盟总裁大卫·斯特恩即走向发言台...`,
   ];
 
   useEffect(() => {
@@ -56,7 +56,7 @@ export const DraftWaitingAnimationModal: React.FC<DraftWaitingAnimationModalProp
         {/* Header Badge */}
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-black uppercase tracking-wider relative z-10">
           <Radio className="w-3.5 h-3.5 text-amber-400 animate-ping" />
-          <span>{currentYear - 1} NBA DRAFT PREPARATION</span>
+          <span>{currentYear - 1} 联盟选秀筹备</span>
         </div>
 
         {/* Animated Lottery / Draft Sphere */}
@@ -73,7 +73,7 @@ export const DraftWaitingAnimationModal: React.FC<DraftWaitingAnimationModalProp
         {/* Title & Description */}
         <div className="space-y-1.5 relative z-10">
           <h2 className="text-2xl sm:text-3xl font-black italic uppercase text-white tracking-tight">
-            筹备 {currentYear - 1} NBA 选秀大会...
+            筹备 {currentYear - 1} 联盟 选秀大会...
           </h2>
           <p className="text-xs text-slate-400">
             赛季结束，联盟正在同步30支球队选秀权并布置现场

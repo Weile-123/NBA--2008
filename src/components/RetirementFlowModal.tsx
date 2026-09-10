@@ -1,16 +1,16 @@
+import { brandText } from '../utils/branding';
 import React, { useState, useEffect, useRef } from 'react';
 import { PlayerProfile, GameState, RetiredPlayerRecord } from '../types';
 import { saveHallOfFameLegend } from '../utils/storage';
-import { uploadToGlobalHallOfFame } from '../lib/firebase';
+import { uploadToGlobalHallOfFame } from '../lib/globalLeaderboard';
 import {
   calculateGoatScore,
   calculate2KOvr,
   getPlayerTotalAttributes,
   getUserGoatRank,
-  getHofSpeechInfo,
-  generateFallbackEpilogueStory,
-} from '../utils/calc2k';
+  getHofSpeechInfo,} from '../utils/calc2k';
 import { TeamLogo } from './TeamLogo';
+import { RetirementPosterShare } from './RetirementPosterShare';
 import { NBA_TEAMS_2008 } from '../data/nbaData2008';
 import {
   Trophy,
@@ -31,13 +31,7 @@ import {
   Shirt,
   User,
   Mic,
-  Quote,
-  BookOpen,
-  Bot,
-  RefreshCw,
-  Building2,
-  GraduationCap,
-} from 'lucide-react';
+  Quote,} from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface RetirementFlowModalProps {
@@ -47,7 +41,7 @@ interface RetirementFlowModalProps {
   currentYear: number;
   onClose: () => void;
   onResetGame: () => void;
-  initialStep?: 'confirm' | 'timeline' | 'honors' | 'jersey_retirement' | 'hof_speech' | 'epilogue';
+  initialStep?: 'confirm' | 'timeline' | 'honors' | 'jersey_retirement' | 'hof_speech';
 }
 
 interface TimelineSeason {
@@ -126,13 +120,13 @@ function buildFullCareerTimeline(
         rawAccolades.push('总决赛 FMVP');
       }
       if (league.dpoy === player.name && !rawAccolades.some((a) => a.includes('DPOY'))) {
-        rawAccolades.push('最佳防守球员 (DPOY)');
+        rawAccolades.push('最佳防守球员');
       }
       if (league.roy === player.name && !rawAccolades.some((a) => a.includes('ROY'))) {
-        rawAccolades.push('最佳新秀 (ROY)');
+        rawAccolades.push('最佳新秀');
       }
       if (league.championId === teamId && !rawAccolades.some((a) => a.includes('冠军'))) {
-        rawAccolades.push('NBA总冠军');
+        rawAccolades.push('联盟总冠军');
       }
     }
 
@@ -149,7 +143,7 @@ function buildFullCareerTimeline(
 
       // Championship title normalization
       if (title.includes('冠军') || title.includes('Champion')) {
-        norm = 'NBA总冠军';
+        norm = '联盟总冠军';
       }
       // FMVP title normalization
       else if (title.includes('FMVP') || title.includes('总决赛MVP') || title.includes('总决赛 MVP')) {
@@ -232,7 +226,7 @@ function calculateJerseyRetirements(
       }
       if (hasChampAndFmvp) {
         reasons.push(
-          `在 ${data.champFmvpYears.join('、')} 赛季率领球队夺得 NBA 总冠军并荣膺 FMVP`
+          `在 ${data.champFmvpYears.join('、')} 赛季率领球队夺得 联盟 总冠军并荣膺 FMVP`
         );
       }
       results.push({
@@ -259,12 +253,8 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
   onResetGame,
   initialStep = 'timeline',
 }) => {
-  const [step, setStep] = useState<'confirm' | 'timeline' | 'honors' | 'jersey_retirement' | 'hof_speech' | 'epilogue'>(initialStep);
+  const [step, setStep] = useState<'confirm' | 'timeline' | 'honors' | 'jersey_retirement' | 'hof_speech'>(initialStep);
 
-  // AI Epilogue state
-  const [epilogueStory, setEpilogueStory] = useState<string>('');
-  const [isAiGenerating, setIsAiGenerating] = useState<boolean>(false);
-  const [isAiSuccess, setIsAiSuccess] = useState<boolean>(false);
 
   // Timeline animation control
   const timelineData = useRef<TimelineSeason[]>(
@@ -273,10 +263,11 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
 
   const [visibleIndex, setVisibleIndex] = useState<number>(0);
   const [isAnimationFinished, setIsAnimationFinished] = useState<boolean>(false);
+  const [posterRecord, setPosterRecord] = useState<RetiredPlayerRecord | null>(null);
   const timelineEndRef = useRef<HTMLDivElement>(null);
 
-  // Helper to save retired player record to Hall of Fame storage (called ONLY after epilogue story is generated)
-  const saveLegendToHof = (finalEpilogueStory: string) => {
+  // Helper to save retired player record to Hall of Fame storage
+  const saveLegendToHof = () => {
     try {
       const timeline = buildFullCareerTimeline(player, careerHistory, leagueHistory, currentYear);
       const jerseyRetirements = calculateJerseyRetirements(player, timeline, leagueHistory);
@@ -359,14 +350,18 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
           reasons: j.reasons,
         })),
         timeline,
-        epilogueStory: finalEpilogueStory,
       };
 
       saveHallOfFameLegend(legendRecord);
-      uploadToGlobalHallOfFame(legendRecord);
+      void uploadToGlobalHallOfFame(legendRecord).catch((error) => console.warn('全网传奇榜上传失败，本地记录已保留', error));
+      setPosterRecord(legendRecord);
     } catch (err) {
       console.error('Failed to save legend record:', err);
     }
+  };
+  const openPosterOrReturnHome = () => {
+    saveLegendToHof();
+    if (!window.ColorboxAI?.oss?.uploadFile || !window.ColorboxAI?.request?.bbs?.openPostEditor) onResetGame();
   };
   useEffect(() => {
     if (step === 'timeline' && !isAnimationFinished) {
@@ -508,142 +503,6 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
       ).values()
     )
   ).current;
-
-  // Fetch AI generated Epilogue
-  const fetchEpilogueStory = async () => {
-    setIsAiGenerating(true);
-    setIsAiSuccess(false);
-
-    const teamsPlayedStr = uniqueTeamsServed.map((t) => t.name).join('、') || 'NBA球队';
-
-    const prompt = `你是一位精通NBA历史与体育传记的顶级纪实文学作家。
-请根据以下退役球员的【全生涯数据与荣誉记录】，为他撰写一篇接地气、没有太多辞藻、互动性强的【退役后日谈·离开赛场后的故事】。
-
-【球员个人档案】
-- 姓名：${player.name}
-- 球衣号码：#${player.jerseyNum || 0}号
-- 位置：${player.position}
-- 选秀：${player.draftYear || 2008}年第${player.draftPick || 1}顺位
-- 退役时年龄：${player.age} 岁
-- 生涯效力球队：${teamsPlayedStr}
-
-【全生涯总数据与均值】
-- 总出场：${totalGames} 场
-- 总得分：${player.careerStats.pts} 分 | 场均得分：${careerPpg} 分
-- 总篮板：${player.careerStats.reb} 个 | 场均篮板：${careerRpg} 个
-- 总助攻：${player.careerStats.ast} 个 | 场均助攻：${careerApg} 个
-- 总抢断：${player.careerStats.stl} 个 | 场均抢断：${careerSpg} 个
-- 总盖帽：${player.careerStats.blk} 个 | 场均盖帽：${careerBpg} 个
-- 生涯巅峰 2K 能力值：${peakOvrDisplay} (属性总和 ${totalAttrs})
-
-【硬件荣誉与终极勋章】
-- 总冠军：${champCount} 次
-- FMVP：${fmvpCount} 次
-- 常规赛 MVP：${mvpCount} 次
-- DPOY 最佳防守球员：${dpoyCount} 次
-- 全明星：${allStarCount} 次
-- 最佳阵容：一阵 ${allNba1stCount} 次，二/三阵 ${finalAllNba2nd3rdCount} 次
-- 最佳防守阵容：一阵 ${allDef1stCount} 次，二阵 ${allDef2ndCount} 次
-- 历史 GOAT 榜单排名：第 #${goatRank} 位 (GOAT积分 ${goatScore})
-
-【退役球衣与圣殿】
-- 球衣退役球队：${jerseyRetirements.map((j) => j.teamName).join('、') || '无'}
-- 名人堂状态：${isTop50 ? `已高票入选奈史密斯篮球名人堂 (历史排名第 #${goatRank})` : 'NBA传奇名宿'}
-
-【撰写要求】：
-1. 篇幅约 500 - 800 字，内容需接地气，可包含几个NBA名宿或者和主角同时代的球员之间的故事等。
-2. 结构清晰包含 4 个章节标题（格式请严格使用 ### 【第一章：告别赛场 · 挂靴时刻】、### 【第二章：新的人生赛道】、### 【第三章：场外故事】、### 【第四章：不朽的传奇烙印】）。
-3. 严格结合该球员的具体数据与荣誉（如${champCount}冠、${mvpCount}MVP、得分/篮板/助攻等）定制专属于他离开球场后的商业、管理、教练或社会精神影响故事。`;
-
-    try {
-      let storyContent = '';
-      let isSuccess = false;
-
-      // 1. Attempt server route /api/ai/narrative
-      try {
-        const res = await fetch('/api/ai/narrative', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, type: 'epilogue' }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.success && data.content && data.content.length > 50) {
-            storyContent = data.content;
-            isSuccess = true;
-          }
-        }
-      } catch (serverErr) {
-        console.warn('Server endpoint /api/ai/narrative unavailable:', serverErr);
-      }
-
-      // 2. Direct client-side fetch to relay if server endpoint failed or returned non-200 (e.g. 405 on static deployments)
-      if (!isSuccess) {
-        try {
-          const relayKey = 'sk-ZBTMlw3rcaofRD0qlYt7u0zncmWiFjsWbjnzqJNeDdFVLAQ6';
-          const relayRes = await fetch('https://once-cf.novai.su/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${relayKey}`,
-            },
-            body: JSON.stringify({
-              model: '[次]gemini-2.5-pro',
-              messages: [{ role: 'user', content: prompt }],
-            }),
-          });
-
-          if (relayRes.ok) {
-            const relayData = await relayRes.json();
-            const content = relayData.choices?.[0]?.message?.content;
-            if (content && content.length > 50) {
-              storyContent = content;
-              isSuccess = true;
-            }
-          }
-        } catch (clientErr) {
-          console.warn('Direct client-side relay call failed:', clientErr);
-        }
-      }
-
-      let finalStory = '';
-      if (isSuccess && storyContent) {
-        setEpilogueStory(storyContent);
-        setIsAiSuccess(true);
-        finalStory = storyContent;
-      } else {
-        const fallback = generateFallbackEpilogueStory(player, goatRank);
-        setEpilogueStory(fallback);
-        setIsAiSuccess(false);
-        finalStory = fallback;
-      }
-
-      // Record player to Hall of Fame storage ONLY now after epilogue story is generated
-      saveLegendToHof(finalStory);
-    } catch (err) {
-      console.error('Failed to fetch AI epilogue:', err);
-      const fallback = generateFallbackEpilogueStory(player, goatRank);
-      setEpilogueStory(fallback);
-      setIsAiSuccess(false);
-      saveLegendToHof(fallback);
-    } finally {
-      setIsAiGenerating(false);
-    }
-  };
-
-  // Trigger AI fetch when entering epilogue step
-  useEffect(() => {
-    if (step === 'epilogue') {
-      fetchEpilogueStory();
-      confetti({
-        particleCount: 100,
-        spread: 80,
-        origin: { y: 0.5 },
-      });
-    }
-  }, [step]);
-
   return (
     <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-50 flex items-center justify-center p-2 sm:p-6 animate-fade-in overflow-y-auto">
       {/* Step 1: Confirmation Modal */}
@@ -914,7 +773,7 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
                 <span className="text-xl sm:text-2xl">🏆</span>
                 <div>
                   <div className="text-base sm:text-lg font-black font-mono text-amber-400">{champCount} 次</div>
-                  <div className="text-[9px] sm:text-[10px] text-slate-400">NBA 总冠军</div>
+                  <div className="text-[9px] sm:text-[10px] text-slate-400">联盟 总冠军</div>
                 </div>
               </div>
 
@@ -1062,7 +921,7 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
             <div className="bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/20 border border-amber-400/60 p-3 sm:p-4 rounded-xl sm:rounded-2xl text-center space-y-1.5 sm:space-y-2 shadow-xl ring-1 ring-amber-400/30">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 bg-amber-500/30 rounded-full text-amber-300 text-[10px] sm:text-xs font-bold font-mono">
                 <Crown className="w-3.5 h-3.5 text-amber-300" />
-                <span>成功入选奈史密斯篮球名人堂 (TOP 50 巨星)</span>
+                <span>成功入选奈史密斯篮球名人堂 （前50位巨星）</span>
               </div>
               <p className="text-[11px] sm:text-xs text-amber-200/90 font-mono">
                 你在历史 50 大巨星榜单中荣登 <strong className="text-white text-xs sm:text-sm">第 #{goatRank} 位</strong>！请前往奈史密斯篮球名人堂发表你的终身入选演说。
@@ -1073,7 +932,7 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
           {jerseyRetirements.length > 0 ? (
             <div className="space-y-3 sm:space-y-4">
               <div className="text-[11px] sm:text-xs font-mono text-emerald-400 text-center font-bold bg-emerald-500/10 p-2 sm:p-2.5 rounded-xl border border-emerald-500/30">
-                🎉 共有 {jerseyRetirements.length} 支 NBA 球队决定退役 {player.name} 的 #{player.jerseyNum} 号球衣！
+                🎉 共有 {jerseyRetirements.length} 支 联盟 球队决定退役 {player.name} 的 #{player.jerseyNum} 号球衣！
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -1130,7 +989,7 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
               <div className="text-2xl sm:text-3xl">🏀</div>
               <h4 className="text-xs sm:text-sm font-bold text-white">未能满足单一球队球衣退役条件</h4>
               <p className="text-[11px] sm:text-xs text-slate-400 max-w-sm mx-auto font-mono">
-                要在单支球队退役球衣，需在该队效力满 5 个赛季 或 带领该队夺冠并荣膺 FMVP。你在 NBA 的伟大表现依然会被历史铭记！
+                要在单支球队退役球衣，需在该队效力满 5 个赛季 或 带领该队夺冠并荣膺 FMVP。你在 联盟 的伟大表现依然会被历史铭记！
               </p>
             </div>
           )}
@@ -1150,11 +1009,11 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
             ) : (
               <button
                 type="button"
-                onClick={() => setStep('epilogue')}
+                onClick={openPosterOrReturnHome}
                 className="w-full py-3 sm:py-4 bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black rounded-xl shadow-xl text-xs sm:text-sm uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 ring-2 ring-amber-300/50"
               >
-                <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950" />
-                <span>下一步：生成退役后日谈</span>
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950" />
+                <span>生成退役海报并发帖</span>
                 <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950" />
               </button>
             )}
@@ -1251,127 +1110,17 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
           <div className="pt-2 border-t border-slate-800 flex flex-col sm:flex-row gap-2.5 sm:gap-3">
             <button
               type="button"
-              onClick={() => setStep('epilogue')}
+              onClick={openPosterOrReturnHome}
               className="w-full py-3 sm:py-4 bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black rounded-xl shadow-xl text-xs sm:text-sm uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 ring-2 ring-amber-300/50"
             >
-              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950" />
-              <span>下一步：生成退役后日谈 (AI模拟传奇故事)</span>
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950" />
+              <span>生成退役海报并发帖</span>
               <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950" />
             </button>
           </div>
         </div>
       )}
-
-      {/* Step 6: AI Generated Epilogue (后日谈) */}
-      {step === 'epilogue' && (
-        <div className="bg-[#0a0e1a] border-2 border-amber-400/80 rounded-2xl sm:rounded-3xl max-w-2xl w-full p-3.5 sm:p-8 shadow-[0_0_60px_rgba(245,158,11,0.25)] space-y-4 sm:space-y-6 relative ring-2 ring-amber-400/40 max-h-[92vh] overflow-y-auto animate-fade-in my-auto">
-          {/* Header */}
-          <div className="text-center space-y-1.5 sm:space-y-2 border-b border-amber-500/30 pb-3 sm:pb-5">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-500 p-0.5 mx-auto shadow-xl flex items-center justify-center">
-              <div className="w-full h-full rounded-full bg-[#101524] flex items-center justify-center text-2xl sm:text-3xl">
-                📖
-              </div>
-            </div>
-
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3.5 sm:py-1 bg-amber-500/10 border border-amber-400/40 rounded-full text-amber-300 text-[10px] sm:text-xs font-mono font-black uppercase tracking-wider">
-              <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 animate-pulse" />
-              <span>AI LEGENDARY EPILOGUE SIMULATION</span>
-            </div>
-
-            <h2 className="text-xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-200 italic uppercase tracking-wider">
-              传奇退役后日谈 · 离开赛场后的故事
-            </h2>
-          </div>
-
-          {/* Body Content */}
-          {isAiGenerating ? (
-            <div className="bg-[#121827] border border-amber-500/30 rounded-xl sm:rounded-2xl p-5 sm:p-8 text-center space-y-4 my-2 sm:my-4 shadow-2xl">
-              <div className="relative w-12 h-12 sm:w-16 sm:h-16 mx-auto">
-                <div className="absolute inset-0 rounded-full border-4 border-amber-500/20 border-t-amber-400 animate-spin" />
-                <div className="absolute inset-0 flex items-center justify-center text-xl sm:text-2xl animate-pulse">
-                  🤖
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <h3 className="text-sm sm:text-base font-bold text-amber-300 flex items-center justify-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 animate-bounce" />
-                  <span>离开赛场后的故事...</span>
-                </h3>
-                <p className="text-[11px] sm:text-xs text-slate-400 font-mono max-w-sm mx-auto leading-relaxed">
-                  包含得分纪录、总冠军追逐、退役决定以及离开球场后的全新人生篇章...
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3 sm:space-y-4">
-              {/* Story Tag */}
-              <div className="flex items-center justify-between px-1 text-[10px] sm:text-xs text-slate-400 font-mono">
-                <span className="text-[10px] text-slate-500">
-                  {currentYear} 年退役季终章
-                </span>
-              </div>
-
-              {/* Chapters List */}
-              <div className="space-y-2.5 sm:space-y-3.5">
-                {epilogueStory ? (
-                  epilogueStory.split(/(?=###\s*)/g).map((sec, idx) => {
-                    const trimmed = sec.trim();
-                    if (!trimmed) return null;
-
-                    const lines = trimmed.split('\n').filter(Boolean);
-                    const firstLine = lines[0] || '';
-                    const isHeader = firstLine.startsWith('###');
-
-                    if (isHeader) {
-                      const headerTitle = firstLine.replace(/^###\s*/, '').replace(/[\*\_]/g, '');
-                      const bodyLines = lines.slice(1).join('\n').replace(/[\*\_]/g, '');
-
-                      let icon = '📖';
-                      if (headerTitle.includes('第一章') || headerTitle.includes('告别') || headerTitle.includes('挂靴')) icon = '🎬';
-                      else if (headerTitle.includes('第二章') || headerTitle.includes('新的人生') || headerTitle.includes('赛道')) icon = '👔';
-                      else if (headerTitle.includes('第三章') || headerTitle.includes('球场之外') || headerTitle.includes('传承')) icon = '🏀';
-                      else if (headerTitle.includes('第四章') || headerTitle.includes('传奇') || headerTitle.includes('烙印')) icon = '🏛️';
-
-                      return (
-                        <div key={idx} className="bg-[#111726]/90 border border-amber-500/20 p-3.5 sm:p-5 rounded-xl sm:rounded-2xl shadow-lg space-y-2">
-                          <h4 className="text-amber-300 font-bold text-xs sm:text-base flex items-center gap-1.5 sm:gap-2 border-b border-amber-500/10 pb-1.5 sm:pb-2">
-                            <span className="text-base sm:text-lg">{icon}</span>
-                            <span>{headerTitle}</span>
-                          </h4>
-                          <p className="text-slate-200 text-xs sm:text-sm leading-normal sm:leading-relaxed font-serif text-justify indent-4 space-y-2 whitespace-pre-line">
-                            {bodyLines}
-                          </p>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div key={idx} className="bg-[#111726]/90 border border-slate-800 p-3 sm:p-4 rounded-xl sm:rounded-2xl text-xs sm:text-sm text-slate-200 leading-normal sm:leading-relaxed font-serif whitespace-pre-line">
-                        {trimmed.replace(/[\*\_]/g, '')}
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p className="text-xs text-slate-400 text-center py-4">未获取到故事内容，请点击重新生成。</p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Action Footer */}
-          <div className="pt-3 sm:pt-4 border-t border-slate-800">
-            <button
-              type="button"
-              onClick={onResetGame}
-              disabled={isAiGenerating}
-              className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-black rounded-xl shadow-xl text-xs sm:text-sm uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 ring-2 ring-amber-300/50"
-            >
-              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950" />
-              <span>{isAiGenerating ? '正在生成后日谈中...' : '返回首页 / 开启新生涯'}</span>
-            </button>
-          </div>
-        </div>
-      )}
+      {posterRecord && <RetirementPosterShare record={posterRecord} onFinish={onResetGame} />}
     </div>
   );
 };

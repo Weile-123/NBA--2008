@@ -1,5 +1,6 @@
 import React, { ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, RotateCcw } from 'lucide-react';
+import { clearGameStorage } from '../utils/storage';
 
 interface Props {
   children: ReactNode;
@@ -40,11 +41,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   private handleResetStorage = () => {
     if (window.confirm('确定要清空本地缓存并重新加载游戏吗？这可以修复损坏的存档数据。')) {
-      try {
-        localStorage.clear();
-      } catch (e) {
-        console.error('Failed to clear localStorage:', e);
-      }
+      clearGameStorage();
       window.location.reload();
     }
   };

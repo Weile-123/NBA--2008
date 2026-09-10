@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { RetiredPlayerRecord } from '../types';
 import { getHallOfFameLegends, deleteHallOfFameLegend, saveHallOfFameLegend } from '../utils/storage';
-import { fetchGlobalHallOfFame } from '../lib/firebase';
+import { fetchGlobalHallOfFame } from '../lib/globalLeaderboard';
 import { TeamLogo } from './TeamLogo';
 import { NBA_TEAMS_2008 } from '../data/nbaData2008';
 
@@ -90,7 +90,7 @@ const DEMO_KOBE_LEGEND: RetiredPlayerRecord = {
       secondaryColor: '#FDB927',
       seasonsCount: 20,
       jerseyNum: 24,
-      reasons: ['效力满 20 个赛季', '在 2009、2010 赛季率领球队夺得 NBA 总冠军并荣膺 FMVP'],
+      reasons: ['效力满 20 个赛季', '在 2009、2010 赛季率领球队夺得 联盟 总冠军并荣膺 FMVP'],
     },
   ],
   timeline: [
@@ -104,7 +104,7 @@ const DEMO_KOBE_LEGEND: RetiredPlayerRecord = {
       ppg: 26.8,
       rpg: 5.2,
       apg: 4.9,
-      accolades: ['NBA总冠军', '总决赛 FMVP', '全明星第一阵容', '最佳防守一阵'],
+      accolades: ['联盟总冠军', '总决赛 FMVP', '全明星第一阵容', '最佳防守一阵'],
     },
     {
       year: 2009,
@@ -116,10 +116,9 @@ const DEMO_KOBE_LEGEND: RetiredPlayerRecord = {
       ppg: 27.0,
       rpg: 5.4,
       apg: 5.0,
-      accolades: ['NBA总冠军', '总决赛 FMVP', '全明星第一阵容'],
+      accolades: ['联盟总冠军', '总决赛 FMVP', '全明星第一阵容'],
     },
   ],
-  epilogueStory: '### 第一章：曼巴绝响\n科比·布莱恩特在退役之战中狂砍60分，为长达20年的紫金传奇划上了最完美的句号。退役后，他创立了黑曼巴体育学院，致力于将曼巴精神传授给下一代优秀运动员。',
 };
 
 export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> = ({
@@ -523,7 +522,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
                         <span className="text-xl sm:text-2xl shrink-0">🏆</span>
                         <div className="min-w-0">
                           <div className="text-xs sm:text-sm font-black text-white truncate">{selectedLegend.careerAccolades.championships} 次</div>
-                          <div className="text-[9px] sm:text-[10px] text-amber-300 font-mono truncate">NBA 总冠军</div>
+                          <div className="text-[9px] sm:text-[10px] text-amber-300 font-mono truncate">联盟 总冠军</div>
                         </div>
                       </div>
 
@@ -698,7 +697,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
               </div>
 
               {/* Section 4: Epilogue Story (Preview) */}
-              {selectedLegend.epilogueStory && (
+              {false && selectedLegend.epilogueStory && (
                 <div className="p-4 sm:p-5 rounded-2xl bg-[#121724] border border-amber-500/30 space-y-2.5 sm:space-y-3 relative overflow-hidden">
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="text-xs font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2">
@@ -1001,7 +1000,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
       )}
 
       {/* Modal 2: Full Epilogue Story Modal */}
-      {showFullEpilogueModal && selectedLegend && selectedLegend.epilogueStory && (
+      {false && showFullEpilogueModal && selectedLegend && selectedLegend.epilogueStory && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-6 animate-in fade-in duration-150">
           <div className="bg-[#0d1220] border-2 border-amber-500/50 rounded-2xl sm:rounded-3xl max-w-2xl w-full p-4 sm:p-7 shadow-[0_0_50px_rgba(245,158,11,0.2)] flex flex-col max-h-[85vh] space-y-4 text-slate-200 relative ring-1 ring-amber-500/30">
             {/* Header */}

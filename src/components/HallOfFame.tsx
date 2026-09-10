@@ -344,7 +344,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
   const CORE_HONORS = [
     {
       key: 'allStar',
-      title: 'NBA 全明星',
+      title: '联盟 全明星',
       subtitle: 'All-Star Selection',
       count: allStarCount,
       icon: '🌟',
@@ -389,7 +389,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
     },
     {
       key: 'champion',
-      title: 'NBA 总冠军',
+      title: '联盟 总冠军',
       subtitle: 'Championship Ring',
       count: championCount,
       icon: '💍',
@@ -408,7 +408,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
     {
       key: 'allNba1st',
       title: '最佳阵容一阵',
-      subtitle: 'All-NBA First Team',
+      subtitle: '最佳阵容一阵',
       count: allNba1stCount,
       icon: '🥇',
       accentColor: 'border-emerald-500/50 text-emerald-400 bg-emerald-500/10',
@@ -417,7 +417,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
     {
       key: 'allNba2nd',
       title: '最佳阵容二阵',
-      subtitle: 'All-NBA Second Team',
+      subtitle: '最佳阵容二阵',
       count: allNba2ndCount,
       icon: '🥈',
       accentColor: 'border-teal-500/50 text-teal-300 bg-teal-500/10',
@@ -426,7 +426,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
     {
       key: 'allNba3rd',
       title: '最佳阵容三阵',
-      subtitle: 'All-NBA Third Team',
+      subtitle: '最佳阵容三阵',
       count: allNba3rdCount,
       icon: '🥉',
       accentColor: 'border-amber-600/50 text-amber-500 bg-amber-600/10',
@@ -560,7 +560,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Medal className="w-3.5 h-3.5" /> NBA历史50大
+            <Medal className="w-3.5 h-3.5" /> 联盟历史50大
           </button>
         </div>
       </div>
@@ -618,7 +618,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
             <div className="bg-[#11141b] border border-[#232834] rounded-2xl p-5 shadow-xl space-y-4">
               <div className="border-b border-[#232834] pb-2.5">
                 <h4 className="text-xs font-black italic uppercase text-blue-400 flex items-center gap-1.5">
-                  <Activity className="w-4 h-4 text-blue-400" /> 生涯场均表现与命中率 (CAREER AVERAGES)
+                  <Activity className="w-4 h-4 text-blue-400" /> 生涯场均表现与命中率
                 </h4>
                 <p className="text-[10px] text-slate-500 font-mono">
                   职业生涯整体效率与场均高阶贡献
@@ -724,7 +724,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
                 {/* 统治荣誉分 */}
                 <div className="bg-[#0d1017] border border-[#232834] p-3 rounded-xl space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-400">1. 统治荣誉分 (S_honor)</span>
+                    <span className="text-[10px] font-bold text-slate-400">1. 统治荣誉分</span>
                     <span className="text-xs font-black text-amber-400 font-mono">+{sHonor} 分</span>
                   </div>
                   <div className="text-[9px] text-slate-500 space-y-0.5 font-mono">
@@ -739,7 +739,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
                 {/* 阵容与防守分 */}
                 <div className="bg-[#0d1017] border border-[#232834] p-3 rounded-xl space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-400">2. 阵容与防守分 (S_all_nba)</span>
+                    <span className="text-[10px] font-bold text-slate-400">2. 阵容与防守分</span>
                     <span className="text-xs font-black text-blue-400 font-mono">+{sAllNba} 分</span>
                   </div>
                   <div className="text-[9px] text-slate-500 space-y-0.5 font-mono">
@@ -754,11 +754,11 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
                 {/* 巅峰效率分 */}
                 <div className="bg-[#0d1017] border border-[#232834] p-3 rounded-xl space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-400">3. 巅峰效率分 (S_efficiency)</span>
+                    <span className="text-[10px] font-bold text-slate-400">3. 巅峰效率分</span>
                     <span className="text-xs font-black text-emerald-400 font-mono">+{sEfficiency} 分</span>
                   </div>
                   <div className="text-[9px] text-slate-500 space-y-0.5 font-mono">
-                    <div>• 效率重置值 (PPG_reset): {ppgReset}</div>
+                    <div>• 效率重置值: {ppgReset}</div>
                     <div>• 公式: PPG_reset × 8</div>
                     <div className="text-[8px] text-slate-600 truncate">(得分×1.2+篮板+助攻×1.2+抢断×2+盖帽×2-失误×1.5)</div>
                   </div>
@@ -767,7 +767,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
                 {/* 累计数据分 */}
                 <div className="bg-[#0d1017] border border-[#232834] p-3 rounded-xl space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-400">4. 累计数据分 (S_totals)</span>
+                    <span className="text-[10px] font-bold text-slate-400">4. 累计数据分</span>
                     <span className="text-xs font-black text-purple-400 font-mono">+{sTotals} 分</span>
                   </div>
                   <div className="text-[9px] text-slate-500 space-y-0.5 font-mono">
@@ -781,7 +781,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
                 {/* 属性点加成 */}
                 <div className="bg-[#0d1017] border border-[#232834] p-3 rounded-xl space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-400">5. 属性点加成 (S_skill_points)</span>
+                    <span className="text-[10px] font-bold text-slate-400">5. 属性点加成</span>
                     <span className="text-xs font-black text-amber-300 font-mono">+{sSkillPoints} 分</span>
                   </div>
                   <div className="text-[9px] text-slate-500 space-y-0.5 font-mono">
@@ -798,7 +798,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
             <div className="flex items-center justify-between border-b border-[#232834] pb-2.5">
               <div>
                 <h4 className="text-xs font-black italic uppercase text-white flex items-center gap-1.5">
-                  <Medal className="w-4 h-4 text-amber-400" /> NBA 历史 50 大巨星
+                  <Medal className="w-4 h-4 text-amber-400" /> 联盟 历史 50 大巨星
                 </h4>
               </div>
               <span className="text-xs font-bold text-amber-400 font-mono bg-amber-500/10 px-3 py-1 rounded border border-amber-500/30">
@@ -865,7 +865,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
               <span>宣布退役并进入奈史密斯篮球名人堂</span>
             </h4>
             <p className="text-[10px] sm:text-[11px] text-amber-300/80 font-mono mt-0.5">
-              结束辉煌的职业生涯，举行球衣退役仪式，正式入选NBA名人堂！
+              结束辉煌的职业生涯，举行球衣退役仪式，正式入选联盟名人堂！
             </p>
           </div>
           <button
@@ -873,7 +873,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
             onClick={onRetireCareer}
             className="w-full sm:w-auto px-5 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-red-600 via-red-500 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black italic rounded-xl text-xs sm:text-sm uppercase tracking-wider shadow-xl shadow-red-950/50 transition-all active:scale-95 shrink-0 flex items-center justify-center gap-2 cursor-pointer ring-2 ring-red-400/40"
           >
-            <span>正式退役并结算生涯 (RETIRE & HOF)</span>
+            <span>正式退役并结算生涯</span>
           </button>
         </div>
       )}

@@ -253,7 +253,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
             </div>
             <div className="text-left min-w-0">
               <span className="text-[8px] sm:text-[10px] text-slate-500 uppercase tracking-widest font-bold block truncate">
-                <span className="hidden sm:inline">主队 (YOUR TEAM)</span>
+                <span className="hidden sm:inline">主队</span>
                 <span className="sm:hidden">主队</span>
               </span>
               <h3 className="text-xs sm:text-lg font-black italic uppercase text-white tracking-tight truncate">
@@ -305,7 +305,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
             </div>
             <div className="text-right min-w-0">
               <span className="text-[8px] sm:text-[10px] text-slate-500 uppercase tracking-widest font-bold block truncate">
-                <span className="hidden sm:inline">对手 (OPPONENT)</span>
+                <span className="hidden sm:inline">对手</span>
                 <span className="sm:hidden">对手</span>
               </span>
               <h3 className="text-xs sm:text-lg font-black italic uppercase text-white tracking-tight truncate">
@@ -339,7 +339,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
                 className="w-full justify-center px-2 sm:px-5 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black font-black italic rounded-xl transition-all flex items-center gap-1.5 text-xs uppercase tracking-tight shadow-lg shadow-amber-500/10 cursor-pointer"
               >
                 <Play className="w-3.5 h-3.5 fill-black shrink-0" />
-                <span>亲自出战<span className="hidden sm:inline"> (KEY MOMENTS)</span></span>
+                <span>亲自出战</span>
               </button>
 
               {/* Auto-Simulation Play / Pause Toggle Button */}
@@ -375,7 +375,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
           <div className="flex items-center justify-between border-b border-[#232834] pb-2.5 sm:pb-3">
             <h4 className="text-xs font-black italic uppercase text-white flex items-center gap-1.5">
               <TrendingUp className="w-4 h-4 text-amber-400 shrink-0" />
-              <span className="hidden sm:inline">{seasonStr}场均全能数据统计 (SEASON STATS)</span>
+              <span className="hidden sm:inline">{seasonStr}场均全能数据统计</span>
               <span className="sm:hidden">赛季场均数据</span>
             </h4>
             <span className="text-[10px] sm:text-[11px] font-mono text-amber-400 font-bold shrink-0">
@@ -386,27 +386,27 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
           {/* Main Stats Grid */}
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3 text-center">
             <div className="bg-[#0d1017] p-2 sm:p-3 rounded-xl border border-[#232834]">
-              <span className="text-[8px] sm:text-[9px] text-slate-500 uppercase font-bold block">得分 (PPG)</span>
+              <span className="text-[8px] sm:text-[9px] text-slate-500 uppercase font-bold block">得分</span>
               <span className="text-base sm:text-xl font-black text-amber-400 font-mono italic">{ppg}</span>
             </div>
             <div className="bg-[#0d1017] p-2 sm:p-3 rounded-xl border border-[#232834]">
-              <span className="text-[8px] sm:text-[9px] text-slate-500 uppercase font-bold block">篮板 (RPG)</span>
+              <span className="text-[8px] sm:text-[9px] text-slate-500 uppercase font-bold block">篮板</span>
               <span className="text-base sm:text-xl font-black text-blue-400 font-mono italic">{rpg}</span>
             </div>
             <div className="bg-[#0d1017] p-2 sm:p-3 rounded-xl border border-[#232834]">
-              <span className="text-[8px] sm:text-[9px] text-slate-500 uppercase font-bold block">助攻 (APG)</span>
+              <span className="text-[8px] sm:text-[9px] text-slate-500 uppercase font-bold block">助攻</span>
               <span className="text-base sm:text-xl font-black text-emerald-400 font-mono italic">{apg}</span>
             </div>
             <div className="bg-[#0d1017] p-2 sm:p-3 rounded-xl border border-[#232834]">
-              <span className="text-[8px] sm:text-[9px] text-slate-500 uppercase font-bold block">抢断 (SPG)</span>
+              <span className="text-[8px] sm:text-[9px] text-slate-500 uppercase font-bold block">抢断</span>
               <span className="text-base sm:text-xl font-black text-purple-400 font-mono italic">{spg}</span>
             </div>
             <div className="bg-[#0d1017] p-2 sm:p-3 rounded-xl border border-[#232834]">
-              <span className="text-[8px] sm:text-[9px] text-slate-500 uppercase font-bold block">盖帽 (BPG)</span>
+              <span className="text-[8px] sm:text-[9px] text-slate-500 uppercase font-bold block">盖帽</span>
               <span className="text-base sm:text-xl font-black text-cyan-400 font-mono italic">{bpg}</span>
             </div>
             <div className="bg-[#0d1017] p-2 sm:p-3 rounded-xl border border-[#232834]">
-              <span className="text-[8px] sm:text-[9px] text-slate-500 uppercase font-bold block">时间 (MPG)</span>
+              <span className="text-[8px] sm:text-[9px] text-slate-500 uppercase font-bold block">时间</span>
               <span className="text-base sm:text-xl font-black text-slate-200 font-mono italic">{gp > 0 ? mpg : assignedMinutes}m</span>
             </div>
           </div>
@@ -414,22 +414,22 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
           {/* Advanced Shooting & Turnover Efficiency */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 text-center pt-1">
             <div className="bg-[#0d1017] p-2 sm:p-3 rounded-xl border border-[#232834]">
-              <span className="text-[9px] sm:text-[10px] text-slate-400 uppercase font-bold block">投篮 (FG%)</span>
+              <span className="text-[9px] sm:text-[10px] text-slate-400 uppercase font-bold block">投篮</span>
               <span className="text-sm sm:text-lg font-black text-amber-300 font-mono">{fgPct}%</span>
               <span className="text-[8px] sm:text-[9px] text-slate-500 block font-mono">({stats.fgm}/{stats.fga})</span>
             </div>
             <div className="bg-[#0d1017] p-2 sm:p-3 rounded-xl border border-[#232834]">
-              <span className="text-[9px] sm:text-[10px] text-slate-400 uppercase font-bold block">三分 (3P%)</span>
+              <span className="text-[9px] sm:text-[10px] text-slate-400 uppercase font-bold block">三分</span>
               <span className="text-sm sm:text-lg font-black text-emerald-300 font-mono">{tpPct}%</span>
               <span className="text-[8px] sm:text-[9px] text-slate-500 block font-mono">({stats.tpm}/{stats.tpa})</span>
             </div>
             <div className="bg-[#0d1017] p-2 sm:p-3 rounded-xl border border-[#232834]">
-              <span className="text-[9px] sm:text-[10px] text-slate-400 uppercase font-bold block">罚球 (FT%)</span>
+              <span className="text-[9px] sm:text-[10px] text-slate-400 uppercase font-bold block">罚球</span>
               <span className="text-sm sm:text-lg font-black text-cyan-300 font-mono">{ftPct}%</span>
               <span className="text-[8px] sm:text-[9px] text-slate-500 block font-mono">({stats.ftm}/{stats.fta})</span>
             </div>
             <div className="bg-[#0d1017] p-2 sm:p-3 rounded-xl border border-[#232834]">
-              <span className="text-[9px] sm:text-[10px] text-slate-400 uppercase font-bold block">失误 (TOV)</span>
+              <span className="text-[9px] sm:text-[10px] text-slate-400 uppercase font-bold block">失误</span>
               <span className="text-sm sm:text-lg font-black text-red-400 font-mono">{tov}</span>
               <span className="hidden sm:block text-[8px] sm:text-[9px] text-slate-500 font-mono">控制良好</span>
             </div>
@@ -464,7 +464,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
                 <h3 className="text-xs sm:text-base font-black italic uppercase text-white">
-                  <span className="hidden sm:inline">最近 5 场比赛数据列表 (RECENT 5 GAMES)</span>
+                  <span className="hidden sm:inline">最近 5 场比赛数据列表</span>
                   <span className="sm:hidden">最近 5 场比赛</span>
                 </h3>
               </div>
@@ -557,7 +557,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
                             : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                         }`}
                       >
-                        <span className="hidden sm:inline">{isUserWin ? '胜利 (WIN)' : '败北 (LOSS)'}</span>
+                        <span className="hidden sm:inline">{isUserWin ? '胜利' : '败北'}</span>
                         <span className="sm:hidden">{isUserWin ? '胜' : '负'}</span>
                       </span>
                     </div>

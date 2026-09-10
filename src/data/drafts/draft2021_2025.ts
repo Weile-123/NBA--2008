@@ -93,7 +93,7 @@ export const DRAFTS_2021_TO_2025: Record<number, YearDraftData> = {
       { pick: 18, teamId: 'chi', teamName: '芝加哥公牛', player: { id: 'd_terry_22', name: '达伦·特里', position: 'SG', ovr: 73, age: 19, college: '亚利桑那', highlights: '第18顺位，高大活力侧翼', peakAge: 24, peakOvr: 79, peakDuration: 3 } },
       { pick: 19, teamId: 'min', teamName: '明尼苏达森林狼', player: { id: 'w_moore_22', name: '温德尔·摩尔', position: 'SF', ovr: 71, age: 20, college: '杜克大学', highlights: '第19顺位，防守型侧翼', peakAge: 24, peakOvr: 76, peakDuration: 2 } },
       { pick: 20, teamId: 'sas', teamName: '圣安东尼奥马刺', player: { id: 'm_branham_22', name: '布兰纳姆', position: 'SG', ovr: 76, age: 19, college: '俄亥俄州立', highlights: '第20顺位，中距离手感极佳后卫', peakAge: 25, peakOvr: 83, peakDuration: 4 } },
-      { pick: 21, teamId: 'den', teamName: '丹佛掘金', player: { id: 'c_braun_22', name: '克里斯蒂安·布劳恩', position: 'SG', ovr: 78, age: 21, college: '堪萨斯大学', highlights: '第21顺位，布劳恩！连续NCAA+NBA总冠军，激情扣将与主力攻防侧翼', peakAge: 26, peakOvr: 86, peakDuration: 6 } },
+      { pick: 21, teamId: 'den', teamName: '丹佛掘金', player: { id: 'c_braun_22', name: '克里斯蒂安·布劳恩', position: 'SG', ovr: 78, age: 21, college: '堪萨斯大学', highlights: '第21顺位，布劳恩！连续NCAA+联盟总冠军，激情扣将与主力攻防侧翼', peakAge: 26, peakOvr: 86, peakDuration: 6 } },
       { pick: 22, teamId: 'min', teamName: '明尼苏达森林狼', player: { id: 'w_kessler_22', name: '沃克·凯斯勒', position: 'C', ovr: 81, age: 20, college: '奥本大学', highlights: '第22顺位神选！盖帽盖帽盖帽！单场10帽大三双护筐天神', peakAge: 25, peakOvr: 90, peakDuration: 6 } },
       { pick: 23, teamId: 'mem', teamName: '孟菲斯灰熊', player: { id: 'd_rodman_22', name: '大卫·罗迪', position: 'SF', ovr: 73, age: 21, college: '科罗拉多州立', highlights: '第23顺位，小坦克型重型侧翼', peakAge: 25, peakOvr: 79, peakDuration: 3 } },
       { pick: 24, teamId: 'sac', teamName: '萨克拉门托国王', player: { id: 'j_liddell_22', name: '泰里斯·马丁', position: 'SG', ovr: 71, age: 23, college: '康涅狄格', highlights: '第24顺位，分卫', peakAge: 25, peakOvr: 76, peakDuration: 2 } },
@@ -182,7 +182,7 @@ export const DRAFTS_2021_TO_2025: Record<number, YearDraftData> = {
       { pick: 13, teamId: 'sac', teamName: '萨克拉门托国王', player: { id: 'd_carter_24', name: '德文·卡特', position: 'PG', ovr: 78, age: 22, college: '普罗维登斯', highlights: '第13顺位，卡特！最佳防守球员，疯狂抓板防守后卫', peakAge: 26, peakOvr: 86, peakDuration: 5 } },
       { pick: 14, teamId: 'was', teamName: '华盛顿奇才', player: { id: 'c_carrington_24', name: '卡灵顿', position: 'SG', ovr: 77, age: 18, college: '匹兹堡', highlights: '第14顺位，Bub！新秀三双创造者，手感极佳后卫', peakAge: 25, peakOvr: 87, peakDuration: 6 } },
       { pick: 17, teamId: 'lal', teamName: '洛杉矶湖人', player: { id: 'd_knecht_24', name: '克内克特', position: 'SF', ovr: 81, age: 23, college: '田纳西大学', highlights: '第17顺位神级大捡漏！Knecht！单场9记三分狂砍37分神射手！', peakAge: 27, peakOvr: 89, peakDuration: 5 } },
-      { pick: 55, teamId: 'lal', teamName: '洛杉矶湖人', player: { id: 'b_james_24', name: '布朗尼·詹姆斯', position: 'SG', ovr: 70, age: 19, college: 'USC', highlights: '第55顺位历史焦点！Bronny James！詹姆斯父子同台竞技创造NBA历史！', peakAge: 24, peakOvr: 78, peakDuration: 4 } },
+      { pick: 55, teamId: 'lal', teamName: '洛杉矶湖人', player: { id: 'b_james_24', name: '布朗尼·詹姆斯', position: 'SG', ovr: 70, age: 19, college: 'USC', highlights: '第55顺位历史焦点！Bronny James！詹姆斯父子同台竞技创造联盟历史！', peakAge: 24, peakOvr: 78, peakDuration: 4 } },
     ],
   },
   2025: {

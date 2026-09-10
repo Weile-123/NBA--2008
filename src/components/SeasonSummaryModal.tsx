@@ -45,38 +45,38 @@ export const SeasonSummaryModal: React.FC<SeasonSummaryModalProps> = ({
     };
 
     if (computedAwards.mvp.isUser) {
-      addAccoladeIfMissing('MVP', '常规赛 MVP', `荣膺 ${seasonStr} 赛季 NBA 常规赛最有价值球员(MVP)`);
+      addAccoladeIfMissing('MVP', '常规赛 MVP', `荣膺 ${seasonStr} 赛季 联盟 常规赛最有价值球员`);
     }
     if (computedAwards.scoringLeader.isUser) {
-      addAccoladeIfMissing('SCORING_TITLE', '常规赛得分王', `以常规赛场均狂轰 ${computedAwards.scoringLeader.ppg} 分加冕 ${seasonStr} 赛季 NBA 得分王 (Scoring Leader)`);
+      addAccoladeIfMissing('SCORING_TITLE', '常规赛得分王', `以常规赛场均狂轰 ${computedAwards.scoringLeader.ppg} 分加冕 ${seasonStr} 赛季 联盟 得分王`);
     }
     if (computedAwards.dpoy.isUser) {
-      addAccoladeIfMissing('DPOY', '最佳防守球员 (DPOY)', `荣膺 ${seasonStr} 赛季 NBA 最佳防守球员`);
+      addAccoladeIfMissing('DPOY', '最佳防守球员', `荣膺 ${seasonStr} 赛季 联盟 最佳防守球员`);
     }
     if (computedAwards.sixthMan.isUser) {
-      addAccoladeIfMissing('SIXTH_MAN', '最佳第六人 (6MOTY)', `荣膺 ${seasonStr} 赛季 NBA 最佳第六人`);
+      addAccoladeIfMissing('SIXTH_MAN', '最佳第六人', `荣膺 ${seasonStr} 赛季 联盟 最佳第六人`);
     }
     if (computedAwards.roy.isUser) {
-      addAccoladeIfMissing('ROY', '最佳新秀 (ROY)', `荣膺 ${seasonStr} 赛季 NBA 年度最佳新秀`);
+      addAccoladeIfMissing('ROY', '最佳新秀', `荣膺 ${seasonStr} 赛季 联盟 年度最佳新秀`);
     }
 
     // All-NBA 1st, 2nd & 3rd
     if (computedAwards.allNbaTeams[0]?.players.some((p) => p.isUser)) {
-      addAccoladeIfMissing('ALL_NBA_1ST', '最佳阵容一阵', `入选 ${seasonStr} 赛季 NBA 最佳阵容第一阵容`);
+      addAccoladeIfMissing('ALL_NBA_1ST', '最佳阵容一阵', `入选 ${seasonStr} 赛季 联盟 最佳阵容第一阵容`);
     }
     if (computedAwards.allNbaTeams[1]?.players.some((p) => p.isUser)) {
-      addAccoladeIfMissing('ALL_NBA_2ND', '最佳阵容二阵', `入选 ${seasonStr} 赛季 NBA 最佳阵容第二阵容`);
+      addAccoladeIfMissing('ALL_NBA_2ND', '最佳阵容二阵', `入选 ${seasonStr} 赛季 联盟 最佳阵容第二阵容`);
     }
     if (computedAwards.allNbaTeams[2]?.players.some((p) => p.isUser)) {
-      addAccoladeIfMissing('ALL_NBA_3RD', '最佳阵容三阵', `入选 ${seasonStr} 赛季 NBA 最佳阵容第三阵容`);
+      addAccoladeIfMissing('ALL_NBA_3RD', '最佳阵容三阵', `入选 ${seasonStr} 赛季 联盟 最佳阵容第三阵容`);
     }
 
     // All-Defensive 1st & 2nd
     if (computedAwards.allDefensiveTeams[0]?.players.some((p) => p.isUser)) {
-      addAccoladeIfMissing('ALL_DEFENSE_1ST', '最佳防守一阵', `入选 ${seasonStr} 赛季 NBA 最佳防守阵容第一阵容`);
+      addAccoladeIfMissing('ALL_DEFENSE_1ST', '最佳防守一阵', `入选 ${seasonStr} 赛季 联盟 最佳防守阵容第一阵容`);
     }
     if (computedAwards.allDefensiveTeams[1]?.players.some((p) => p.isUser)) {
-      addAccoladeIfMissing('ALL_DEFENSE_2ND', '最佳防守二阵', `入选 ${seasonStr} 赛季 NBA 最佳防守阵容第二阵容`);
+      addAccoladeIfMissing('ALL_DEFENSE_2ND', '最佳防守二阵', `入选 ${seasonStr} 赛季 联盟 最佳防守阵容第二阵容`);
     }
 
     // All-Star Selection
@@ -89,7 +89,7 @@ export const SeasonSummaryModal: React.FC<SeasonSummaryModalProps> = ({
       player.ovr >= 82;
 
     if (isUserAllStar) {
-      addAccoladeIfMissing('ALL_STAR', 'NBA 全明星', `入选 ${seasonStr} 赛季 NBA 全明星正赛阵容`);
+      addAccoladeIfMissing('ALL_STAR', '联盟 全明星', `入选 ${seasonStr} 赛季 联盟 全明星正赛阵容`);
     }
 
     if (updated) {
@@ -178,7 +178,7 @@ export const SeasonSummaryModal: React.FC<SeasonSummaryModalProps> = ({
             }`}>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-black uppercase text-amber-400 flex items-center gap-1.5">
-                  <Crown className="w-4 h-4 text-amber-400 fill-amber-400" /> 常规赛最有价值球员 (MVP)
+                  <Crown className="w-4 h-4 text-amber-400 fill-amber-400" /> 常规赛最有价值球员
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -203,7 +203,7 @@ export const SeasonSummaryModal: React.FC<SeasonSummaryModalProps> = ({
             }`}>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-black uppercase text-blue-400 flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-blue-400" /> 最佳防守球员 (DPOY)
+                  <ShieldCheck className="w-4 h-4 text-blue-400" /> 最佳防守球员
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -278,7 +278,7 @@ export const SeasonSummaryModal: React.FC<SeasonSummaryModalProps> = ({
             }`}>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-black uppercase text-emerald-400 flex items-center gap-1.5">
-                  <Star className="w-4 h-4 text-emerald-400 fill-emerald-400" /> 最佳新秀 (ROY)
+                  <Star className="w-4 h-4 text-emerald-400 fill-emerald-400" /> 最佳新秀
                 </span>
               </div>
               <div className="flex items-center justify-between">

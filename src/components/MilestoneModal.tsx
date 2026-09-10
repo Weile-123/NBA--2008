@@ -38,7 +38,7 @@ export const MilestoneModal: React.FC<MilestoneModalProps> = ({
         {/* Header Badge */}
         <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 font-black text-[10px] sm:text-xs uppercase tracking-wider animate-pulse">
           <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 shrink-0" />
-          <span>NBA 历史里程碑纪录达成</span>
+          <span>联盟 历史里程碑纪录达成</span>
           <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 shrink-0" />
         </div>
 
@@ -60,10 +60,10 @@ export const MilestoneModal: React.FC<MilestoneModalProps> = ({
         <div className="space-y-1">
           <h2 className="text-base sm:text-lg font-black italic uppercase text-white tracking-wide leading-snug">
             {isNo1
-              ? `👑 登顶 NBA ${milestone.catName}历史第一人！`
+              ? `👑 登顶 联盟 ${milestone.catName}历史第一人！`
               : isTop3
-              ? `🔥 挺进 NBA ${milestone.catName}历史 Top 3！`
-              : `🎉 杀入 NBA ${milestone.catName}历史前 10！`}
+              ? `🔥 挺进 联盟 ${milestone.catName}历史 Top 3！`
+              : `🎉 杀入 联盟 ${milestone.catName}历史前 10！`}
           </h2>
           <p className="text-[11px] sm:text-xs text-slate-300 font-bold">
             恭喜 <span className="text-amber-400 italic">{playerName}</span> 再次刷新联盟历史传奇画卷！

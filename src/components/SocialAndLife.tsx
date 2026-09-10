@@ -97,7 +97,7 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
             </div>
             <div className="flex items-center gap-4 bg-[#181d28] px-3.5 py-2 rounded-lg border border-[#232834] self-start md:self-auto font-mono text-[11px]">
               <div>
-                <span className="text-[9px] text-slate-500 block">当前综评 (OVR)</span>
+                <span className="text-[9px] text-slate-500 block">当前综评</span>
                 <span className="font-bold text-white text-xs">{player.ovr}</span>
               </div>
               <div className="h-6 w-px bg-[#232834]" />

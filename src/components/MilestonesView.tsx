@@ -74,11 +74,11 @@ export const MilestonesView: React.FC<MilestonesViewProps> = ({ player }) => {
                 <Medal className="w-4 h-4 sm:w-6 sm:h-6" />
               </span>
               <h2 className="text-sm sm:text-2xl font-black italic uppercase text-white tracking-wide">
-                🎖️ NBA 历史数据里程碑榜单
+                🎖️ 联盟 历史数据里程碑榜单
               </h2>
             </div>
             <p className="text-[11px] sm:text-sm text-slate-400 font-medium hidden sm:block">
-              追逐传奇音符，将你的名字永久烙印于 NBA 75 年历史得分、篮板、助攻神殿总榜。
+              追逐传奇音符，将你的名字永久烙印于 联盟 75 年历史得分、篮板、助攻神殿总榜。
             </p>
           </div>
 
@@ -151,9 +151,7 @@ export const MilestonesView: React.FC<MilestonesViewProps> = ({ player }) => {
             <div>
               <h3 className="text-sm sm:text-lg font-black italic uppercase text-white flex items-center gap-1.5">
                 <span>{currentCategory.name}历史总榜</span>
-                <span className="text-[10px] sm:text-xs font-mono font-normal text-slate-400">
-                  (Top 10)
-                </span>
+                <span className="text-[10px] sm:text-xs font-mono font-normal text-slate-400">前10名</span>
               </h3>
               <p className="text-[10px] sm:text-xs text-slate-400 font-mono">
                 单位：{currentCategory.unit}

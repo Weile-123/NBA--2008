@@ -31,7 +31,7 @@ export const AgeDeclineModal: React.FC<AgeDeclineModalProps> = ({
           subtitle: `${player.name} 在新赛季常规赛训练营中感受到了岁月的残酷`,
           description:
             '新赛季季前训练与例行体检结束，你清晰地感受到双腿不再像年轻时那样充沛轻盈。赛后恢复周期显著延长，体能与运动爆发力面临不可逆的衰退衰减。',
-          question: '38 岁已是绝大多数 NBA 传奇巨星挂靴解甲之年，你将做出何种抉择？',
+          question: '38 岁已是绝大多数 联盟 传奇巨星挂靴解甲之年，你将做出何种抉择？',
         };
       case 39:
         return {
@@ -55,7 +55,7 @@ export const AgeDeclineModal: React.FC<AgeDeclineModalProps> = ({
         return {
           badge: `常青树神话 · ${currentYear} 赛季揭幕`,
           title: '不甘熄灭的火焰 · 体能恢复进入死角',
-          subtitle: `${player.name} 在 41 岁的高龄依然屹立在 NBA 最高殿堂`,
+          subtitle: `${player.name} 在 41 岁的高龄依然屹立在 联盟 最高殿堂`,
           description:
             '41 岁的高龄让你每一次赛前热身都需要长达一个多小时的拉伸与理疗。体能消耗呈指数级上升，背靠背比赛对你的体能储备来说已是近乎不可能完成的考验。',
           question: '41 岁的传奇长青之路步履维艰，是带着所有荣耀优雅退役，还是继续燃烧最后的余温？',
@@ -66,7 +66,7 @@ export const AgeDeclineModal: React.FC<AgeDeclineModalProps> = ({
           title: '向时光抗争 · 身体指标全线红灯',
           subtitle: `${player.name} 42 岁的躯体正在对抗整个物理规律`,
           description:
-            '42 岁的年龄在 NBA 历史上屈指可数。训练师与医疗团队郑重提醒你：肌肉活性与关节劳损已达到警戒线，继续强行高强度征战将面临严重的身体损伤风险。',
+            '42 岁的年龄在 联盟 历史上屈指可数。训练师与医疗团队郑重提醒你：肌肉活性与关节劳损已达到警戒线，继续强行高强度征战将面临严重的身体损伤风险。',
           question: '42 岁的传奇之躯已经超越了无数前辈，你要选择荣耀挂靴还是挑战物理极限？',
         };
       default:
@@ -74,9 +74,9 @@ export const AgeDeclineModal: React.FC<AgeDeclineModalProps> = ({
         return {
           badge: `强制退役关口 · ${currentYear} 赛季揭幕`,
           title: '荣耀挂靴',
-          subtitle: `${player.name} 已达到 NBA 联盟规定的 43 岁最大参赛年龄上限`,
+          subtitle: `${player.name} 已达到 联盟规定的 43 岁最大参赛年龄上限`,
           description:
-            `你在 NBA 赛场上征战了 ${seasonsPlayed} 个辉煌赛季，创造了无数神话与历史纪录。出于对老将身体健康的保护以及联盟 43 岁最大参赛年龄限制，你正式达到退役年龄上限。是时候挂起战靴，正式入选奈史密斯篮球名人堂！`,
+            `你在 联盟 赛场上征战了 ${seasonsPlayed} 个辉煌赛季，创造了无数神话与历史纪录。出于对老将身体健康的保护以及联盟 43 岁最大参赛年龄限制，你正式达到退役年龄上限。是时候挂起战靴，正式入选奈史密斯篮球名人堂！`,
           question: '传奇谢幕，荣耀永存！点击下方按钮直接开启你的退役仪式与名人堂大满贯结算。',
         };
     }

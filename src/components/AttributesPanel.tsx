@@ -15,15 +15,16 @@ import {
   CheckCircle2,
   ChevronRight,
   ArrowUp,
+  MonitorPlay,
 } from 'lucide-react';
 import { PERSONAL_ASSETS } from '../data/nbaData2008';
 import { getUserPlayerAgePenalty } from '../utils/calc2k';
+import { GameNotice } from './GameNotice';
 
 interface AttributesPanelProps {
   player: PlayerProfile;
   onUpgradeAttribute: (attrKey: keyof Attributes) => void;
-  onAddSkillPoints?: (amount: number) => void;
-  onMaxAllAttributes?: () => void;
+  onWatchAd?: () => Promise<boolean>;
   onAllInAttribute?: (attrKey: keyof Attributes) => void;
   onResetAttribute?: (attrKey: keyof Attributes) => void;
 }
@@ -39,42 +40,49 @@ interface AttrItem {
 }
 
 const attrList: AttrItem[] = [
-  { key: 'midRange', label: '中投 (Mid-Range)', desc: '提升中距离跳投与急停投篮命中率', icon: '🎯', category: 'shooting' },
-  { key: 'threePoint', label: '三分 (3PT Shooting)', desc: '提升空位三分与后撤步远投命中率', icon: '🏹', category: 'shooting' },
-  { key: 'freeThrow', label: '罚球 (Free Throw)', desc: '关键时刻罚球稳定度', icon: '🏀', category: 'shooting' },
-  { key: 'layup', label: '上篮 (Layup)', desc: '突破抗对抗上篮与拉杆抛投', icon: '👟', category: 'finishing' },
-  { key: 'dunk', label: '扣篮 (Dunk)', desc: '快攻反击与隔人暴扣震撼度', icon: '💥', category: 'finishing' },
-  { key: 'insideFinish', label: '终结 (Finishing)', desc: '篮下禁区近距离得分与上篮巧劲', icon: '🧱', category: 'finishing' },
-  { key: 'postMove', label: '背身 (Post Scoring)', desc: '低位背身勾手、后仰跳投与晃步脚步', icon: '🏛️', category: 'finishing' },
-  { key: 'ballHandle', label: '控球 (Ball Handling)', desc: '减少被剥夺球，提升变向破防', icon: '💫', category: 'playmaking' },
-  { key: 'passing', label: '传球 (Passing)', desc: '提升传球视野与战术助攻精准度', icon: '🧠', category: 'playmaking' },
-  { key: 'perimeterDef', label: '外防 (Perimeter Defense)', desc: '贴身死锁对位对手与干扰投篮', icon: '🛡️', category: 'defense' },
-  { key: 'interiorDef', label: '内防 (Interior Defense)', desc: '禁区死锁顶防、干扰篮下强攻与护框', icon: '🏰', category: 'defense' },
-  { key: 'block', label: '盖帽 (Block)', desc: '协防飞天排球大帽与护框起跳', icon: '🛑', category: 'defense' },
-  { key: 'steal', label: '抢断 (Steal)', desc: '拦截传球线路与预判剥球', icon: '⚡', category: 'defense' },
-  { key: 'rebounding', label: '篮板 (Rebounding)', desc: '拼抢进攻/防守篮板与卡位控制落点', icon: '🎯', category: 'defense' },
-  { key: 'speed', label: '速度 (Speed)', desc: '快攻冲刺与防守端回追爆发力', icon: '🏃', category: 'physicals' },
-  { key: 'vertical', label: '弹跳 (Vertical)', desc: '垂直起跳高度、隔人暴扣与滞空争抢', icon: '🚀', category: 'physicals' },
-  { key: 'strength', label: '力量 (Strength)', desc: '卡位篮板、背身顶防与身体对抗', icon: '💪', category: 'physicals' },
-  { key: 'stamina', label: '耐力 (Stamina)', desc: '降低高强度比赛疲劳与伤病风险', icon: '🫀', category: 'physicals' },
+  { key: 'midRange', label: '中投', desc: '提升中距离跳投与急停投篮命中率', icon: '🎯', category: 'shooting' },
+  { key: 'threePoint', label: '三分', desc: '提升空位三分与后撤步远投命中率', icon: '🏹', category: 'shooting' },
+  { key: 'freeThrow', label: '罚球', desc: '关键时刻罚球稳定度', icon: '🏀', category: 'shooting' },
+  { key: 'layup', label: '上篮', desc: '突破抗对抗上篮与拉杆抛投', icon: '👟', category: 'finishing' },
+  { key: 'dunk', label: '扣篮', desc: '快攻反击与隔人暴扣震撼度', icon: '💥', category: 'finishing' },
+  { key: 'insideFinish', label: '终结', desc: '篮下禁区近距离得分与上篮巧劲', icon: '🧱', category: 'finishing' },
+  { key: 'postMove', label: '背身', desc: '低位背身勾手、后仰跳投与晃步脚步', icon: '🏛️', category: 'finishing' },
+  { key: 'ballHandle', label: '控球', desc: '减少被剥夺球，提升变向破防', icon: '💫', category: 'playmaking' },
+  { key: 'passing', label: '传球', desc: '提升传球视野与战术助攻精准度', icon: '🧠', category: 'playmaking' },
+  { key: 'perimeterDef', label: '外防', desc: '贴身死锁对位对手与干扰投篮', icon: '🛡️', category: 'defense' },
+  { key: 'interiorDef', label: '内防', desc: '禁区死锁顶防、干扰篮下强攻与护框', icon: '🏰', category: 'defense' },
+  { key: 'block', label: '盖帽', desc: '协防飞天排球大帽与护框起跳', icon: '🛑', category: 'defense' },
+  { key: 'steal', label: '抢断', desc: '拦截传球线路与预判剥球', icon: '⚡', category: 'defense' },
+  { key: 'rebounding', label: '篮板', desc: '拼抢进攻/防守篮板与卡位控制落点', icon: '🎯', category: 'defense' },
+  { key: 'speed', label: '速度', desc: '快攻冲刺与防守端回追爆发力', icon: '🏃', category: 'physicals' },
+  { key: 'vertical', label: '弹跳', desc: '垂直起跳高度、隔人暴扣与滞空争抢', icon: '🚀', category: 'physicals' },
+  { key: 'strength', label: '力量', desc: '卡位篮板、背身顶防与身体对抗', icon: '💪', category: 'physicals' },
+  { key: 'stamina', label: '耐力', desc: '降低高强度比赛疲劳与伤病风险', icon: '🫀', category: 'physicals' },
 ];
 
 export const AttributesPanel: React.FC<AttributesPanelProps> = ({
   player,
   onUpgradeAttribute,
-  onAddSkillPoints,
-  onMaxAllAttributes,
+  onWatchAd,
   onAllInAttribute,
   onResetAttribute,
 }) => {
   const { attributes, attributeCaps, skillPoints, position, ovr, archetype } = player;
 
-  const [clickCount, setClickCount] = React.useState(0);
   const [showBoostsModal, setShowBoostsModal] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [filterType, setFilterType] = React.useState<'all' | 'upgradable' | 'capped'>('all');
 
-  const showDebugButtons = clickCount >= 10;
+  const adUsesLeft = 3 - (player.adRewardUses || 0);
+  const [isWatchingAd, setIsWatchingAd] = React.useState(false);
+  const [notice, setNotice] = React.useState('');
+  const handleWatchAd = async () => {
+    if (!onWatchAd || isWatchingAd || adUsesLeft <= 0) return;
+    setIsWatchingAd(true);
+    try { if (!await onWatchAd()) setNotice('请前往虎扑App看广告'); }
+    catch { setNotice('请前往虎扑App看广告'); }
+    finally { setIsWatchingAd(false); }
+  };
 
   // Get active purchased assets
   const activeAssets = PERSONAL_ASSETS.filter((a) => (player.purchasedAssetIds || []).includes(a.id));
@@ -116,36 +124,23 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
 
   return (
     <div className="space-y-3 sm:space-y-4">
+      {notice && <GameNotice message={notice} onClose={() => setNotice('')} />}
       {/* 📱 Mobile Sticky Quick-Status Top Bar */}
       <div className="sticky top-0 z-30 bg-[#0d1017]/95 backdrop-blur-md border border-[#232834] rounded-xl p-2.5 shadow-xl flex items-center justify-between gap-2 sm:hidden">
         {/* Left: Original SP card (Click 10 times to unlock debug buttons) */}
         <div className="flex items-center gap-2 min-w-0">
-          <div
-            onClick={() => setClickCount((prev) => prev + 1)}
-            className="bg-[#11141b] border border-[#232834] px-3 py-1 rounded-xl cursor-pointer select-none active:scale-95 transition-all shadow-inner flex flex-col justify-center shrink-0"
-            title="点击多次可激活调试选项"
-          >
-            <span className="text-[9px] text-slate-400 font-bold leading-tight">可分配属性点 (SP)</span>
+          <div className="bg-[#11141b] border border-[#232834] px-3 py-1 rounded-xl select-none shadow-inner flex flex-col justify-center shrink-0">
+            <span className="text-[9px] text-slate-400 font-bold leading-tight">可分配属性点</span>
             <span className="text-base font-black text-amber-400 font-mono italic leading-tight">{skillPoints}</span>
           </div>
 
-          {showDebugButtons && (
-            <div className="flex items-center gap-1 animate-fadeIn shrink-0">
-              {onMaxAllAttributes && (
-                <button
-                  type="button"
-                  onClick={onMaxAllAttributes}
-                  className="px-2 py-1 bg-amber-500 text-black font-black text-[10px] rounded-lg shadow transition-all active:scale-95 shrink-0 whitespace-nowrap"
-                >
-                  ⚡升满
-                </button>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Right: Boosts button & "可加点" badge */}
         <div className="flex items-center gap-1.5 shrink-0">
+          <button type="button" onClick={handleWatchAd} disabled={!onWatchAd || adUsesLeft <= 0 || isWatchingAd} className="bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white px-2 py-1.5 rounded-lg text-[10px] font-black flex items-center gap-1">
+            <MonitorPlay className="w-3 h-3" /> {isWatchingAd ? '广告加载中…' : `+30属性点 ${adUsesLeft}/3`}
+          </button>
           <button
             type="button"
             onClick={() => setShowBoostsModal(true)}
@@ -199,37 +194,14 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
               <span>查看场外加成</span>
             </button>
 
-            <div
-              onClick={() => setClickCount((prev) => prev + 1)}
-              className="bg-[#0d1017] border border-[#232834] px-4 py-1.5 sm:py-2 rounded-xl text-center cursor-pointer select-none active:scale-95 transition-all shadow-inner min-w-[120px]"
-              title="点击多次可激活调试选项"
-            >
-              <span className="text-[9px] text-slate-500 uppercase tracking-wider block font-bold">可分配属性点 (SP)</span>
+            <div className="bg-[#0d1017] border border-[#232834] px-4 py-1.5 sm:py-2 rounded-xl text-center select-none shadow-inner min-w-[120px]">
+              <span className="text-[9px] text-slate-500 uppercase tracking-wider block font-bold">可分配属性点</span>
               <span className="text-xl sm:text-2xl font-black text-amber-400 font-mono italic">{skillPoints}</span>
             </div>
 
-            {showDebugButtons && (
-              <div className="flex items-center gap-1.5 animate-fadeIn">
-                {onAddSkillPoints && (
-                  <button
-                    type="button"
-                    onClick={() => onAddSkillPoints(50)}
-                    className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs rounded-lg shadow-lg transition-all active:scale-95 flex items-center gap-1 italic whitespace-nowrap"
-                  >
-                    <Sparkles className="w-3 h-3 fill-black" /> +50SP
-                  </button>
-                )}
-                {onMaxAllAttributes && (
-                  <button
-                    type="button"
-                    onClick={onMaxAllAttributes}
-                    className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-lg shadow-md transition-all active:scale-95 flex items-center justify-center gap-1 italic whitespace-nowrap"
-                  >
-                    <Zap className="w-3 h-3 fill-black text-black" /> 一键满级
-                  </button>
-                )}
-              </div>
-            )}
+            <button type="button" onClick={handleWatchAd} disabled={!onWatchAd || adUsesLeft <= 0 || isWatchingAd} className="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white font-black text-xs rounded-lg shadow-md transition-all active:scale-95 flex items-center gap-1 whitespace-nowrap">
+              <MonitorPlay className="w-3 h-3" /> {isWatchingAd ? '广告加载中…' : '+30属性点'} <span className="text-[10px]">{adUsesLeft}/3</span>
+            </button>
           </div>
       </div>
 
@@ -514,7 +486,7 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
                     <div className="space-y-2">
                       <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 uppercase tracking-wider">
                         <span>👟</span>
-                        <span>专属定制球鞋 (Signature Shoe)</span>
+                        <span>专属定制球鞋</span>
                       </div>
                       <div className="bg-[#0d1017] border border-[#232834] rounded-xl p-3 flex items-center justify-between">
                         <div>

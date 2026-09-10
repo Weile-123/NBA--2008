@@ -351,8 +351,8 @@ export function calculateSeasonAwards(
       id: safeP?.id || 'p_default',
       name: safeP?.name || '未知球员',
       position: safeP?.position || 'PG',
-      teamName: safeP?.teamName || 'NBA联盟',
-      teamAbbrev: safeP?.teamAbbrev || 'NBA',
+      teamName: safeP?.teamName || '联盟',
+      teamAbbrev: safeP?.teamAbbrev || '联盟',
       ppg: safeP?.ppg || 0,
       rpg: safeP?.rpg || 0,
       apg: safeP?.apg || 0,
@@ -394,7 +394,7 @@ export function calculateSeasonAwards(
     safeScoringLeader,
     100,
     safeScoringLeader
-      ? `常规赛以场均 ${safeScoringLeader.ppg} 分领跑全联盟，火力全开加冕 NBA 得分王 (Scoring Leader)！`
+      ? `常规赛以场均 ${safeScoringLeader.ppg} 分领跑全联盟，火力全开加冕 联盟 得分王！`
       : '全联盟最高单季得分火力！'
   );
 
@@ -571,9 +571,9 @@ export function calculateSeasonAwards(
   };
 
   const allNbaTeams = [
-    pickAllNbaTeam(1, '最佳阵容一阵 (All-NBA 1st)'),
-    pickAllNbaTeam(2, '最佳阵容二阵 (All-NBA 2nd)'),
-    pickAllNbaTeam(3, '最佳阵容三阵 (All-NBA 3rd)'),
+    pickAllNbaTeam(1, '最佳阵容一阵'),
+    pickAllNbaTeam(2, '最佳阵容二阵'),
+    pickAllNbaTeam(3, '最佳阵容三阵'),
   ];
 
   // 6. 最佳防守阵容 (All-Defensive 1st, 2nd) - 2 Guards + 3 Frontcourt
@@ -627,8 +627,8 @@ export function calculateSeasonAwards(
   };
 
   const allDefensiveTeams = [
-    pickDefTeam(1, '最佳防守一阵 (All-Defensive 1st)'),
-    pickDefTeam(2, '最佳防守二阵 (All-Defensive 2nd)'),
+    pickDefTeam(1, '最佳防守一阵'),
+    pickDefTeam(2, '最佳防守二阵'),
   ];
 
   // 7. 最佳新秀阵容 (All-Rookie 1st, 2nd) - strictly rookies first
@@ -673,8 +673,8 @@ export function calculateSeasonAwards(
   };
 
   const allRookieTeams = [
-    pickRookieTeam(1, '最佳新秀一阵 (All-Rookie 1st)'),
-    pickRookieTeam(2, '最佳新秀二阵 (All-Rookie 2nd)'),
+    pickRookieTeam(1, '最佳新秀一阵'),
+    pickRookieTeam(2, '最佳新秀二阵'),
   ];
 
   // Find user team seed
