@@ -859,24 +859,22 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
       </div>
       )}
 
-      {/* Retirement Action Box - Floating Sticky Bar at Bottom (Only available after completing rookie season) */}
+      {/* Compact retirement action (available after completing the rookie season). */}
       {careerHistory && careerHistory.length > 0 && (
-        <div className="sticky bottom-[3.8rem] md:bottom-4 z-30 bg-gradient-to-r from-[#11141b]/95 via-[#161c2a]/95 to-[#11141b]/95 backdrop-blur-md border-2 border-amber-500/60 p-3 sm:p-4 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] ring-2 ring-amber-400/40 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3 text-center sm:text-left my-2 mb-4">
-          <div className="min-w-0">
-            <h4 className="text-xs sm:text-sm font-black italic uppercase text-white flex items-center justify-center sm:justify-start gap-1.5">
-              <span className="text-amber-400">🏛️</span>
-              <span>宣布退役并进入奈史密斯篮球名人堂</span>
-            </h4>
-            <p className="text-[10px] sm:text-[11px] text-amber-300/80 font-mono mt-0.5">
-              结束辉煌的职业生涯，举行球衣退役仪式，正式入选联盟名人堂！
-            </p>
+        <div className="sticky bottom-[4.75rem] md:bottom-4 z-30 my-2 mb-4 flex items-center justify-between gap-3 rounded-xl border border-slate-700 bg-[#11141b]/95 p-2.5 sm:p-3 shadow-xl backdrop-blur-md">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-500/10 text-lg">🏛️</span>
+            <div className="min-w-0">
+              <h4 className="text-xs font-black text-white sm:text-sm">结束当前生涯</h4>
+              <p className="mt-0.5 truncate text-[10px] text-slate-400 sm:text-[11px]">结算并保存本次生涯记录</p>
+            </div>
           </div>
           <button
             type="button"
             onClick={onRetireCareer}
-            className="w-full sm:w-auto px-5 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-red-600 via-red-500 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black italic rounded-xl text-xs sm:text-sm uppercase tracking-wider shadow-xl shadow-red-950/50 transition-all active:scale-95 shrink-0 flex items-center justify-center gap-2 cursor-pointer ring-2 ring-red-400/40"
+            className="shrink-0 cursor-pointer rounded-lg bg-red-600 px-4 py-2.5 text-xs font-black text-white shadow-md transition-colors hover:bg-red-500 active:bg-red-700 sm:px-5 sm:text-sm"
           >
-            <span>正式退役并结算生涯</span>
+            宣布退役
           </button>
         </div>
       )}

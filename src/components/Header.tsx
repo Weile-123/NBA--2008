@@ -244,58 +244,58 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Mobile Bottom Fixed Navigation Bar (Option 1) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0d1017]/95 backdrop-blur-md border-t border-[#232834] px-1 py-1 md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.6)]">
-        <div className="grid grid-cols-5 gap-0.5 max-w-md mx-auto">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0d1017]/95 backdrop-blur-md border-t border-[#232834] px-1.5 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.6)]">
+        <div className="grid grid-cols-5 gap-1 max-w-md mx-auto">
           {/* 1. 赛季 */}
           <button
             onClick={() => handleTabClick('season')}
-            className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg transition-all cursor-pointer ${
+            className={`flex min-h-12 flex-col items-center justify-center py-2 px-1 rounded-lg transition-all cursor-pointer ${
               activeTab === 'season'
                 ? 'text-amber-400 font-bold bg-amber-500/10'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Calendar className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] tracking-tight leading-none font-bold">赛季</span>
+            <Calendar className="w-6 h-6 mb-1" />
+            <span className="text-[11px] tracking-tight leading-none font-bold">赛季</span>
           </button>
 
           {/* 2. 数据 */}
           <button
             onClick={() => handleTabClick('standings')}
-            className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg transition-all cursor-pointer ${
+            className={`flex min-h-12 flex-col items-center justify-center py-2 px-1 rounded-lg transition-all cursor-pointer ${
               activeTab === 'standings'
                 ? 'text-amber-400 font-bold bg-amber-500/10'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <BarChart3 className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] tracking-tight leading-none font-bold">数据</span>
+            <BarChart3 className="w-6 h-6 mb-1" />
+            <span className="text-[11px] tracking-tight leading-none font-bold">数据</span>
           </button>
 
           {/* 3. 球队 */}
           <button
             onClick={() => handleTabClick('roster')}
-            className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg transition-all cursor-pointer ${
+            className={`flex min-h-12 flex-col items-center justify-center py-2 px-1 rounded-lg transition-all cursor-pointer ${
               activeTab === 'roster'
                 ? 'text-amber-400 font-bold bg-amber-500/10'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Users className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] tracking-tight leading-none font-bold">球队</span>
+            <Users className="w-6 h-6 mb-1" />
+            <span className="text-[11px] tracking-tight leading-none font-bold">球队</span>
           </button>
 
           {/* 4. 社交 (带有闪烁绿点提示) */}
           <button
             onClick={() => handleTabClick('social')}
-            className={`relative flex flex-col items-center justify-center py-1.5 px-1 rounded-lg transition-all cursor-pointer ${
+            className={`relative flex min-h-12 flex-col items-center justify-center py-2 px-1 rounded-lg transition-all cursor-pointer ${
               activeTab === 'social'
                 ? 'text-amber-400 font-bold bg-amber-500/10'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <MessageSquare className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] tracking-tight leading-none font-bold">社交</span>
+            <MessageSquare className="w-6 h-6 mb-1" />
+            <span className="text-[11px] tracking-tight leading-none font-bold">社交</span>
             {hasSocialNotification && (
               <span className="absolute top-1 right-2.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#0d1017] shadow-[0_0_8px_rgba(52,211,153,0.9)] animate-pulse pointer-events-none" />
             )}
@@ -304,14 +304,14 @@ export const Header: React.FC<HeaderProps> = ({
           {/* 5. 更多 (抽屉入口) */}
           <button
             onClick={() => setIsMoreMenuOpen(true)}
-            className={`relative flex flex-col items-center justify-center py-1.5 px-1 rounded-lg transition-all cursor-pointer ${
+            className={`relative flex min-h-12 flex-col items-center justify-center py-2 px-1 rounded-lg transition-all cursor-pointer ${
               isMoreMenuOpen || ['timeline', 'milestones', 'hof', 'attributes'].includes(activeTab)
                 ? 'text-amber-400 font-bold bg-amber-500/10'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Grid className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] tracking-tight leading-none font-bold">更多</span>
+            <Grid className="w-6 h-6 mb-1" />
+            <span className="text-[11px] tracking-tight leading-none font-bold">更多</span>
             {hasUpgradableAttributes ? (
               <span className="absolute top-1 right-2.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#0d1017] shadow-[0_0_8px_rgba(52,211,153,0.9)] animate-pulse pointer-events-none" />
             ) : ['timeline', 'milestones', 'hof', 'attributes'].includes(activeTab) ? (

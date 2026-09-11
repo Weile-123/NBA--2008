@@ -234,7 +234,7 @@ export default function App() {
             setActiveTab={setActiveTab}
           />
 
-          <main className="max-w-7xl mx-auto px-2 sm:px-4 py-3 sm:py-6 pb-20 md:pb-6">
+          <main className="max-w-7xl mx-auto px-2 sm:px-4 py-3 sm:py-6 pb-24 md:pb-6">
             {activeTab === 'season' && (
               <SeasonDashboard
                 gameState={{

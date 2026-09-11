@@ -34,7 +34,7 @@ declare global {
         request: (options: { url: string; method?: string; data?: unknown; envId?: string; auth?: boolean }) => Promise<{ statusCode?: number; code?: number; message?: string; data?: unknown }>;
       };
       oss?: { uploadFile: (options: { file: Blob; filename?: string }) => Promise<{ downloadUrl?: string }> };
-      request?: { bbs?: { openPostEditor: (options: { title?: string; content?: string; imageUrl?: string }) => Promise<{ code?: number; message?: string }> } };
+      request?: { bbs?: { openPostEditor: (options: { topicId?: string; tagId?: string; topicName?: string; tagName?: string; title?: string; content?: string; imageUrl?: string }) => Promise<{ code?: number; message?: string; schema?: string }> } };
       vatask?: {
         completeRewardVideo?: () => Promise<{ code?: number; message?: string; data?: { rewarded?: boolean } }>;
       };

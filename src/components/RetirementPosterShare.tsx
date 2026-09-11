@@ -1,6 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { RetiredPlayerRecord } from '../types';
 
+const RETIREMENT_POST_DESTINATION = {
+  tagName: '篮坛传奇：重返2008',
+  tagId: '156671',
+  topicName: '步行街主干道',
+  topicId: '1',
+} as const;
+
 export function RetirementPosterShare({ record, onFinish }: { record: RetiredPlayerRecord; onFinish: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = useState<'idle' | 'uploading' | 'opening' | 'done' | 'error'>('idle');
@@ -27,7 +34,7 @@ export function RetirementPosterShare({ record, onFinish }: { record: RetiredPla
     if (status !== 'idle') return;
     const canvas = canvasRef.current; if (!canvas || !window.ColorboxAI?.oss?.uploadFile || !window.ColorboxAI?.request?.bbs?.openPostEditor) { setStatus('error'); setMessage('请在虎扑 App 内打开后分享海报'); return; }
     setStatus('uploading');
-    try { const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png')); if (!blob) throw Error('海报生成失败'); const upload = await window.ColorboxAI.oss.uploadFile({ file: blob, filename: `retirement-${Date.now()}.png` }); const url = upload.downloadUrl; if (!url || new URL(url).protocol !== 'https:') throw Error('海报上传失败'); setStatus('opening'); const opened = await window.ColorboxAI.request.bbs.openPostEditor({ title: `${record.player.name} 的生涯谢幕`, content: `我的球员以 ${record.goatScore} GOAT 积分退役，最高综评 ${record.peakOvr}。`, imageUrl: url }); if (opened.code !== 200) throw Error(opened.message || '发帖编辑器打开失败'); setStatus('done'); setMessage('已打开发帖编辑器'); } catch (error) { setStatus('error'); setMessage(error instanceof Error ? error.message : '分享失败'); }
+    try { const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png')); if (!blob) throw Error('海报生成失败'); const upload = await window.ColorboxAI.oss.uploadFile({ file: blob, filename: `retirement-${Date.now()}.png` }); const url = upload.downloadUrl; if (!url || new URL(url).protocol !== 'https:') throw Error('海报上传失败'); setStatus('opening'); const opened = await window.ColorboxAI.request.bbs.openPostEditor({ ...RETIREMENT_POST_DESTINATION, title: `${record.player.name} 的生涯谢幕`, content: `我的球员以 ${record.goatScore} GOAT 积分退役，最高综评 ${record.peakOvr}。`, imageUrl: url }); if (opened.code !== 200) throw Error(opened.message || '发帖编辑器打开失败'); setStatus('done'); setMessage('已打开发帖编辑器'); } catch (error) { setStatus('error'); setMessage(error instanceof Error ? error.message : '分享失败'); }
   };
   return <div className="fixed inset-0 z-[70] bg-black/85 p-4 overflow-y-auto"><div className="max-w-md mx-auto space-y-3"><canvas ref={canvasRef} className="w-full rounded-2xl border border-amber-500/50" /><p className="text-center text-sm text-slate-200">{message}</p><button onClick={share} disabled={status === 'uploading' || status === 'opening'} className="w-full rounded-xl bg-amber-500 py-3 text-black font-black">{status === 'uploading' ? '正在上传海报…' : status === 'opening' ? '正在打开编辑器…' : '生成海报并发帖'}</button><button onClick={onFinish} className="w-full rounded-xl bg-slate-700 py-3 text-white font-bold">返回首页</button></div></div>;
 }
