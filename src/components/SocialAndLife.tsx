@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PlayerProfile, SocialTweet, Endorsement, SignatureShoe } from '../types';
 import { INITIAL_ENDORSEMENTS, PERSONAL_ASSETS } from '../data/nbaData2008';
 import { MessageSquare, Twitter, DollarSign, Award, Sparkles, CheckCircle, Flame, Footprints, Lock } from 'lucide-react';
+import { getAssetPurchaseState, SALARY_DISPOSABLE_RATE } from '../utils/economy';
 
 interface SocialAndLifeProps {
   player: PlayerProfile;
@@ -9,6 +10,8 @@ interface SocialAndLifeProps {
   onUnlockEndorsement: (endorsementId: string) => void;
   onCreateSignatureShoe: (shoe: SignatureShoe) => void;
   onBuyLuxuryItem: (cost: number, benefit: string) => void;
+  careerSeasons: number;
+  currentYear: number;
 }
 
 export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
@@ -17,6 +20,8 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
   onUnlockEndorsement,
   onCreateSignatureShoe,
   onBuyLuxuryItem,
+  careerSeasons,
+  currentYear,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'endorsements' | 'lifestyle'>('endorsements');
 
@@ -54,8 +59,7 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
   });
 
   const hasPurchasableAssets = PERSONAL_ASSETS.some((asset) => {
-    const isPurchased = (player.purchasedAssetIds || []).includes(asset.id);
-    return !isPurchased && player.money >= asset.cost;
+    return getAssetPurchaseState(asset, player, careerSeasons, currentYear).canPurchase;
   });
 
   return (
@@ -359,6 +363,9 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
               <p className="text-[11px] text-slate-400 mt-0.5">
                 投资顶级设备、慈善项目、私人保障团队与高端商业，解锁阶梯式属性收益，构建你的商业帝国！
               </p>
+              <p className="mt-1 text-[10px] text-amber-300/80">
+                每季按合同年薪的 {Math.round(SALARY_DISPOSABLE_RATE * 100)}% 结算可支配资金；资产需按分类逐级解锁，大型资产每个赛季限购一项。
+              </p>
             </div>
             <div className="flex items-center gap-4 bg-[#181d28] px-3.5 py-2 rounded-lg border border-[#232834] self-start md:self-auto font-mono text-[11px]">
               <div>
@@ -387,8 +394,7 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
               const catAssets = PERSONAL_ASSETS.filter((a) => a.category === cat.id);
               const purchasedCount = catAssets.filter((a) => (player.purchasedAssetIds || []).includes(a.id)).length;
               const catHasPurchasable = catAssets.some((asset) => {
-                const isPurchased = (player.purchasedAssetIds || []).includes(asset.id);
-                return !isPurchased && player.money >= asset.cost;
+                return getAssetPurchaseState(asset, player, careerSeasons, currentYear).canPurchase;
               });
 
               return (
@@ -419,8 +425,8 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {filteredAssets.map((asset) => {
               const isPurchased = (player.purchasedAssetIds || []).includes(asset.id);
-              const hasMoney = player.money >= asset.cost;
-              const canBuy = !isPurchased && hasMoney;
+              const purchaseState = getAssetPurchaseState(asset, player, careerSeasons, currentYear);
+              const { hasMoney, canPurchase: canBuy } = purchaseState;
 
               return (
                 <div
@@ -445,7 +451,7 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
                             )}
                           </h5>
                           <span className="text-[9px] font-bold text-slate-400 bg-[#1e2330] px-1.5 py-0.5 rounded border border-[#232834] uppercase tracking-wider block mt-1 w-max">
-                            {asset.categoryLabel}
+                            {asset.categoryLabel} · {purchaseState.tierLabel}{purchaseState.isMajor ? ' · 大型资产' : ''}
                           </span>
                         </div>
                       </div>
@@ -479,16 +485,19 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
                             <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> 已置办
                           </span>
                         ) : (
-                          <button
-                            onClick={() => onBuyLuxuryItem(asset.cost, asset.id)}
-                            disabled={!canBuy}
-                            className={`px-3 py-1.5 disabled:opacity-40 text-black font-black italic rounded text-[11px] uppercase transition-all transform active:scale-95 ${!hasMoney
-                                ? 'bg-[#202533] text-slate-500 cursor-not-allowed opacity-60'
-                                : 'bg-amber-500 hover:bg-amber-400'
-                              }`}
-                          >
-                            {hasMoney ? '点击购置' : '资金不足'}
-                          </button>
+                          <div className="max-w-[10rem] text-right">
+                            <button
+                              onClick={() => onBuyLuxuryItem(asset.cost, asset.id)}
+                              disabled={!canBuy}
+                              className={`px-3 py-1.5 disabled:opacity-50 font-black rounded text-[11px] transition-all active:scale-95 ${canBuy
+                                  ? 'bg-amber-500 text-black hover:bg-amber-400'
+                                  : 'bg-[#202533] text-slate-500 cursor-not-allowed'
+                                }`}
+                            >
+                              {canBuy ? '点击购置' : purchaseState.unlocked && !hasMoney ? '资金不足' : '暂未解锁'}
+                            </button>
+                            {!canBuy && <p className="mt-1 text-[9px] leading-tight text-slate-500">{purchaseState.reason}</p>}
+                          </div>
                         )}
                       </div>
                     </div>

@@ -3,8 +3,14 @@ import { INITIAL_ENDORSEMENTS,PERSONAL_ASSETS } from '../data/nbaData2008';
 import { PlayerProfile,SignatureShoe } from '../types';
 import { getPlayerBaseOvr, getPlayerCareerPeakOvr, getUserPlayerAgePenalty } from '../utils/calc2k';
 import { completeRewardedAd } from '../lib/rewardedAd';
+import { getAssetPurchaseState } from '../utils/economy';
 
-export function usePlayerActions(player: PlayerProfile | null, setPlayer: Dispatch<SetStateAction<PlayerProfile | null>>) {
+export function usePlayerActions(
+  player: PlayerProfile | null,
+  setPlayer: Dispatch<SetStateAction<PlayerProfile | null>>,
+  careerSeasons: number,
+  currentYear: number,
+) {
   const spendAttributePoints = (
     attrKey: keyof PlayerProfile['attributes'],
     requestedPoints: number,
@@ -234,10 +240,13 @@ export function usePlayerActions(player: PlayerProfile | null, setPlayer: Dispat
   const handleBuyLuxuryItem = (cost: number, assetId: string) => {
     if (!player) return;
     const asset = PERSONAL_ASSETS.find((a) => a.id === assetId);
-    if (!asset || player.money < asset.cost) return;
+    if (!asset) return;
 
     const purchasedIds = player.purchasedAssetIds || [];
     if (purchasedIds.includes(assetId)) return;
+
+    const purchaseState = getAssetPurchaseState(asset, player, careerSeasons, currentYear);
+    if (!purchaseState.canPurchase) return;
 
     const updatedPurchasedIds = [...purchasedIds, assetId];
 
@@ -253,6 +262,7 @@ export function usePlayerActions(player: PlayerProfile | null, setPlayer: Dispat
       money: player.money - asset.cost,
       ovr: newOvr,
       purchasedAssetIds: updatedPurchasedIds,
+      majorAssetPurchaseYear: purchaseState.isMajor ? currentYear : player.majorAssetPurchaseYear,
       morale: Math.min(100, player.morale + 15),
     });
   };

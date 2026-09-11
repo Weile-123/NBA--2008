@@ -181,6 +181,7 @@ export interface PlayerProfile {
   fansCount: number;
   mediaReputation: number; // 0-100
   purchasedAssetIds?: string[];
+  majorAssetPurchaseYear?: number;
   lastAgePenalty?: number;
   age?: number;
   peakAge?: number;

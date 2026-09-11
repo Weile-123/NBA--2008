@@ -223,6 +223,7 @@ export default function App() {
             player={player}
             currentTeam={currentTeam}
             currentYear={currentYear}
+            careerSeasons={careerHistory.length}
             seasonWeek={currentSeasonWeek}
             isPlayoffs={isPlayoffs}
             onOpenAttributes={() => setActiveTab('attributes')}
@@ -319,6 +320,8 @@ export default function App() {
                 onUnlockEndorsement={handleUnlockEndorsement}
                 onCreateSignatureShoe={handleCreateSignatureShoe}
                 onBuyLuxuryItem={handleBuyLuxuryItem}
+                careerSeasons={careerHistory.length}
+                currentYear={currentYear}
               />
             )}
 

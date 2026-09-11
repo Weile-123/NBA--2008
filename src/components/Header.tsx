@@ -23,11 +23,13 @@ import {
 } from 'lucide-react';
 import { INITIAL_ENDORSEMENTS, PERSONAL_ASSETS } from '../data/nbaData2008';
 import { getPlayerBaseOvr, getUserPlayerAgePenalty } from '../utils/calc2k';
+import { getAssetPurchaseState } from '../utils/economy';
 
 interface HeaderProps {
   player: PlayerProfile;
   currentTeam: Team;
   currentYear: number;
+  careerSeasons: number;
   seasonWeek: number;
   isPlayoffs: boolean;
   onOpenAttributes: () => void;
@@ -43,6 +45,7 @@ export const Header: React.FC<HeaderProps> = ({
   player,
   currentTeam,
   currentYear,
+  careerSeasons,
   seasonWeek,
   isPlayoffs,
   onOpenAttributes,
@@ -71,8 +74,7 @@ export const Header: React.FC<HeaderProps> = ({
   });
 
   const hasPurchasableAssets = PERSONAL_ASSETS.some((asset) => {
-    const isPurchased = (player.purchasedAssetIds || []).includes(asset.id);
-    return !isPurchased && player.money >= asset.cost;
+    return getAssetPurchaseState(asset, player, careerSeasons, currentYear).canPurchase;
   });
 
   const hasSocialNotification = hasSignableEndorsements || hasPurchasableAssets;

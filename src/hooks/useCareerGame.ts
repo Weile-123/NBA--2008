@@ -10,6 +10,7 @@ import { progressLeagueForNewSeason } from '../utils/progressionLogic';
 import { clearGameStorage,hydrateGameStorage,loadGameFromStorage,SavedData,saveGameToStorage,SaveSlotId } from '../utils/storage';
 import { useAutoSave } from './useAutoSave';
 import { usePlayerActions } from './usePlayerActions';
+import { calculateDisposableSalary } from '../utils/economy';
 import { useSeasonSimulation } from './useSeasonSimulation';
 
 import { detectNewMilestones,MilestoneTrigger } from '../data/milestonesData';
@@ -639,7 +640,7 @@ export function useCareerGame() {
       isRookie: true,
       draftPick: newPlayer.draftPick || calculateUserDraftPick(newPlayer.ovr),
       contract: {
-        salaryPerYear: 3.8,
+        salaryPerYear: 3800000,
         yearsLeft: 3,
         totalYears: 3,
         isRookieContract: true,
@@ -808,7 +809,7 @@ export function useCareerGame() {
     setTweets,
   });
 
-  const { handleUpgradeAttribute, handleAddSkillPoints, handleWatchAttributeAd, handleAllInAttribute, handleResetAttribute, handleWorkout, handleRest, handleUnlockEndorsement, handleCreateSignatureShoe, handleBuyLuxuryItem, handleRequestTrade } = usePlayerActions(player, setPlayer);
+  const { handleUpgradeAttribute, handleAddSkillPoints, handleWatchAttributeAd, handleAllInAttribute, handleResetAttribute, handleWorkout, handleRest, handleUnlockEndorsement, handleCreateSignatureShoe, handleBuyLuxuryItem, handleRequestTrade } = usePlayerActions(player, setPlayer, careerHistory.length, currentYear);
 
   // Advance to next season handler
   const handleNextSeason = () => {
@@ -852,10 +853,12 @@ export function useCareerGame() {
     });
     setSchedule(newSchedule);
 
-    // Season salary payout
+    // Contract value remains visible in full; 12% becomes spendable after taxes,
+    // representation and normal living costs.
+    const disposableSalary = calculateDisposableSalary(player.contract.salaryPerYear);
     const finalPlayer: PlayerProfile = {
       ...(updatedUserPlayer || player),
-      money: player.money + player.contract.salaryPerYear,
+      money: player.money + disposableSalary,
       seasonStats: { games: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, minutes: 0 },
       energy: 100,
       freeAgencyOfferRefreshUsed: false,
