@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Play, PlusCircle, FolderOpen, Settings, Trophy, Shield, Sparkles, UserCheck, Flame, Download, Upload, ArrowRight, AlertTriangle, Globe, Loader2 } from 'lucide-react';
 import { SaveSlotMeta, getAllSaveSlotsMeta } from '../utils/storage';
 import { TeamLogo } from './TeamLogo';
-import { fetchGlobalHallOfFame } from '../lib/globalLeaderboard';
+import { fetchGlobalHallOfFame, retryPendingGlobalHallOfFameUpload } from '../lib/globalLeaderboard';
 
 interface HomeScreenProps {
   hasActiveSave: boolean;
@@ -37,7 +37,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
     const loadTopLegend = () => {
       if (!isMounted) return;
-      fetchGlobalHallOfFame()
+      void retryPendingGlobalHallOfFameUpload().catch((error) => console.warn('全网传奇榜待上传记录暂未同步', error)).finally(() => fetchGlobalHallOfFame()
         .then((records) => {
           if (isMounted) {
             if (records && records.length > 0 && records[0]?.player?.name) {
@@ -58,7 +58,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               retryTimer = setTimeout(loadTopLegend, 3500);
             } else { setTopLegendName(''); setTopLegendScore(null); setIsBannerLoading(false); setIsBannerTimeout(false); }
           }
-        });
+        }));
     };
 
     loadTopLegend();
@@ -91,7 +91,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       {/* Top Global Legend Scrolling Banner Ticker */}
       <div 
         onClick={onOpenGlobalHallOfFame || onOpenHallOfFame}
-        className="relative z-30 w-full bg-gradient-to-r from-amber-950/90 via-amber-900/95 to-amber-950/90 border-b border-amber-500/40 text-amber-200 text-xs py-2 overflow-hidden cursor-pointer group shadow-lg select-none transition-colors hover:bg-amber-900/95"
+        className="safe-area-home-banner relative z-30 w-full bg-gradient-to-r from-amber-950/90 via-amber-900/95 to-amber-950/90 border-b border-amber-500/40 text-amber-200 text-xs py-2 overflow-hidden cursor-pointer group shadow-lg select-none transition-colors hover:bg-amber-900/95"
         title="点击查看全网传奇榜"
       >
         <div className="w-full max-w-7xl mx-auto px-4 flex items-center overflow-hidden">
@@ -158,7 +158,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
         {/* Hero Title & Subtitle Area */}
         <main className="relative z-10 w-full max-w-4xl flex flex-col items-center my-auto py-8 text-center">
-          <img src="/logos/league.svg" alt="篮坛传奇：篮球与篮筐" className="w-16 h-16 sm:w-20 sm:h-20 mb-4" />
+          <img
+            src="./game-logo.jpg"
+            alt="篮坛传奇：重返2008"
+            width={128}
+            height={128}
+            loading="eager"
+            fetchPriority="high"
+            className="w-24 h-24 sm:w-32 sm:h-32 mb-4 rounded-2xl border border-amber-400/40 object-cover shadow-2xl"
+          />
           <div className="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/20 via-amber-400/10 to-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-black tracking-widest uppercase shadow-lg">
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             <span>黄金时代 ·  2008-2025</span>

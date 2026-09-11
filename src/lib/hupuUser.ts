@@ -20,6 +20,8 @@ interface HupuUserInfoResponse {
 
 declare global {
   interface Window {
+    /** CloudBase gateway value injected by the activity host at publish time. */
+    ACTIVITY_API_BASE?: string;
     ColorboxAI?: {
       auth?: {
         getUserInfo: () => Promise<HupuUserInfoResponse>;
@@ -33,7 +35,9 @@ declare global {
       };
       oss?: { uploadFile: (options: { file: Blob; filename?: string }) => Promise<{ downloadUrl?: string }> };
       request?: { bbs?: { openPostEditor: (options: { title?: string; content?: string; imageUrl?: string }) => Promise<{ code?: number; message?: string }> } };
-      ad?: { watchRewardedVideo?: () => Promise<{ code?: number }> };
+      vatask?: {
+        completeRewardVideo?: () => Promise<{ code?: number; message?: string; data?: { rewarded?: boolean } }>;
+      };
     };
   }
 }

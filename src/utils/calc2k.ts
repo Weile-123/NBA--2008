@@ -1,4 +1,4 @@
-import { Attributes, AttributeCaps, Position, PlayerProfile } from '../types';
+import { Attributes, AttributeCaps, Position, PlayerProfile, RetiredPlayerRecord } from '../types';
 import { PERSONAL_ASSETS } from '../data/nbaData2008';
 
 const PHYSICAL_ATTRS: (keyof Attributes)[] = ['speed', 'vertical', 'stamina', 'layup', 'dunk', 'insideFinish'];
@@ -69,6 +69,8 @@ export function getUserPlayerAgePenalty(age: number = 19): number {
 
 export function syncPlayerAgeDecay(player: PlayerProfile): PlayerProfile {
   if (!player) return player;
+
+  const careerPeakOvr = getPlayerCareerPeakOvr(player);
 
   const age = player.age || 19;
   const newPenalty = getUserPlayerAgePenalty(age);
@@ -146,7 +148,9 @@ export function syncPlayerAgeDecay(player: PlayerProfile): PlayerProfile {
     lastAgePenalty: newPenalty,
   };
 
-  updatedPlayer.ovr = getPlayerTotalOvr(updatedPlayer);
+  updatedPlayer.ovr = getPlayerBaseOvr(updatedPlayer);
+  updatedPlayer.peakOvr = Math.max(careerPeakOvr, updatedPlayer.ovr);
+  updatedPlayer.peakOvrTracked = true;
 
   return updatedPlayer;
 }
@@ -157,6 +161,41 @@ export function getPlayerTotalOvr(player: PlayerProfile): number {
   const agePenalty = getUserPlayerAgePenalty(player.age || 19);
   const maxCap = 99 - agePenalty;
   return Math.min(maxCap, Math.max(40, rawOvr));
+}
+
+/**
+ * Player card/training OVR. Off-court rewards remain attribute bonuses, but do
+ * not consume the player's trainable OVR ceiling.
+ */
+export function getPlayerBaseOvr(player: PlayerProfile): number {
+  const baseAttrs = { ...DEFAULT_ATTRS, ...(player.attributes || {}) };
+  const rawOvr = calculate2KOvr(player.position, baseAttrs);
+  const agePenalty = getUserPlayerAgePenalty(player.age || 19);
+  const maxCap = 99 - agePenalty;
+  return Math.min(maxCap, Math.max(40, rawOvr));
+}
+
+/** Returns the highest base OVR reached during the player's career. */
+export function getPlayerCareerPeakOvr(player: PlayerProfile, historicalOvrs: number[] = []): number {
+  const currentBaseOvr = getPlayerBaseOvr(player);
+  // Legacy saves missed some upgrade paths. Aging subtracts lastAgePenalty from
+  // the user's OVR, so reversing that known loss recovers the prior peak.
+  const recordedPeak = player.peakOvrTracked ? (player.peakOvr || 0) : 0;
+  const preDeclineOvr = recordedPeak <= currentBaseOvr
+    ? Math.min(99, currentBaseOvr + Math.max(0, player.lastAgePenalty || 0))
+    : 0;
+  return Math.max(currentBaseOvr, preDeclineOvr, recordedPeak, ...historicalOvrs.filter(Number.isFinite));
+}
+
+/** Normalizes legacy retirement records whose peak was saved as final OVR. */
+export function normalizeRetiredPlayerPeak(record: RetiredPlayerRecord): RetiredPlayerRecord {
+  const inferredPeak = (record.peakOvr || 0) <= record.finalOvr
+    ? Math.min(99, record.finalOvr + getUserPlayerAgePenalty(record.retireAge))
+    : 0;
+  const peakOvr = Math.max(record.peakOvr || 0, record.finalOvr, inferredPeak);
+  return peakOvr === record.peakOvr && record.peakOvrTracked
+    ? record
+    : { ...record, peakOvr, peakOvrTracked: true };
 }
 
 export const POSITION_WEIGHTS: Record<Position, Record<keyof Attributes, number>> = {
@@ -700,6 +739,3 @@ export function getHofSpeechInfo(rank: number, playerName: string): HofSpeechInf
     };
   }
 }
-
-
-

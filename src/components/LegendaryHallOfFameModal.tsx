@@ -29,9 +29,10 @@ import {
 } from 'lucide-react';
 import { RetiredPlayerRecord } from '../types';
 import { getHallOfFameLegends, deleteHallOfFameLegend, saveHallOfFameLegend } from '../utils/storage';
-import { fetchGlobalHallOfFame } from '../lib/globalLeaderboard';
+import { fetchGlobalHallOfFame, retryPendingGlobalHallOfFameUpload } from '../lib/globalLeaderboard';
 import { TeamLogo } from './TeamLogo';
 import { NBA_TEAMS_2008 } from '../data/nbaData2008';
+import { formatLocalDateTime } from '../utils/dateTime';
 
 interface LegendaryHallOfFameModalProps {
   isOpen?: boolean;
@@ -131,6 +132,8 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
   const [legends, setLegends] = useState<RetiredPlayerRecord[]>([]);
   const [isLoadingGlobal, setIsLoadingGlobal] = useState<boolean>(false);
   const [isTimeoutGlobal, setIsTimeoutGlobal] = useState<boolean>(false);
+  const [globalError, setGlobalError] = useState<string | null>(null);
+  const [globalRefreshVersion, setGlobalRefreshVersion] = useState(0);
   const [selectedLegend, setSelectedLegend] = useState<RetiredPlayerRecord | null>(null);
   const [searchQuery] = useState('');
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<RetiredPlayerRecord | null>(null);
@@ -221,13 +224,15 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
       setLegends(stored);
       setIsLoadingGlobal(false);
       setIsTimeoutGlobal(false);
+      setGlobalError(null);
     } else {
       setIsLoadingGlobal(true);
       setIsTimeoutGlobal(false);
+      setGlobalError(null);
 
       const loadGlobal = () => {
         if (!isMounted) return;
-        fetchGlobalHallOfFame()
+        void retryPendingGlobalHallOfFameUpload().catch((error) => console.warn('全网传奇榜待上传记录暂未同步', error)).finally(() => fetchGlobalHallOfFame()
           .then((records) => {
             if (isMounted) {
               setLegends(records.map(sanitizeLegend));
@@ -248,9 +253,10 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
                 console.error('Failed to fetch global hall of fame:', err);
                 setIsLoadingGlobal(false);
                 setIsTimeoutGlobal(false);
+                setGlobalError(err?.message || '全网传奇榜暂时不可用，请稍后重试');
               }
             }
-          });
+          }));
       };
 
       loadGlobal();
@@ -260,7 +266,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
       isMounted = false;
       if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [isOpen, tabMode]);
+  }, [isOpen, tabMode, globalRefreshVersion]);
 
   if (isOpen === false) return null;
 
@@ -755,6 +761,17 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
                     )}
                   </div>
                 </div>
+              ) : globalError && tabMode === 'global' ? (
+                <div className="p-8 sm:p-12 rounded-2xl bg-[#111522] border border-red-400/30 text-center space-y-4 my-4">
+                  <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-400/30 mx-auto flex items-center justify-center text-3xl">⚠️</div>
+                  <div className="max-w-md mx-auto space-y-1">
+                    <h3 className="text-base font-bold text-white">全网传奇榜暂时无法加载</h3>
+                    <p className="text-xs text-slate-400 leading-relaxed font-mono">{globalError}</p>
+                  </div>
+                  <button type="button" onClick={() => setGlobalRefreshVersion((version) => version + 1)} className="mx-auto inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 text-xs font-bold transition-colors">
+                    <RefreshCw className="w-3.5 h-3.5" />重新加载
+                  </button>
+                </div>
               ) : sortedLegends.length > 0 ? (
                 <div className="grid grid-cols-1 gap-3 sm:gap-3.5">
                   {sortedLegends.map((legend, index) => (
@@ -784,10 +801,15 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
 
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              {/* 名字 */}
-                              <span className="text-base sm:text-lg font-black text-white italic truncate">
-                                {legend.player.name}
-                              </span>
+                              {tabMode === 'local' ? (
+                                <span className="text-base sm:text-lg font-black text-amber-300 italic font-mono truncate">
+                                  {legend.goatScore} <span className="text-xs sm:text-sm not-italic">GOAT分</span>
+                                </span>
+                              ) : (
+                                <span className="text-base sm:text-lg font-black text-white italic truncate">
+                                  {legend.player.name}
+                                </span>
+                              )}
                               <span className="hidden sm:inline-block text-xs font-mono text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">
                                 {legend.player.position}
                               </span>
@@ -811,10 +833,15 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
                             <span>🎖️ {legend.careerAccolades.fmvps} FMVP</span>
                           </div>
 
-                          {/* GOAT 分 */}
-                          <div className="px-2.5 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono font-black text-xs sm:text-sm shrink-0">
-                            {legend.goatScore} <span className="text-[10px] sm:text-xs">GOAT分</span>
-                          </div>
+                          {tabMode === 'local' ? (
+                            <div className="px-2.5 py-1.5 rounded-xl bg-[#0d111a] border border-[#2b3448] text-slate-300 font-mono font-bold text-[11px] sm:text-xs shrink-0">
+                              {formatLocalDateTime(legend.retireDate)}
+                            </div>
+                          ) : (
+                            <div className="px-2.5 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono font-black text-xs sm:text-sm shrink-0">
+                              {legend.goatScore} <span className="text-[10px] sm:text-xs">GOAT分</span>
+                            </div>
+                          )}
 
                           <div className="flex items-center gap-1.5 shrink-0">
                             {/* 查看详情按钮 */}

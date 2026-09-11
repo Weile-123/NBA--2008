@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { X, Save, FolderOpen, Download, Upload, Trash2, CheckCircle2, UserCheck, AlertTriangle, ShieldCheck, Flame } from 'lucide-react';
-import { SaveSlotId, SaveSlotMeta, getAllSaveSlotsMeta, loadGameFromStorage, saveGameToStorage, exportSaveToFile, importSaveFromJson, clearSlotStorage, SavedData } from '../utils/storage';
+import React, { useState, useEffect } from 'react';
+import { X, Save, FolderOpen, Trash2 } from 'lucide-react';
+import { SaveSlotId, SaveSlotMeta, getAllSaveSlotsMeta, loadGameFromStorage, clearSlotStorage, SavedData } from '../utils/storage';
 
 interface SaveSlotsModalProps {
   isOpen: boolean;
@@ -23,7 +23,6 @@ export const SaveSlotsModal: React.FC<SaveSlotsModalProps> = ({
 }) => {
   const [slots, setSlots] = useState<SaveSlotMeta[]>(() => getAllSaveSlotsMeta());
   const [confirmDeleteSlot, setConfirmDeleteSlot] = useState<SaveSlotId | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) setSlots(getAllSaveSlotsMeta());
@@ -46,16 +45,6 @@ export const SaveSlotsModal: React.FC<SaveSlotsModalProps> = ({
     }
   };
 
-  const handleExportSlot = (slotId: SaveSlotId) => {
-    const data = loadGameFromStorage(slotId);
-    if (data && data.player) {
-      exportSaveToFile(data);
-      onShowToast(`📥 已导出 [${data.player.name}] 存档 JSON 文件`);
-    } else {
-      onShowToast('⚠️ 该槽位没有可以导出的存档');
-    }
-  };
-
   const handleDeleteSlot = (slotId: SaveSlotId) => {
     const isDeletingCurrent = slotId === currentSlotId && !!currentSaveData?.player;
     clearSlotStorage(slotId);
@@ -69,43 +58,8 @@ export const SaveSlotsModal: React.FC<SaveSlotsModalProps> = ({
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      if (content) {
-        const importedData = importSaveFromJson(content);
-        if (importedData && importedData.player) {
-          const slotToUse = importedData.slotId || 'slot_1';
-          saveGameToStorage(importedData, slotToUse);
-          refreshSlots();
-          onLoadSaveData(importedData, slotToUse);
-          // No toast on load
-          onClose();
-        } else {
-          onShowToast('❌ 导入失败：JSON 文件格式不兼容或数据缺失');
-        }
-      }
-    };
-    reader.readAsText(file);
-    // Reset file input
-    e.target.value = '';
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in select-none">
-      {/* File Input Hidden */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileUpload}
-        accept=".json"
-        className="hidden"
-      />
-
       <div className="relative w-full max-w-3xl bg-[#121620] border border-[#232a3d] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="p-4 sm:p-5 bg-gradient-to-r from-[#171d2b] to-[#121620] border-b border-[#232a3d] flex items-center justify-between">
@@ -125,29 +79,10 @@ export const SaveSlotsModal: React.FC<SaveSlotsModalProps> = ({
 
         {/* Content Body */}
         <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1 custom-scrollbar">
-          {/* Quick Import / Backup Action Bar */}
-          <div className="p-3.5 rounded-xl bg-[#181e2e] border border-[#232a3d] flex flex-wrap items-center justify-between gap-3">
+          <div className="p-3.5 rounded-xl bg-[#181e2e] border border-[#232a3d]">
             <div className="text-xs text-slate-300">
               <span className="font-bold text-white">⚡ 防 SL 实时自动归档模式：</span>
-              您可以随时读取其它槽位的历史存档，或备份/导出 JSON 存档文件。
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 hover:text-white text-xs font-bold transition-all cursor-pointer active:scale-95"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span>导入 JSON 存档文件</span>
-              </button>
-              {currentSaveData && currentSaveData.player && (
-                <button
-                  onClick={() => exportSaveToFile(currentSaveData)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold transition-all cursor-pointer active:scale-95"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>备份导出 JSON 存档</span>
-                </button>
-              )}
+              您可以随时读取其它槽位的历史存档；游戏进度会自动保存到当前活动的本地存储。
             </div>
           </div>
 
@@ -229,17 +164,6 @@ export const SaveSlotsModal: React.FC<SaveSlotsModalProps> = ({
                         >
                           <FolderOpen className="w-3.5 h-3.5" />
                           <span>读取载入</span>
-                        </button>
-                      )}
-
-                      {/* Export Button (If slot not empty) */}
-                      {!slot.isEmpty && (
-                        <button
-                          onClick={() => handleExportSlot(slot.slotId)}
-                          className="p-1.5 rounded-lg bg-[#222b3e] hover:bg-[#2c3750] text-slate-300 hover:text-white transition-colors cursor-pointer"
-                          title="导出 JSON 文件"
-                        >
-                          <Download className="w-4 h-4 text-emerald-400" />
                         </button>
                       )}
 

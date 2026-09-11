@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { PlayerProfile, Team, RosterPlayer, Attributes } from '../types';
 import { getRandomOffseasonEvent, OffseasonEvent } from '../data/offseasonEvents';
-import { ContractOffer, generateContractOfferForTeam, generateFreeAgencyOffers } from '../utils/contractLogic';
+import { ContractOffer, generateContractOfferForTeam, generateFreeAgencyOffers, regenerateFreeAgencyOffers } from '../utils/contractLogic';
 import { TeamLogo } from './TeamLogo';
 import { DraftNightModal } from './DraftNightModal';
 import { getHistoricalDraftData } from '../data/draftData';
-import { getPlayerTotalOvr, getUserPlayerAgePenalty } from '../utils/calc2k';
+import { getPlayerBaseOvr, getUserPlayerAgePenalty } from '../utils/calc2k';
 import { PERSONAL_ASSETS } from '../data/nbaData2008';
 import {
   Dumbbell,
@@ -33,6 +33,8 @@ import {
   Check,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { completeRewardedAd } from '../lib/rewardedAd';
+import { RewardedRefreshButton } from './RewardedRefreshButton';
 
 const REMAKE_ATTR_OPTIONS: { key: keyof Attributes; label: string; cat: string; icon: string }[] = [
   { key: 'midRange', label: '中投', cat: '投篮', icon: '🎯' },
@@ -136,6 +138,12 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
   const setFreeAgencyOffers = (o: ContractOffer[]) => onSetFreeAgencyOffers?.(o);
 
   useEffect(() => {
+    if (freeAgencyOffers.length > 3) {
+      setFreeAgencyOffers(freeAgencyOffers.slice(0, 3));
+    }
+  }, [freeAgencyOffers]);
+
+  useEffect(() => {
     if (!hasDraftForCurrentYear && !isDraftCompleted) {
       setIsDraftCompleted(true);
       setOffseasonPhase(isContractExpired && !isContractCompleted ? 'contract' : 'training');
@@ -145,6 +153,7 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
   // Modals for Contract view
   const [viewingRosterTeam, setViewingRosterTeam] = useState<Team | null>(null);
   const [pendingSignOffer, setPendingSignOffer] = useState<ContractOffer | null>(null);
+  const [isRefreshingOffers, setIsRefreshingOffers] = useState(false);
 
   // Random Offseason Event Modal
   const [activeEvent, setActiveEvent] = useState<OffseasonEvent | null>(null);
@@ -169,6 +178,22 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
     const offers = generateFreeAgencyOffers(player.ovr, currentTeam.id, teams);
     setFreeAgencyOffers(offers);
     setContractStep('free_agency');
+  };
+
+  const handleRefreshFreeAgencyOffers = async () => {
+    if (isRefreshingOffers || player.freeAgencyOfferRefreshUsed) return;
+    setIsRefreshingOffers(true);
+    try {
+      if (!await completeRewardedAd()) {
+        return;
+      }
+      setFreeAgencyOffers(regenerateFreeAgencyOffers(player.ovr, currentTeam.id, teams, freeAgencyOffers));
+      onUpdatePlayer({ ...player, freeAgencyOfferRefreshUsed: true });
+    } catch {
+      // Silently restore the button when the ad cannot be opened.
+    } finally {
+      setIsRefreshingOffers(false);
+    }
   };
 
   // 3. Open Contract Signing Confirmation Modal
@@ -199,21 +224,26 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
   // OVR Cap limit check for 专项训练 (Skill Workout)
   const agePenalty = getUserPlayerAgePenalty(player.age || 19);
   const maxOvrCap = 99 - agePenalty;
-  const currentOvr = getPlayerTotalOvr(player);
-
+  const availableFitnessAttrsCount = REMAKE_ATTR_OPTIONS.filter((item) => {
+    const cap = (player.attributeCaps && player.attributeCaps[item.key] !== undefined)
+      ? player.attributeCaps[item.key]
+      : 90;
+    return cap < maxOvrCap;
+  }).length;
   const allAttrsAtCap = ALL_ATTR_KEYS.every((k) => {
     const val = player.attributes[k] || 50;
     const cap = (player.attributeCaps && player.attributeCaps[k]) ? player.attributeCaps[k] : maxOvrCap;
     return val >= cap;
   });
 
-  const isTrainingDisabled = currentOvr >= maxOvrCap || allAttrsAtCap;
+  const isTrainingDisabled = getPlayerBaseOvr(player) >= maxOvrCap || allAttrsAtCap;
 
   // Handle 4-Month Plan Selection
   const handleSelectPlan = (planId: 'training' | 'fitness' | 'tournament' | 'commercial') => {
     if (offseasonMonth > 4) return;
 
     if (planId === 'fitness') {
+      if (availableFitnessAttrsCount === 0) return;
       setSelectedFitnessAttrs([]);
       setIsFitnessModalOpen(true);
       return;
@@ -257,13 +287,7 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
 
   // Confirm Fitness 3-attribute Cap Boost Selection
   const handleConfirmFitnessCapBoost = () => {
-    const availableAttrsCount = REMAKE_ATTR_OPTIONS.filter((item) => {
-      const cap = (player.attributeCaps && player.attributeCaps[item.key] !== undefined)
-        ? player.attributeCaps[item.key]
-        : 90;
-      return cap < 99;
-    }).length;
-    const targetRequiredCount = Math.min(3, availableAttrsCount);
+    const targetRequiredCount = Math.min(3, availableFitnessAttrsCount);
 
     if (selectedFitnessAttrs.length !== targetRequiredCount || targetRequiredCount === 0 || offseasonMonth > 4) return;
 
@@ -272,7 +296,7 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
 
     selectedFitnessAttrs.forEach((attrKey) => {
       const currentCap = newCaps[attrKey] ?? 90;
-      newCaps[attrKey] = Math.min(99, Math.min(maxOvrCap, currentCap + 2));
+      newCaps[attrKey] = Math.min(maxOvrCap, currentCap + 2);
     });
 
     updatedPlayer.attributeCaps = newCaps;
@@ -620,13 +644,22 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
           </div>
 
           {contractStep !== 'decision' && (
-            <button
-              type="button"
-              onClick={() => setContractStep('decision')}
-              className="px-2.5 py-1 bg-[#1a2130] hover:bg-[#253046] text-slate-300 text-xs font-bold rounded-lg border border-[#2b354b] transition-all flex items-center gap-1 cursor-pointer"
-            >
-              ← 返回选项
-            </button>
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setContractStep('decision')}
+                className="px-2.5 py-1 bg-[#1a2130] hover:bg-[#253046] text-slate-300 text-xs font-bold rounded-lg border border-[#2b354b] transition-all flex items-center gap-1 cursor-pointer"
+              >
+                ← 返回选项
+              </button>
+              {contractStep === 'free_agency' && (
+                <RewardedRefreshButton
+                  loading={isRefreshingOffers}
+                  disabled={Boolean(player.freeAgencyOfferRefreshUsed)}
+                  onClick={handleRefreshFreeAgencyOffers}
+                />
+              )}
+            </div>
           )}
 
           {/* STEP A: Decision Options (续约 / 自由市场) */}
@@ -673,7 +706,7 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
                         进入自由球员市场
                       </h3>
                       <p className="text-[10px] text-slate-400 font-mono">
-                        全联盟试水 · 试接收 5 队报价
+                        全联盟试水 · 接收 3 队报价
                       </p>
                     </div>
                   </div>
@@ -762,10 +795,10 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-black italic text-white flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-cyan-400" /> 自由市场 5 队报价列表
+                  <Building2 className="w-3.5 h-3.5 text-cyan-400" /> 自由市场 3 队报价列表
                 </h3>
                 <span className="text-[10px] text-slate-400 font-mono">
-                  共 5 份提案
+                  共 {freeAgencyOffers.length} 份提案
                 </span>
               </div>
 
@@ -1002,11 +1035,16 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
 
                   <button
                     type="button"
+                    disabled={availableFitnessAttrsCount === 0}
                     onClick={() => handleSelectPlan('fitness')}
-                    className="w-full py-2 bg-cyan-500 hover:bg-cyan-400 text-black font-black italic text-xs rounded-lg transition-all uppercase cursor-pointer flex items-center justify-center gap-1 shadow-md"
+                    className={`w-full py-2 font-black italic text-xs rounded-lg transition-all uppercase flex items-center justify-center gap-1 shadow-md ${
+                      availableFitnessAttrsCount === 0
+                        ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60'
+                        : 'bg-cyan-500 hover:bg-cyan-400 text-black cursor-pointer'
+                    }`}
                   >
-                    <span>确定选择</span>
-                    <ChevronRight className="w-4 h-4" />
+                    <span>{availableFitnessAttrsCount === 0 ? '当前年龄上限已满' : '确定选择'}</span>
+                    {availableFitnessAttrsCount > 0 && <ChevronRight className="w-4 h-4" />}
                   </button>
                 </div>
 
@@ -1096,7 +1134,6 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
           )}
         </div>
       )}
-
       {/* ========================================================================= */}
       {/* MODAL 1: VIEW TEAM ROSTER MODAL                                           */}
       {/* ========================================================================= */}
@@ -1323,13 +1360,7 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
       {/* MODAL 4: FITNESS CAP SELECTION MODAL                                      */}
       {/* ========================================================================= */}
       {isFitnessModalOpen && (() => {
-        const availableAttrsCount = REMAKE_ATTR_OPTIONS.filter((item) => {
-          const cap = (player.attributeCaps && player.attributeCaps[item.key] !== undefined)
-            ? player.attributeCaps[item.key]
-            : 90;
-          return cap < 99;
-        }).length;
-        const targetRequiredCount = Math.min(3, availableAttrsCount);
+        const targetRequiredCount = Math.min(3, availableFitnessAttrsCount);
 
         return (
           <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
@@ -1375,7 +1406,7 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
                   const currentCap = (player.attributeCaps && player.attributeCaps[item.key] !== undefined)
                     ? player.attributeCaps[item.key]
                     : 90;
-                  const isAtMaxCap = currentCap >= 99;
+                  const isAtMaxCap = currentCap >= maxOvrCap;
 
                   const activeAssets = PERSONAL_ASSETS.filter(a => (player.purchasedAssetIds || []).includes(a.id));
                   let boostSum = 0;

@@ -22,6 +22,7 @@ import {
   X,
 } from 'lucide-react';
 import { INITIAL_ENDORSEMENTS, PERSONAL_ASSETS } from '../data/nbaData2008';
+import { getPlayerBaseOvr, getUserPlayerAgePenalty } from '../utils/calc2k';
 
 interface HeaderProps {
   player: PlayerProfile;
@@ -75,6 +76,16 @@ export const Header: React.FC<HeaderProps> = ({
   });
 
   const hasSocialNotification = hasSignableEndorsements || hasPurchasableAssets;
+  const maxPlayerOvr = 99 - getUserPlayerAgePenalty(player.age || 19);
+  const hasUpgradableAttributes = player.skillPoints > 0
+    && getPlayerBaseOvr(player) < maxPlayerOvr
+    && (
+    Object.keys(player.attributes) as Array<keyof PlayerProfile['attributes']>
+  ).some((key) => {
+    const currentValue = player.attributes[key] ?? 50;
+    const cap = player.attributeCaps?.[key] ?? 99;
+    return currentValue < cap;
+  });
 
   const getOvrColor = (ovr: number) => {
     if (ovr >= 95) return 'from-amber-400 to-amber-600 text-black border-amber-300';
@@ -91,7 +102,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="bg-[#11141b] border-b border-[#232834] sticky top-0 z-40 shadow-2xl select-none">
+    <header className="safe-area-game-header bg-[#11141b] border-b border-[#232834] sticky top-0 z-40 shadow-2xl select-none">
       {/* Top Banner */}
       <div className="max-w-7xl mx-auto px-2 sm:px-4 py-1.5 sm:py-2.5 flex items-center justify-between gap-1.5 sm:gap-4">
         {/* Left: Player Profile & Team */}
@@ -177,12 +188,17 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Skill Points & Special Training Entry Button */}
           <button
             onClick={onOpenAttributes}
-            className="flex items-center gap-1 bg-amber-500 hover:bg-amber-400 text-black font-black italic px-2 py-1 sm:px-3 sm:py-1.5 rounded transition-all text-[10px] sm:text-xs uppercase shadow-md active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
+            className={`relative flex items-center gap-1 bg-amber-500 hover:bg-amber-400 text-black font-black italic px-2 py-1 sm:px-3 sm:py-1.5 rounded transition-all text-[10px] sm:text-xs uppercase shadow-md active:scale-95 cursor-pointer shrink-0 whitespace-nowrap ${
+              hasUpgradableAttributes ? 'animate-training-reminder' : ''
+            }`}
             title="点击进入 ⚡ 属性特训"
           >
             <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-black animate-pulse shrink-0" />
             <span className="hidden sm:inline">⚡ 属性特训 (SP: {player.skillPoints})</span>
             <span className="sm:hidden">特训({player.skillPoints})</span>
+            {hasUpgradableAttributes && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-[#11141b] shadow-[0_0_8px_rgba(239,68,68,0.95)] animate-pulse pointer-events-none" />
+            )}
           </button>
 
           {/* System Settings & Storage Menu Button */}
@@ -296,9 +312,11 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Grid className="w-5 h-5 mb-0.5" />
             <span className="text-[10px] tracking-tight leading-none font-bold">更多</span>
-            {['timeline', 'milestones', 'hof', 'attributes'].includes(activeTab) && (
+            {hasUpgradableAttributes ? (
+              <span className="absolute top-1 right-2.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#0d1017] shadow-[0_0_8px_rgba(52,211,153,0.9)] animate-pulse pointer-events-none" />
+            ) : ['timeline', 'milestones', 'hof', 'attributes'].includes(activeTab) ? (
               <span className="absolute top-1 right-2.5 w-2 h-2 rounded-full bg-amber-400 pointer-events-none" />
-            )}
+            ) : null}
           </button>
         </div>
       </nav>
@@ -395,7 +413,7 @@ export const Header: React.FC<HeaderProps> = ({
                   handleTabClick('attributes');
                   setIsMoreMenuOpen(false);
                 }}
-                className={`flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                className={`relative flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all cursor-pointer ${
                   activeTab === 'attributes'
                     ? 'bg-amber-500/15 border-amber-500/50 text-amber-400 font-bold'
                     : 'bg-[#161b26] border-[#2e374d] text-slate-200 hover:bg-[#202736]'
@@ -406,6 +424,9 @@ export const Header: React.FC<HeaderProps> = ({
                   <div className="text-xs font-bold">⚡ 属性特训</div>
                   <div className="text-[10px] text-amber-300">SP 点: {player.skillPoints}</div>
                 </div>
+                {hasUpgradableAttributes && (
+                  <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#161b26] shadow-[0_0_8px_rgba(52,211,153,0.9)] animate-pulse pointer-events-none" />
+                )}
               </button>
             </div>
 
@@ -428,4 +449,3 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
-

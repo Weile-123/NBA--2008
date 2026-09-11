@@ -1,33 +1,61 @@
 import { Dispatch,SetStateAction } from 'react';
 import { INITIAL_ENDORSEMENTS,PERSONAL_ASSETS } from '../data/nbaData2008';
 import { PlayerProfile,SignatureShoe } from '../types';
-import { getPlayerTotalOvr,getUserPlayerAgePenalty } from '../utils/calc2k';
+import { getPlayerBaseOvr, getPlayerCareerPeakOvr, getUserPlayerAgePenalty } from '../utils/calc2k';
+import { completeRewardedAd } from '../lib/rewardedAd';
 
 export function usePlayerActions(player: PlayerProfile | null, setPlayer: Dispatch<SetStateAction<PlayerProfile | null>>) {
-  // Upgrade player attribute handler
-  const handleUpgradeAttribute = (attrKey: keyof PlayerProfile['attributes']) => {
-    if (!player || player.skillPoints <= 0) return;
-    const agePenalty = getUserPlayerAgePenalty(player.age || 19);
-    const maxOvr = 99 - agePenalty;
-    if (player.ovr >= maxOvr) return;
+  const spendAttributePoints = (
+    attrKey: keyof PlayerProfile['attributes'],
+    requestedPoints: number,
+  ) => {
+    setPlayer((currentPlayer) => {
+      if (!currentPlayer || currentPlayer.skillPoints <= 0 || requestedPoints <= 0) return currentPlayer;
 
-    const newAttrs = {
-      ...player.attributes,
-      [attrKey]: player.attributes[attrKey] + 1,
-    };
-    const tempPlayer = {
-      ...player,
-      attributes: newAttrs,
-    };
-    const newOvr = getPlayerTotalOvr(tempPlayer);
+      const maxOvr = 99 - getUserPlayerAgePenalty(currentPlayer.age || 19);
+      if (getPlayerBaseOvr(currentPlayer) >= maxOvr) return currentPlayer;
 
-    setPlayer({
-      ...player,
-      attributes: newAttrs,
-      ovr: newOvr,
-      peakOvr: Math.max(player.peakOvr || 0, newOvr),
-      skillPoints: player.skillPoints - 1,
+      const currentValue = currentPlayer.attributes[attrKey] ?? 50;
+      const attributeCap = currentPlayer.attributeCaps?.[attrKey] ?? 99;
+      const availablePoints = Math.min(
+        requestedPoints,
+        currentPlayer.skillPoints,
+        Math.max(0, attributeCap - currentValue),
+      );
+      if (availablePoints <= 0) return currentPlayer;
+
+      let pointsSpent = 0;
+      let nextValue = currentValue;
+      let nextOvr = getPlayerBaseOvr(currentPlayer);
+
+      while (pointsSpent < availablePoints && nextOvr < maxOvr) {
+        nextValue += 1;
+        pointsSpent += 1;
+        nextOvr = getPlayerBaseOvr({
+          ...currentPlayer,
+          attributes: { ...currentPlayer.attributes, [attrKey]: nextValue },
+        });
+      }
+
+      if (pointsSpent === 0) return currentPlayer;
+      const nextAttributes = { ...currentPlayer.attributes, [attrKey]: nextValue };
+      return {
+        ...currentPlayer,
+        attributes: nextAttributes,
+        ovr: nextOvr,
+        peakOvr: Math.max(getPlayerCareerPeakOvr(currentPlayer), nextOvr),
+        peakOvrTracked: true,
+        skillPoints: currentPlayer.skillPoints - pointsSpent,
+      };
     });
+  };
+
+  // Upgrade player attribute handler
+  const handleUpgradeAttribute = (
+    attrKey: keyof PlayerProfile['attributes'],
+    amount: number = 1,
+  ) => {
+    spendAttributePoints(attrKey, amount);
   };
 
   const handleAddSkillPoints = (amount: number = 50) => {
@@ -40,8 +68,7 @@ export function usePlayerActions(player: PlayerProfile | null, setPlayer: Dispat
 
   const handleWatchAttributeAd = async (): Promise<boolean> => {
     if (!player || (player.adRewardUses || 0) >= 3) return false;
-    const result = await window.ColorboxAI?.ad?.watchRewardedVideo?.();
-    if (!result || (result.code !== undefined && result.code !== 200)) return false;
+    if (!await completeRewardedAd()) return false;
     setPlayer({ ...player, skillPoints: (player.skillPoints || 0) + 30, adRewardUses: (player.adRewardUses || 0) + 1 });
     return true;
   };
@@ -58,57 +85,19 @@ export function usePlayerActions(player: PlayerProfile | null, setPlayer: Dispat
       ...player,
       attributes: newAttrs,
     };
-    const newOvr = getPlayerTotalOvr(tempPlayer);
+    const newOvr = getPlayerBaseOvr(tempPlayer);
     setPlayer({
       ...player,
       attributes: newAttrs,
       ovr: newOvr,
+      peakOvr: Math.max(getPlayerCareerPeakOvr(player), newOvr),
+      peakOvrTracked: true,
     });
   };
 
   const handleAllInAttribute = (attrKey: keyof PlayerProfile['attributes']) => {
-    if (!player || player.skillPoints <= 0) return;
-    const agePenalty = getUserPlayerAgePenalty(player.age || 19);
-    const maxOvr = 99 - agePenalty;
-    if (player.ovr >= maxOvr) return;
-
-    const currentVal = player.attributes[attrKey] || 50;
-    const cap = (player.attributeCaps && player.attributeCaps[attrKey]) ? player.attributeCaps[attrKey] : 99;
-    const maxPointsToAdd = Math.min(cap - currentVal, player.skillPoints);
-    if (maxPointsToAdd <= 0) return;
-
-    let pointsAdded = 0;
-    let tempAttrs = { ...player.attributes };
-
-    for (let i = 1; i <= maxPointsToAdd; i++) {
-      tempAttrs[attrKey] = currentVal + i;
-      pointsAdded = i;
-      const tempPlayer = {
-        ...player,
-        attributes: tempAttrs,
-      };
-      const tempOvr = getPlayerTotalOvr(tempPlayer);
-      if (tempOvr >= maxOvr) {
-        break; // Stop adding once max age-allowed OVR is reached
-      }
-    }
-
-    const finalAttrs = {
-      ...player.attributes,
-      [attrKey]: currentVal + pointsAdded,
-    };
-    const finalPlayer = {
-      ...player,
-      attributes: finalAttrs,
-    };
-    const finalOvr = getPlayerTotalOvr(finalPlayer);
-
-    setPlayer({
-      ...player,
-      attributes: finalAttrs,
-      ovr: finalOvr,
-      skillPoints: player.skillPoints - pointsAdded,
-    });
+    if (!player) return;
+    spendAttributePoints(attrKey, player.skillPoints);
   };
 
   const handleResetAttribute = (attrKey: keyof PlayerProfile['attributes']) => {
@@ -125,7 +114,7 @@ export function usePlayerActions(player: PlayerProfile | null, setPlayer: Dispat
       ...player,
       attributes: newAttrs,
     };
-    const newOvr = getPlayerTotalOvr(tempPlayer);
+    const newOvr = getPlayerBaseOvr(tempPlayer);
 
     setPlayer({
       ...player,
@@ -205,12 +194,12 @@ export function usePlayerActions(player: PlayerProfile | null, setPlayer: Dispat
     // Add the new endorsement
     updatedEndorsements.push(targetEnd);
     
-    // Calculate new OVR based on total attributes (using the total attributes helper)
+    // Off-court attribute rewards do not alter the trainable/card OVR.
     const tempPlayer = {
       ...player,
       endorsements: updatedEndorsements,
     };
-    const newOvr = getPlayerTotalOvr(tempPlayer);
+    const newOvr = getPlayerBaseOvr(tempPlayer);
     
     // Apply financial reward and fan reward
     const fansReward = targetEnd.rewardFans || 0;
@@ -232,7 +221,7 @@ export function usePlayerActions(player: PlayerProfile | null, setPlayer: Dispat
       ...player,
       signatureShoe: shoe,
     };
-    const newOvr = getPlayerTotalOvr(tempPlayer);
+    const newOvr = getPlayerBaseOvr(tempPlayer);
 
     setPlayer({
       ...player,
@@ -252,12 +241,12 @@ export function usePlayerActions(player: PlayerProfile | null, setPlayer: Dispat
 
     const updatedPurchasedIds = [...purchasedIds, assetId];
 
-    // Calculate new OVR using the total attributes helper
+    // Asset boosts stay separate from the player's trainable/card OVR.
     const tempPlayer = {
       ...player,
       purchasedAssetIds: updatedPurchasedIds,
     };
-    const newOvr = getPlayerTotalOvr(tempPlayer);
+    const newOvr = getPlayerBaseOvr(tempPlayer);
 
     setPlayer({
       ...player,

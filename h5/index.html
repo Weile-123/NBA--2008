@@ -1,12 +1,36 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-    <title>篮坛传奇：重返2008 · 全网传奇榜</title>
-    <style>
-      *{box-sizing:border-box} body{margin:0;background:#080d18;color:#f8fafc;font-family:system-ui,-apple-system,"Microsoft YaHei",sans-serif}.page{max-width:680px;margin:auto;padding:24px 16px 40px}.hero{padding:24px;border-radius:20px;background:linear-gradient(135deg,#2a1602,#111827);border:1px solid #b7791f}.tag{color:#fbbf24;font-size:12px;font-weight:700}.title{font-size:27px;margin:8px 0}.sub{color:#cbd5e1;font-size:14px;line-height:1.6}.tabs{display:flex;gap:8px;margin:20px 0}.tabs button{border:0;border-radius:999px;padding:9px 14px;background:#1e293b;color:#cbd5e1}.tabs button.active{background:#f59e0b;color:#111827;font-weight:800}.row{display:grid;grid-template-columns:34px 1fr auto;gap:12px;align-items:center;padding:14px 4px;border-bottom:1px solid #1e293b}.rank{font-weight:900;color:#fbbf24}.name{font-weight:800}.meta{font-size:12px;color:#94a3b8;margin-top:3px}.score{font-weight:800;color:#fde68a;text-align:right}.empty{padding:42px 18px;text-align:center;color:#94a3b8;background:#111827;border-radius:16px}.note{margin-top:18px;padding:12px;background:#172033;border-radius:12px;font-size:12px;color:#cbd5e1;line-height:1.6}
-    </style>
-  </head>
-  <body><main class="page"><section class="hero"><div class="tag">篮坛传奇：重返2008</div><h1 class="title">全网传奇榜</h1><p class="sub">退役球员会按 GOAT 积分进入榜单。以下是交互和空榜状态的静态预览，未连接真实数据服务。</p></section><nav class="tabs"><button class="active">GOAT 积分榜</button><button>我的排名</button></nav><section class="empty">还没有可展示的全网传奇记录<br/><small>完成生涯并退役后，传奇记录将在这里出现。</small></section><p class="note">排行榜会保留本地“个人传奇榜”。全网榜只展示提交并通过服务端校验的退役记录。</p></main></body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>篮坛传奇：重返2008 · 全网传奇榜</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#070913;color:#e2e8f0;font-family:system-ui,-apple-system,"Microsoft YaHei",sans-serif}.page{max-width:680px;margin:auto;padding:24px 16px 40px}.hero,.panel{border:1px solid #3e2b10;background:#111522;border-radius:20px}.hero{padding:22px;background:linear-gradient(135deg,#2b1805,#111522)}.tag,.score,.rank{color:#fbbf24;font-weight:800}.title{font-size:27px;margin:8px 0}.sub,.meta{color:#94a3b8;font-size:13px;line-height:1.6}.rule{margin:16px 0 12px;color:#cbd5e1;font-size:12px}.status{padding:36px 18px;text-align:center;color:#94a3b8}.error{color:#fca5a5}.top3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}.podium{border:1px solid #5d4318;border-radius:14px;padding:12px 8px;text-align:center;background:#18130b}.podium .name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:7px 0;font-weight:800}.row{display:grid;grid-template-columns:34px 1fr auto;gap:12px;align-items:center;padding:14px 4px;border-bottom:1px solid #1e293b}.row:last-child{border:0}.rank{font-size:15px}.name{font-weight:800}.score{text-align:right}.retry{margin-top:14px;border:1px solid #b7791f;background:#3b2707;border-radius:10px;padding:9px 15px;color:#fde68a;font-weight:800}.hidden{display:none}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero"><div class="tag">篮坛传奇：重返2008</div><h1 class="title">全网传奇榜</h1><p class="sub">全网退役球员按 GOAT 积分排名。完整生涯数据可在游戏内的全网传奇榜查看。</p></section>
+    <p class="rule">同分时，先达到该积分的球员排名靠前。每个虎扑账号仅保留最高生涯纪录。</p>
+    <section id="status" class="panel status">正在连接云端传奇榜…</section>
+    <section id="content" class="hidden"><div id="top3" class="top3"></div><div id="list" class="panel"></div></section>
+  </main>
+  <script>
+    (function () {
+      var API_BASE = (window.ACTIVITY_API_BASE || 'https://app-0f7b7f394c-d8gy4o4bpcde2aff7-1252166086.ap-shanghai.app.tcloudbase.com/api').replace(/\/+$/, '');
+      var status = document.getElementById('status'); var content = document.getElementById('content');
+      function escapeHtml(value) { var el = document.createElement('div'); el.textContent = String(value == null ? '' : value); return el.innerHTML; }
+      function showError(message) { content.className = 'hidden'; status.className = 'panel status error'; status.innerHTML = '<div>全网传奇榜加载失败</div><div class="meta">' + escapeHtml(message || '请稍后重试') + '</div><button class="retry" id="retry">重新加载</button>'; document.getElementById('retry').onclick = load; }
+      function request() { if (!window.ColorboxAI || !window.ColorboxAI.cloud || !window.ColorboxAI.cloud.request) return Promise.reject(new Error('请在虎扑 App 内打开全网传奇榜')); return window.ColorboxAI.cloud.request({ url: API_BASE + '/leaderboard', method: 'GET', auth: false }); }
+      function render(rows) {
+        status.className = 'hidden'; content.className = '';
+        if (!rows.length) { content.innerHTML = '<section class="panel status">暂无全网退役球星记录<br><span class="meta">完成生涯并正式退役后，记录将自动同步到这里。</span></section>'; return; }
+        var top = rows.slice(0, 3); document.getElementById('top3').innerHTML = top.map(function (row, index) { var record = row.record || {}; var player = record.player || {}; return '<div class="podium"><span class="rank">#' + (index + 1) + '</span><span class="name">' + escapeHtml(player.name || row.display_name || '传奇球员') + '</span><span class="score">' + escapeHtml(row.score) + ' 分</span></div>'; }).join('');
+        document.getElementById('list').innerHTML = rows.map(function (row, index) { var record = row.record || {}; var player = record.player || {}; return '<div class="row"><span class="rank">#' + (index + 1) + '</span><div><div class="name">' + escapeHtml(player.name || row.display_name || '传奇球员') + '</div><div class="meta">' + escapeHtml(player.position || '球员') + ' · 最高综评 ' + escapeHtml(record.peakOvr || '-') + '</div></div><span class="score">' + escapeHtml(row.score) + ' 分</span></div>'; }).join('');
+      }
+      function load() { status.className = 'panel status'; status.textContent = '正在连接云端传奇榜…'; content.className = 'hidden'; request().then(function (response) { var body = response && response.data && !Array.isArray(response.data) && typeof response.data === 'object' && ('code' in response.data) ? response.data : response; if (!response || response.statusCode !== 200 || !body || (body.code !== 0 && body.code !== 200)) throw new Error((body && body.message) || '全网传奇榜暂时不可用'); render(Array.isArray(body.data) ? body.data : []); }).catch(function (error) { showError(error && error.message); }); }
+      load();
+    }());
+  </script>
+</body>
 </html>

@@ -3,7 +3,9 @@ import { PlayerProfile, Team } from '../types';
 import { Users, Lock, Sparkles, ShieldAlert, HeartHandshake, Clock, X, Building2, HelpCircle } from 'lucide-react';
 import { getCompleteTeamRoster, getPlayerCategoryRatings, getUserPlayerCategoryRatings } from '../utils/leagueLogic';
 import { TeamLogo } from './TeamLogo';
-import { ContractOffer, generateFreeAgencyOffers } from '../utils/contractLogic';
+import { ContractOffer, generateFreeAgencyOffers, regenerateFreeAgencyOffers } from '../utils/contractLogic';
+import { completeRewardedAd } from '../lib/rewardedAd';
+import { RewardedRefreshButton } from './RewardedRefreshButton';
 
 interface RosterAndTransfersProps {
   player: PlayerProfile;
@@ -11,6 +13,7 @@ interface RosterAndTransfersProps {
   allTeams: Team[];
   onRequestTrade: (targetTeamId: string) => void;
   onSignContract?: (newTeamId: string, salaryPerYear: number, totalYears: number) => void;
+  onUpdatePlayer: (updatedPlayer: PlayerProfile) => void;
   currentYear?: number;
   activeInSeasonTradeOffers: ContractOffer[];
   onSetActiveInSeasonTradeOffers: (offers: ContractOffer[]) => void;
@@ -25,6 +28,7 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
   currentTeam,
   allTeams = [],
   onSignContract,
+  onUpdatePlayer,
   currentYear = 2008,
   activeInSeasonTradeOffers,
   onSetActiveInSeasonTradeOffers,
@@ -33,6 +37,13 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
 }) => {
   const [isRequesting, setIsRequesting] = React.useState(false);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [isRefreshingOffers, setIsRefreshingOffers] = React.useState(false);
+
+  React.useEffect(() => {
+    if (activeInSeasonTradeOffers.length > 3) {
+      onSetActiveInSeasonTradeOffers(activeInSeasonTradeOffers.slice(0, 3));
+    }
+  }, [activeInSeasonTradeOffers, onSetActiveInSeasonTradeOffers]);
 
   const seasonIndex = currentYear - 2007;
 
@@ -85,6 +96,22 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
   const handleCancelTradeRequest = () => {
     // This just closes the modal, keeping the current generated offers intact!
     setIsModalOpen(false);
+  };
+
+  const handleRefreshTradeOffers = async () => {
+    if (isRefreshingOffers || player.tradeOfferRefreshUsed) return;
+    setIsRefreshingOffers(true);
+    try {
+      if (!await completeRewardedAd()) {
+        return;
+      }
+      onSetActiveInSeasonTradeOffers(regenerateFreeAgencyOffers(player.ovr, currentTeam.id, allTeams, activeInSeasonTradeOffers));
+      onUpdatePlayer({ ...player, tradeOfferRefreshUsed: true });
+    } catch {
+      // Silently restore the button when the ad cannot be opened.
+    } finally {
+      setIsRefreshingOffers(false);
+    }
   };
 
   const getRoleBadgeColor = (role: string) => {
@@ -259,7 +286,7 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
             <div className="text-xs text-slate-300 leading-relaxed">
               <p className="font-bold text-emerald-400">【交易准许】可发起联盟询价</p>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                当前合同第 <span className="text-emerald-400 font-bold">{player.contract ? (player.contract.totalYears - player.contract.yearsLeft + 1) : 2}</span> 年（还剩 <span className="text-emerald-400 font-bold">{player.contract?.yearsLeft}</span> 年），距截止日还剩 <span className="text-amber-400 font-bold">{Math.max(0, TRADE_DEADLINE_GAME - currentGame + 1)}</span> 场比赛。提交后可获取 <span className="text-amber-400 font-bold">5 支球队</span> 报价！
+                当前合同第 <span className="text-emerald-400 font-bold">{player.contract ? (player.contract.totalYears - player.contract.yearsLeft + 1) : 2}</span> 年（还剩 <span className="text-emerald-400 font-bold">{player.contract?.yearsLeft}</span> 年），距截止日还剩 <span className="text-amber-400 font-bold">{Math.max(0, TRADE_DEADLINE_GAME - currentGame + 1)}</span> 场比赛。提交后可获取 <span className="text-amber-400 font-bold">3 支球队</span> 报价！
               </p>
             </div>
           </div>
@@ -277,7 +304,7 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
               </>
             ) : activeInSeasonTradeOffers.length > 0 ? (
               <>
-                <span>✉️ 查看已收到的 5 支球队交易报价单</span>
+                <span>✉️ 查看已收到的 3 支球队交易报价单</span>
               </>
             ) : (
               <>
@@ -318,7 +345,7 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
                 <div className="text-xs text-slate-300 leading-relaxed">
                   <p className="font-bold text-amber-300">💡 交易提示</p>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    以下 5 支追求球队已同意支付相应的筹码，并为您奉上全新的合同保障。接受任一报价后，您将正式被交易并换签对应的新合同。本赛季的申请结果将终身保留。
+                    以下 3 支追求球队已同意支付相应的筹码，并为您奉上全新的合同保障。接受任一报价后，您将正式被交易并换签对应的新合同。本赛季的申请结果将终身保留。
                   </p>
                 </div>
               </div>
@@ -389,7 +416,12 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
             </div>
 
             {/* Modal Footer */}
-            <div className="bg-[#0d1017] p-4 border-t border-[#232834] flex justify-end gap-3">
+            <div className="bg-[#0d1017] p-4 border-t border-[#232834] flex items-center justify-between gap-3">
+              <RewardedRefreshButton
+                loading={isRefreshingOffers}
+                disabled={Boolean(player.tradeOfferRefreshUsed)}
+                onClick={handleRefreshTradeOffers}
+              />
               <button
                 type="button"
                 onClick={handleCancelTradeRequest}
@@ -401,7 +433,6 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
           </div>
         </div>
       )}
-
 
       {/* Roster Players List Table */}
       <div className="bg-[#11141b] border border-[#232834] rounded-2xl p-3.5 sm:p-5 shadow-xl space-y-3 sm:space-y-4">

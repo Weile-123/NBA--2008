@@ -185,8 +185,11 @@ export interface PlayerProfile {
   age?: number;
   peakAge?: number;
   peakOvr?: number;
+  peakOvrTracked?: boolean;
   peakDuration?: number;
   adRewardUses?: number;
+  freeAgencyOfferRefreshUsed?: boolean;
+  tradeOfferRefreshUsed?: boolean;
   isRookie?: boolean;
 }
 
@@ -383,6 +386,7 @@ export interface GameState {
     spg: number;
     bpg: number;
     fgPct: number;
+    ovr?: number;
     accoladesEarned: string[];
   }[];
   leagueHistory?: {
@@ -414,6 +418,7 @@ export interface RetiredPlayerRecord {
   };
   retireAge: number;
   peakOvr: number;
+  peakOvrTracked?: boolean;
   finalOvr: number;
   goatScore: number;
   seasonsPlayed: number;

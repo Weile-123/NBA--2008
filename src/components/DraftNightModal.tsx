@@ -50,7 +50,7 @@ export const DraftNightModal: React.FC<DraftNightModalProps> = ({
   };
 
   return (
-    <div className="bg-[#11141b] border-2 border-amber-500/40 rounded-2xl w-full p-5 sm:p-6 shadow-2xl relative text-left overflow-hidden space-y-5">
+    <div className="bg-[#11141b] border-2 border-amber-500/40 rounded-2xl w-full p-3 sm:p-6 shadow-2xl relative text-left overflow-hidden space-y-3 sm:space-y-5">
       {/* MODULE HEADER */}
       <div className="flex items-center justify-between border-b border-[#232a3c] pb-3 sm:pb-4 flex-wrap gap-2 sm:gap-3">
         <div className="flex items-center gap-2.5 sm:gap-3">
@@ -68,12 +68,21 @@ export const DraftNightModal: React.FC<DraftNightModalProps> = ({
             </h2>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={handleFinalizeDraft}
+          className="sm:hidden shrink-0 px-2.5 py-2 bg-amber-500 text-black font-black text-[11px] rounded-lg shadow-lg shadow-amber-500/20 flex items-center gap-1"
+        >
+          确认结果
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       {/* 30 PICKS TABLE */}
       <div className="space-y-2">
 
-        <div className="overflow-y-auto space-y-1.5 sm:space-y-2 pr-2 max-h-[360px] sm:max-h-[450px] scrollbar-thin">
+        <p className="sm:hidden px-1 text-[10px] text-slate-500">选秀名单可上下滑动查看</p>
+        <div className="overflow-y-auto space-y-1.5 sm:space-y-2 pr-2 max-h-[min(32svh,250px)] sm:max-h-[450px] scrollbar-thin">
           <div className="flex items-center justify-between text-[10px] font-black uppercase text-slate-500 px-2 sm:px-3 py-1 font-mono">
             <span>选秀顺位 & 指名球队</span>
             <span className="hidden sm:inline">获选新秀资料与球探总结</span>

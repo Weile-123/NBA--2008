@@ -18,12 +18,11 @@ import {
   MonitorPlay,
 } from 'lucide-react';
 import { PERSONAL_ASSETS } from '../data/nbaData2008';
-import { getUserPlayerAgePenalty } from '../utils/calc2k';
-import { GameNotice } from './GameNotice';
+import { getPlayerBaseOvr, getUserPlayerAgePenalty } from '../utils/calc2k';
 
 interface AttributesPanelProps {
   player: PlayerProfile;
-  onUpgradeAttribute: (attrKey: keyof Attributes) => void;
+  onUpgradeAttribute: (attrKey: keyof Attributes, amount?: number) => void;
   onWatchAd?: () => Promise<boolean>;
   onAllInAttribute?: (attrKey: keyof Attributes) => void;
   onResetAttribute?: (attrKey: keyof Attributes) => void;
@@ -67,7 +66,7 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
   onAllInAttribute,
   onResetAttribute,
 }) => {
-  const { attributes, attributeCaps, skillPoints, position, ovr, archetype } = player;
+  const { attributes, attributeCaps, skillPoints, position, archetype } = player;
 
   const [showBoostsModal, setShowBoostsModal] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -75,12 +74,11 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
 
   const adUsesLeft = 3 - (player.adRewardUses || 0);
   const [isWatchingAd, setIsWatchingAd] = React.useState(false);
-  const [notice, setNotice] = React.useState('');
   const handleWatchAd = async () => {
     if (!onWatchAd || isWatchingAd || adUsesLeft <= 0) return;
     setIsWatchingAd(true);
-    try { if (!await onWatchAd()) setNotice('请前往虎扑App看广告'); }
-    catch { setNotice('请前往虎扑App看广告'); }
+    try { await onWatchAd(); }
+    catch { /* Silently restore the button when the ad cannot be opened. */ }
     finally { setIsWatchingAd(false); }
   };
 
@@ -88,6 +86,9 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
   const activeAssets = PERSONAL_ASSETS.filter((a) => (player.purchasedAssetIds || []).includes(a.id));
   const age = player.age || 19;
   const agePenalty = getUserPlayerAgePenalty(age);
+  const baseOvr = getPlayerBaseOvr(player);
+  const maxOvr = 99 - agePenalty;
+  const isOvrAtCap = baseOvr >= maxOvr;
 
   // Filter attributes list
   const filteredAttrs = attrList.filter((item) => {
@@ -101,7 +102,7 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
     // 2. Upgradable / Capped filter
     const baseVal = attributes[item.key] || 50;
     const cap = attributeCaps && attributeCaps[item.key] ? attributeCaps[item.key] : 99;
-    const isAtCap = baseVal >= cap;
+    const isAtCap = baseVal >= cap || isOvrAtCap;
 
     if (filterType === 'upgradable' && isAtCap) return false;
     if (filterType === 'capped' && !isAtCap) return false;
@@ -112,19 +113,14 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
   const handleAddFive = (key: keyof Attributes) => {
     const currentVal = attributes[key] || 50;
     const cap = attributeCaps && attributeCaps[key] ? attributeCaps[key] : 99;
-    const maxOvr = 99 - agePenalty;
-
-    if (ovr >= maxOvr || currentVal >= cap || skillPoints <= 0) return;
+    if (currentVal >= cap || skillPoints <= 0 || isOvrAtCap) return;
 
     const pointsToAdd = Math.min(5, cap - currentVal, skillPoints);
-    for (let i = 0; i < pointsToAdd; i++) {
-      onUpgradeAttribute(key);
-    }
+    onUpgradeAttribute(key, pointsToAdd);
   };
 
   return (
     <div className="space-y-3 sm:space-y-4">
-      {notice && <GameNotice message={notice} onClose={() => setNotice('')} />}
       {/* 📱 Mobile Sticky Quick-Status Top Bar */}
       <div className="sticky top-0 z-30 bg-[#0d1017]/95 backdrop-blur-md border border-[#232834] rounded-xl p-2.5 shadow-xl flex items-center justify-between gap-2 sm:hidden">
         {/* Left: Original SP card (Click 10 times to unlock debug buttons) */}
@@ -151,12 +147,15 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
           </button>
         </div>
       </div>
+      <p className="sm:hidden text-[10px] text-slate-500 px-1">
+        未使用的属性点将计入 GOAT 分数统计
+      </p>
 
       {/* Overview Banner Header */}
       <div className="bg-[#11141b] border border-[#232834] rounded-2xl p-3 sm:p-5 shadow-xl space-y-3 sm:space-y-4 hidden sm:flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 min-w-0">
             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-amber-500 text-black flex flex-col items-center justify-center font-black shadow-lg relative shrink-0">
-              <span className="text-xl sm:text-2xl italic leading-none">{ovr}</span>
+              <span className="text-xl sm:text-2xl italic leading-none">{baseOvr}</span>
               <span className="text-[8px] uppercase font-bold tracking-widest">OVR</span>
               {agePenalty > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 bg-rose-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full border border-rose-400 shadow-md">
@@ -197,6 +196,7 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
             <div className="bg-[#0d1017] border border-[#232834] px-4 py-1.5 sm:py-2 rounded-xl text-center select-none shadow-inner min-w-[120px]">
               <span className="text-[9px] text-slate-500 uppercase tracking-wider block font-bold">可分配属性点</span>
               <span className="text-xl sm:text-2xl font-black text-amber-400 font-mono italic">{skillPoints}</span>
+              <span className="text-[9px] text-slate-500 block mt-0.5 whitespace-nowrap">未使用的属性点将计入 GOAT 分数统计</span>
             </div>
 
             <button type="button" onClick={handleWatchAd} disabled={!onWatchAd || adUsesLeft <= 0 || isWatchingAd} className="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white font-black text-xs rounded-lg shadow-md transition-all active:scale-95 flex items-center gap-1 whitespace-nowrap">
@@ -227,7 +227,7 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
           {filteredAttrs.map(({ key, label, desc, icon }) => {
             const baseVal = attributes[key] || 50;
             const cap = attributeCaps && attributeCaps[key] ? attributeCaps[key] : 99;
-            const isAtCap = baseVal >= cap;
+            const isAtCap = baseVal >= cap || isOvrAtCap;
 
             // Build local list of boosts for this attribute
             const boostList: { source: string; val: number; type: 'endorsement' | 'asset' | 'shoe' }[] = [];
@@ -330,7 +330,7 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
                     <button
                       type="button"
                       onClick={() => handleAddFive(key)}
-                      disabled={skillPoints <= 0 || isAtCap || ovr >= 99}
+                      disabled={skillPoints <= 0 || isAtCap}
                       className="hidden sm:flex px-1.5 py-1 bg-amber-500/10 hover:bg-amber-500/25 border border-amber-500/30 disabled:opacity-20 disabled:pointer-events-none text-amber-300 font-bold rounded-lg text-[10px] transition-all active:scale-95 items-center justify-center cursor-pointer whitespace-nowrap"
                       title="一次增加 5 点属性"
                     >
@@ -342,9 +342,9 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
                       <button
                         type="button"
                         onClick={() => onAllInAttribute(key)}
-                        disabled={skillPoints <= 0 || isAtCap || ovr >= 99}
+                        disabled={skillPoints <= 0 || isAtCap}
                         className="px-1.5 sm:px-2 py-1 bg-amber-500/15 hover:bg-amber-500/30 border border-amber-500/30 disabled:opacity-20 disabled:pointer-events-none text-amber-300 font-bold rounded-lg text-[10px] transition-all active:scale-95 flex items-center justify-center gap-0.5 cursor-pointer whitespace-nowrap"
-                        title={ovr >= 99 ? '总评已达上限' : '拉满此属性'}
+                        title="拉满此属性"
                       >
                         <Zap className="w-2.5 h-2.5 text-amber-400 hidden sm:inline" /> All
                       </button>
@@ -354,11 +354,11 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
                     <button
                       type="button"
                       onClick={() => onUpgradeAttribute(key)}
-                      disabled={skillPoints <= 0 || isAtCap || ovr >= 99}
+                      disabled={skillPoints <= 0 || isAtCap}
                       className="px-2 sm:px-2.5 py-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-20 disabled:pointer-events-none text-black font-black italic rounded-lg text-xs shadow-md transition-transform active:scale-95 flex items-center justify-center gap-0.5 cursor-pointer uppercase whitespace-nowrap"
                     >
                       <Flame className="w-3 h-3 fill-black" />{' '}
-                      {isAtCap ? '封顶' : ovr >= 99 ? '已满' : '+1'}
+                      {isOvrAtCap ? '综评封顶' : isAtCap ? '封顶' : '+1'}
                     </button>
                   </div>
                 </div>

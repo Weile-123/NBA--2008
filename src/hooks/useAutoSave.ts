@@ -1,6 +1,7 @@
 import { useEffect,useLayoutEffect,useRef } from 'react';
 import { createAutoSave } from '../utils/autoSave';
 import { SavedData,saveGameToStorage } from '../utils/storage';
+import { flushPersistentWrites } from '../lib/persistentStorage';
 
 export function useAutoSave(snapshot: SavedData | null, onSaved: (time: string) => void) {
   const onSavedRef = useRef(onSaved);
@@ -26,7 +27,10 @@ export function useAutoSave(snapshot: SavedData | null, onSaved: (time: string) 
   }, [snapshot, scheduler]);
 
   useEffect(() => {
-    const flush = () => { scheduler.flush(); };
+    const flush = () => {
+      scheduler.flush();
+      void flushPersistentWrites();
+    };
     const onVisibilityChange = () => {
       if (document.visibilityState === 'hidden') flush();
     };

@@ -805,6 +805,9 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
                 你的排名: {userRankDisplay}
               </span>
             </div>
+            <p className="text-[10px] text-slate-500 font-medium">
+              排名由 AI 通过计算得出，不代表个人观点
+            </p>
 
           <div className="max-h-[30rem] overflow-y-auto space-y-2 pr-1">
             {combinedRankings.slice(0, 50).map((g, idx) => {

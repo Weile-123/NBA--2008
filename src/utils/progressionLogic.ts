@@ -1,5 +1,5 @@
 import { Team, RosterPlayer, PlayerProfile } from '../types';
-import { getPlayerTotalOvr, syncPlayerAgeDecay } from './calc2k';
+import { syncPlayerAgeDecay } from './calc2k';
 
 export interface SuperstarAgingConfig {
   slowDeclineRate: number; // Annual OVR decline rate past peak

@@ -40,6 +40,22 @@
   }
 }
 
+/*
+ * In embedded mode these environment values resolve to 0. In an edge-to-edge
+ * fullscreen WebView they expose the status-bar / notch / Dynamic Island inset.
+ */
+.safe-area-home-banner {
+  padding-top: calc(0.5rem + env(safe-area-inset-top, 0px));
+}
+
+.safe-area-game-header {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-area-top-toast {
+  top: calc(1rem + env(safe-area-inset-top, 0px));
+}
+
 /* Hide native webkit scrollbar arrows globally */
 ::-webkit-scrollbar-button {
   display: none;
@@ -151,3 +167,20 @@
   animation: fadeIn 0.2s ease-out forwards;
 }
 
+@keyframes trainingReminderShake {
+  0%, 78%, 100% { transform: translateX(0) rotate(0); }
+  82% { transform: translateX(-2px) rotate(-1.5deg); }
+  86% { transform: translateX(2px) rotate(1.5deg); }
+  90% { transform: translateX(-2px) rotate(-1deg); }
+  94% { transform: translateX(2px) rotate(1deg); }
+}
+
+.animate-training-reminder {
+  animation: trainingReminderShake 3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-training-reminder {
+    animation: none;
+  }
+}

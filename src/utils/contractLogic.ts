@@ -55,7 +55,7 @@ export function generateContractOfferForTeam(team: Team, playerOvr: number): Con
 }
 
 /**
- * Generate 5 Free Agency offers from other teams
+ * Generate 3 Free Agency offers from other teams.
  */
 export function generateFreeAgencyOffers(
   playerOvr: number,
@@ -63,9 +63,25 @@ export function generateFreeAgencyOffers(
   allTeams: Team[]
 ): ContractOffer[] {
   const otherTeams = allTeams.filter((t) => t.id !== currentTeamId);
-  // Shuffle other teams and take 5
+  // Shuffle other teams and take 3
   const shuffled = [...otherTeams].sort(() => Math.random() - 0.5);
-  const selectedTeams = shuffled.slice(0, 5);
+  const selectedTeams = shuffled.slice(0, 3);
 
   return selectedTeams.map((team) => generateContractOfferForTeam(team, playerOvr));
+}
+
+export function regenerateFreeAgencyOffers(
+  playerOvr: number,
+  currentTeamId: string,
+  allTeams: Team[],
+  previousOffers: ContractOffer[],
+): ContractOffer[] {
+  const previousTeamIds = previousOffers.map((offer) => offer.team.id).sort().join(',');
+  let nextOffers = generateFreeAgencyOffers(playerOvr, currentTeamId, allTeams);
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const nextTeamIds = nextOffers.map((offer) => offer.team.id).sort().join(',');
+    if (nextTeamIds !== previousTeamIds) break;
+    nextOffers = generateFreeAgencyOffers(playerOvr, currentTeamId, allTeams);
+  }
+  return nextOffers;
 }

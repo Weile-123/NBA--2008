@@ -9,6 +9,8 @@ import { PlayoffPanel } from './PlayoffPanel';
 import { SeasonSummaryModal } from './SeasonSummaryModal';
 import { OffseasonDashboard } from './OffseasonDashboard';
 
+const AUTO_SIM_GAME_DELAY_MS = 150;
+
 interface SeasonDashboardProps {
   gameState: GameState;
   currentTeam: Team;
@@ -44,6 +46,7 @@ interface SeasonDashboardProps {
   onSignContract?: (newTeamId: string, salaryPerYear: number, totalYears: number) => void;
   onViewSeasonTrades?: () => void;
   hasActiveMilestoneModal?: boolean;
+  isSettingsOpen?: boolean;
 }
 
 export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
@@ -78,6 +81,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
   onSignContract,
   onViewSeasonTrades,
   hasActiveMilestoneModal,
+  isSettingsOpen = false,
 }) => {
   const { player, currentGame = 1, isPlayoffs, schedule = [], currentYear = 2008, teams = [], phase } = gameState;
   const currentMatchInfo = schedule.find((s) => (s as any).gameNumber === currentGame || s.week === currentGame) || schedule[0];
@@ -88,7 +92,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
   const [showSeasonSummaryModal, setShowSeasonSummaryModal] = useState(false);
   const [isRecentGamesExpandedMobile, setIsRecentGamesExpandedMobile] = useState(false);
 
-  const autoSimTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoSimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // If milestone modal pops up during auto simulation, pause immediately
   useEffect(() => {
@@ -97,22 +101,31 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
     }
   }, [hasActiveMilestoneModal, isAutoSimulating]);
 
+  // Opening settings must always pause the regular-season simulation.
+  useEffect(() => {
+    if (isSettingsOpen && isAutoSimulating) {
+      setIsAutoSimulating(false);
+    }
+  }, [isSettingsOpen, isAutoSimulating]);
+
   // Auto-simulation timer loop for regular season
   useEffect(() => {
     const playedCount = schedule.filter((s) => s.isPlayed).length;
     if (isAutoSimulating && !hasActiveMilestoneModal && currentGame <= 82 && playedCount < 82 && !isPlayoffs && phase === 'regular_season') {
-      autoSimTimerRef.current = setInterval(() => {
-        onStartMatch(false);
-      }, 100);
+      // Schedule one game at a time so simulations cannot overlap or starve
+      // higher-priority taps. The next game is scheduled after this render.
+      autoSimTimerRef.current = setTimeout(() => {
+        React.startTransition(() => onStartMatch(false));
+      }, AUTO_SIM_GAME_DELAY_MS);
     } else {
-      if (autoSimTimerRef.current) clearInterval(autoSimTimerRef.current);
+      if (autoSimTimerRef.current) clearTimeout(autoSimTimerRef.current);
       if (isAutoSimulating && playedCount >= 82) {
         setIsAutoSimulating(false);
       }
     }
 
     return () => {
-      if (autoSimTimerRef.current) clearInterval(autoSimTimerRef.current);
+      if (autoSimTimerRef.current) clearTimeout(autoSimTimerRef.current);
     };
   }, [isAutoSimulating, hasActiveMilestoneModal, currentGame, isPlayoffs, phase, onStartMatch, schedule]);
 
@@ -283,7 +296,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
                 className="mt-1 sm:mt-2 inline-flex items-center gap-1 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[9px] sm:text-[10px] font-bold transition-all cursor-pointer"
               >
                 <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-400" />
-                <span>重磅交易</span>
+                <span>查看赛季变动</span>
               </button>
             )}
           </div>

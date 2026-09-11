@@ -3,6 +3,7 @@ import React,{ useCallback,useEffect,useMemo,useRef,useState } from 'react';
 import { get15LifeSimulationEvents,LifeEvent,LifeOption } from '../data/lifeSimulationData';
 import { NBA_TEAMS_2008 } from '../data/nbaData2008';
 import { createRandomChineseName,getPlayerIdentity,isHupuAppEnvironment } from '../lib/hupuUser';
+import { completeRewardedAd } from '../lib/rewardedAd';
 import { Attributes,PlayerProfile,Position } from '../types';
 import {
 BODY_SHAPE_PRESETS,
@@ -11,7 +12,6 @@ POSITION_ARCHETYPES,
 } from '../utils/attributeCalculator';
 import { calculateUserDraftPick } from '../utils/draftLogic';
 import { TeamLogo } from './TeamLogo';
-import { GameNotice } from './GameNotice';
 
 interface CreationModalProps {
   onComplete: (player: PlayerProfile) => void;
@@ -122,7 +122,6 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
   // Paid OVR boost state
   const [paidBoostOvr, setPaidBoostOvr] = useState(0);
   const [isWatchingCreationAd, setIsWatchingCreationAd] = useState(false);
-  const [creationNotice, setCreationNotice] = useState('');
 
   // Mobile H5 UI Modal States (Team selection & Full Attributes preview)
   const [showTeamModal, setShowTeamModal] = useState(false);
@@ -264,7 +263,8 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
       mediaReputation: 75,
       age: 19,
       peakAge: 26,
-      peakOvr: 98,
+      peakOvr: initialOvr,
+      peakOvrTracked: true,
       peakDuration: 8,
       isRookie: true,
     };
@@ -275,10 +275,8 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
     if (isWatchingCreationAd || paidBoostOvr >= 10) return;
     setIsWatchingCreationAd(true);
     try {
-      const result = await window.ColorboxAI?.ad?.watchRewardedVideo?.();
-      if (!result || (result.code !== undefined && result.code !== 200)) throw Error('ad unavailable');
-      setPaidBoostOvr(10);
-    } catch { setCreationNotice('请前往虎扑App看广告'); }
+      if (await completeRewardedAd()) setPaidBoostOvr(10);
+    } catch { /* Silently restore the button when the ad cannot be opened. */ }
     finally { setIsWatchingCreationAd(false); }
   };
 
@@ -1032,8 +1030,6 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
             </button>
           </form>
         )}
-
-        {creationNotice && <GameNotice message={creationNotice} onClose={() => setCreationNotice('')} />}
 
         {/* TEAM SELECTION POPUP MODAL */}
         {showTeamModal && (

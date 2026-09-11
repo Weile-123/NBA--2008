@@ -1,4 +1,5 @@
 import { Team, RosterPlayer, PlayerProfile, Position, SingleGamePlayerStats, MatchRosterStats, MatchBoxScore, CategoryRatings } from '../types';
+import { getPlayerTotalAttributes } from './calc2k';
 
 /**
  * Extracts short team nickname (without city prefix)
@@ -577,7 +578,7 @@ export function getPlayerCategoryRatings(p: {
  * based on the user's detailed 18-attribute profile and endorsements/shoes/assets.
  */
 export function getUserPlayerCategoryRatings(player: PlayerProfile): Required<CategoryRatings> {
-  const attrs = player.attributes || ({} as any);
+  const attrs = getPlayerTotalAttributes(player);
   
   // 1. Scoring: 7 scoring weapons
   const midRangeAttr = attrs.midRange || 60;
@@ -1080,7 +1081,7 @@ export function simulatePlayerMatchStats(
   turnovers: number;
   minutes: number;
 } {
-  const attrs = player.attributes;
+  const attrs = getPlayerTotalAttributes(player);
   const timeFactor = assignedMPG / 36.0;
   const variance = 0.70 + Math.random() * 0.60; // 0.70 to 1.30 expanded probability range
 

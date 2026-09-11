@@ -605,6 +605,9 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
           >
             🧪 {showPowerRating ? '隐藏球队实力评分' : '显示球队实力评分'}
           </button>
+          <p className="w-full text-[10px] sm:text-[11px] text-slate-500 font-medium">
+            点击球队查看球队阵容名单
+          </p>
         </div>
 
         <div className="overflow-x-auto">

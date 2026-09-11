@@ -3,12 +3,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { PlayerProfile, GameState, RetiredPlayerRecord } from '../types';
 import { saveHallOfFameLegend } from '../utils/storage';
 import { uploadToGlobalHallOfFame } from '../lib/globalLeaderboard';
+import { flushPersistentWrites } from '../lib/persistentStorage';
+import { formatLocalDateTime } from '../utils/dateTime';
 import {
   calculateGoatScore,
-  calculate2KOvr,
-  getPlayerTotalAttributes,
   getUserGoatRank,
-  getHofSpeechInfo,} from '../utils/calc2k';
+  getHofSpeechInfo,
+  getPlayerCareerPeakOvr,} from '../utils/calc2k';
 import { TeamLogo } from './TeamLogo';
 import { RetirementPosterShare } from './RetirementPosterShare';
 import { NBA_TEAMS_2008 } from '../data/nbaData2008';
@@ -251,7 +252,7 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
   currentYear,
   onClose,
   onResetGame,
-  initialStep = 'timeline',
+  initialStep = 'confirm',
 }) => {
   const [step, setStep] = useState<'confirm' | 'timeline' | 'honors' | 'jersey_retirement' | 'hof_speech'>(initialStep);
 
@@ -265,14 +266,16 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
   const [isAnimationFinished, setIsAnimationFinished] = useState<boolean>(false);
   const [posterRecord, setPosterRecord] = useState<RetiredPlayerRecord | null>(null);
   const timelineEndRef = useRef<HTMLDivElement>(null);
+  const retirementMomentRef = useRef(new Date());
+  const retirementRecordIdRef = useRef(`legend_${retirementMomentRef.current.getTime()}_${Math.random().toString(36).slice(2, 8)}`);
 
   // Helper to save retired player record to Hall of Fame storage
-  const saveLegendToHof = () => {
+  const saveLegendToHof = async () => {
     try {
       const timeline = buildFullCareerTimeline(player, careerHistory, leagueHistory, currentYear);
       const jerseyRetirements = calculateJerseyRetirements(player, timeline, leagueHistory);
       const goatScore = calculateGoatScore(player).score;
-      const peakOvr = Math.max(player.peakOvr || player.ovr, ...timeline.map(() => player.ovr));
+      const peakOvr = getPlayerCareerPeakOvr(player, careerHistory.map((season) => season.ovr || 0));
 
       let championships = 0;
       let mvps = 0;
@@ -300,8 +303,8 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
       });
 
       const legendRecord: RetiredPlayerRecord = {
-        id: `legend_${player.name}_${player.draftYear || 2008}_${currentYear}`,
-        retireDate: new Date().toLocaleDateString('zh-CN'),
+        id: retirementRecordIdRef.current,
+        retireDate: formatLocalDateTime(retirementMomentRef.current),
         player: {
           name: player.name,
           position: player.position,
@@ -315,6 +318,7 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
         },
         retireAge: player.age || (currentYear - (player.draftYear || 2008) + 19),
         peakOvr,
+        peakOvrTracked: true,
         finalOvr: player.ovr,
         goatScore,
         seasonsPlayed: timeline.length,
@@ -353,14 +357,15 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
       };
 
       saveHallOfFameLegend(legendRecord);
+      await flushPersistentWrites();
       void uploadToGlobalHallOfFame(legendRecord).catch((error) => console.warn('全网传奇榜上传失败，本地记录已保留', error));
       setPosterRecord(legendRecord);
     } catch (err) {
       console.error('Failed to save legend record:', err);
     }
   };
-  const openPosterOrReturnHome = () => {
-    saveLegendToHof();
+  const openPosterOrReturnHome = async () => {
+    await saveLegendToHof();
     if (!window.ColorboxAI?.oss?.uploadFile || !window.ColorboxAI?.request?.bbs?.openPostEditor) onResetGame();
   };
   useEffect(() => {
@@ -483,9 +488,7 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
   const hofSpeech = getHofSpeechInfo(goatRank, player.name);
 
   // Peak OVR calculation
-  const totalAttrs = getPlayerTotalAttributes(player);
-  const rawPeakOvr = calculate2KOvr(player.position, totalAttrs);
-  const peakOvrDisplay = Math.max(player.ovr, player.peakOvr || 0, rawPeakOvr);
+  const peakOvrDisplay = getPlayerCareerPeakOvr(player, careerHistory.map((season) => season.ovr || 0));
 
   // Jersey retirement list
   const jerseyRetirements = useRef<JerseyRetirementInfo[]>(

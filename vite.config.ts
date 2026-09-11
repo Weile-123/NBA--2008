@@ -5,6 +5,8 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    // The release package can be hosted below an arbitrary content root.
+    base: './',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
@@ -13,16 +15,18 @@ export default defineConfig(() => {
     },
     build: {
       target: 'esnext',
+      modulePreload: { polyfill: false },
+      sourcemap: true,
       chunkSizeWarningLimit: 1600,
       rollupOptions: {
         output: {
           manualChunks(id) {
             if (id.includes('node_modules')) {
-              if (id.includes('react') || id.includes('react-dom')) {
-                return 'vendor-react';
-              }
               if (id.includes('lucide-react')) {
                 return 'vendor-icons';
+              }
+              if (id.includes('react') || id.includes('react-dom')) {
+                return 'vendor-react';
               }
               if (id.includes('motion')) {
                 return 'vendor-motion';

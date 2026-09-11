@@ -1,5 +1,6 @@
 import { PlayerProfile,Team } from '../types';
 import { calculateMatchScores,calculateTeamUsageContext,simulatePlayerMatchStats } from './leagueLogic';
+import { getPlayerTotalAttributes } from './calc2k';
 export interface TacticalOption {
   id: string;
   title: string;
@@ -92,7 +93,7 @@ export function buildQuarterEvents(
   const events: ScheduledQuarterEvent[] = [];
   const userStarName = player.name;
   const oppStarName = oppTeam.starPlayer ? oppTeam.starPlayer.split('&')[0].trim() : '对位球星';
-  const attrs = player.attributes;
+  const attrs = getPlayerTotalAttributes(player);
 
   // 1. Initial Quarter Start Event (720s = 12:00)
   events.push({
@@ -477,4 +478,3 @@ export function buildQuarterEvents(
 
   return events;
 }
-

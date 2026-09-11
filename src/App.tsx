@@ -138,7 +138,7 @@ export default function App() {
 
       {/* Floating Toast Notification */}
       {toastMsg && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-black font-black text-xs sm:text-sm shadow-2xl border border-amber-300 animate-bounce flex items-center gap-2 pointer-events-none">
+        <div className="safe-area-top-toast fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-black font-black text-xs sm:text-sm shadow-2xl border border-amber-300 animate-bounce flex items-center gap-2 pointer-events-none">
           <span>{toastMsg}</span>
         </div>
       )}
@@ -287,6 +287,7 @@ export default function App() {
                 onSignContract={handleSignNewContract}
                 onViewSeasonTrades={handleViewSeasonTrades}
                 hasActiveMilestoneModal={!!activeMilestoneModal || showAgeDeclineModal}
+                isSettingsOpen={showSettingsModal}
               />
             )}
 
@@ -328,6 +329,7 @@ export default function App() {
                 allTeams={teams}
                 onRequestTrade={handleRequestTrade}
                 onSignContract={handleSignNewContract}
+                onUpdatePlayer={setPlayer}
                 currentYear={currentYear}
                 activeInSeasonTradeOffers={activeInSeasonTradeOffers}
                 onSetActiveInSeasonTradeOffers={setActiveInSeasonTradeOffers}
@@ -402,6 +404,7 @@ export default function App() {
           careerHistory={careerHistory}
           leagueHistory={leagueHistory}
           currentYear={currentYear}
+          initialStep={(player.age || 19) >= 43 ? 'timeline' : 'confirm'}
           onClose={() => setPhase(prevPhase && prevPhase !== 'hall_of_fame' ? prevPhase : 'regular_season')}
           onResetGame={handleResetGame}
         />

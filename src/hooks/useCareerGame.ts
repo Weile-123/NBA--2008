@@ -196,6 +196,7 @@ export function useCareerGame() {
         spg,
         bpg,
         fgPct,
+        ovr: player.ovr,
         accoladesEarned,
       };
 
@@ -504,7 +505,7 @@ export function useCareerGame() {
     setCareerHistory(data.careerHistory || []);
     setLeagueHistory(data.leagueHistory || []);
     setExecutedTradeYears(data.executedTradeYears || []);
-    if (data.activeInSeasonTradeOffers) setActiveInSeasonTradeOffers(data.activeInSeasonTradeOffers);
+    setActiveInSeasonTradeOffers((data.activeInSeasonTradeOffers || []).slice(0, 3));
     setDeclinePromptYear(data.declinePromptYear ?? null);
     setIsInteractiveMatch(data.uiState?.isInteractiveMatch ?? true);
     setUsedOffseasonEventIds(new Set(data.uiState?.usedOffseasonEventIds || []));
@@ -516,7 +517,7 @@ export function useCareerGame() {
     setIsContractCompleted(data.uiState?.isContractCompleted ?? false);
     setContractStep(data.uiState?.contractStep ?? 'decision');
     setRenewalOffer(data.uiState?.renewalOffer ?? null);
-    setFreeAgencyOffers(data.uiState?.freeAgencyOffers ?? []);
+    setFreeAgencyOffers((data.uiState?.freeAgencyOffers ?? []).slice(0, 3));
     setShowAgeDeclineModal(false);
     // Always default activeTab to 'season' when loading/continuing career (or if activeTab was 'hof')
     const loadedTab = data.activeTab && data.activeTab !== 'hof' ? data.activeTab : 'season';
@@ -593,6 +594,11 @@ export function useCareerGame() {
     setCurrentYear(2008);
     setCurrentSeasonWeek(1);
     setIsPlayoffs(false);
+    setActiveTab('season');
+    setLastMatchResult(null);
+    setIsInteractiveMatch(true);
+    setShowSettingsModal(false);
+    setIsLegendaryHofOpen(false);
 
     // 2. Reset career & league histories, trades, and active offers
     setCareerHistory([]);
@@ -638,6 +644,8 @@ export function useCareerGame() {
         totalYears: 3,
         isRookieContract: true,
       },
+      freeAgencyOfferRefreshUsed: false,
+      tradeOfferRefreshUsed: false,
     });
 
     setPlayer(updatedPlayer);
@@ -775,6 +783,7 @@ export function useCareerGame() {
     if (player && selectedJerseyNum !== undefined) {
       setPlayer((prev) => (prev ? { ...prev, jerseyNum: selectedJerseyNum } : prev));
     }
+    setActiveTab('season');
     setPhase('regular_season');
   };
 
@@ -849,6 +858,8 @@ export function useCareerGame() {
       money: player.money + player.contract.salaryPerYear,
       seasonStats: { games: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, minutes: 0 },
       energy: 100,
+      freeAgencyOfferRefreshUsed: false,
+      tradeOfferRefreshUsed: false,
     };
     setPlayer(finalPlayer);
 
