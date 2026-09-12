@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PlayerProfile, Team, Position } from '../types';
 import { TeamLogo } from './TeamLogo';
-import confetti from 'canvas-confetti';
+import { gameConfetti as confetti } from '../utils/gameConfetti';
 import { Award, Sparkles, CheckCircle2, ChevronRight, Zap, Target, Shield, Flame, Radio } from 'lucide-react';
 
 interface RookieDraftAndScoutModalProps {
@@ -179,13 +179,13 @@ export const RookieDraftAndScoutModal: React.FC<RookieDraftAndScoutModalProps> =
 
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto text-slate-100 font-sans">
-      <div className="bg-[#11141b] border-2 border-amber-500/50 rounded-2xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl relative my-auto space-y-5 overflow-hidden">
+      <div className={`bg-[#11141b] border-2 border-amber-500/50 rounded-2xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl relative my-auto overflow-hidden ${stage === 'scout' ? 'max-h-[92svh] flex min-h-0 flex-col' : 'space-y-5'}`}>
         
         {/* STAGE 1: NBA SCOUT REPORT & PLAYER COMPARISON TEMPLATE */}
         {stage === 'scout' && (
-          <div className="space-y-5 animate-fadeIn">
+          <div className="flex min-h-0 flex-1 flex-col gap-3 animate-fadeIn">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-[#232834] pb-4 flex-wrap gap-2">
+            <div className="shrink-0 flex items-center justify-between border-b border-[#232834] pb-3 sm:pb-4 flex-wrap gap-2">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-2xl shadow-lg">
                   📋
@@ -201,47 +201,30 @@ export const RookieDraftAndScoutModal: React.FC<RookieDraftAndScoutModalProps> =
               </div>
             </div>
 
-            {/* Prospect Card */}
-            <div className="bg-[#0d1017] p-4 rounded-xl border border-[#232834] flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 border-2 border-amber-500/40 flex items-center justify-center text-3xl shrink-0 shadow-lg">
-                  🏀
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base sm:text-lg font-black text-white">{player.name}</h3>
-                    <span className="bg-amber-500 text-black font-black text-[10px] px-2 py-0.5 rounded font-mono">
-                      {player.ovr} OVR
-                    </span>
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1">
+              {/* Prospect Card */}
+              <div className="bg-[#0d1017] p-4 rounded-xl border border-[#232834] flex items-center gap-3.5">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 border-2 border-amber-500/40 flex items-center justify-center text-3xl shrink-0 shadow-lg">
+                    🏀
                   </div>
-                  <p className="text-xs text-slate-300 font-medium mt-0.5">
-                    {player.position} · {player.archetype} · {player.height} / {player.weight}
-                  </p>
-                  <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-                    来自: {player.birthplace || '纽约'}
-                  </p>
-                </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base sm:text-lg font-black text-white">{player.name}</h3>
+                      <span className="bg-amber-500 text-black font-black text-[10px] px-2 py-0.5 rounded font-mono">
+                        {player.ovr} OVR
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 font-medium mt-0.5">
+                      {player.position} · {player.archetype} · {player.height} / {player.weight}
+                    </p>
+                    <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                      来自: {player.birthplace || '纽约'}
+                    </p>
+                  </div>
               </div>
 
-              {/* Target Team Preview */}
-              <div className="bg-[#11141b] px-3 py-2 rounded-xl border border-amber-500/30 flex items-center gap-2.5 text-right sm:text-left shrink-0">
-                <TeamLogo
-                  logo={draftTeam.logo}
-                  abbrev={draftTeam.abbrev}
-                  primaryColor={draftTeam.primaryColor}
-                  secondaryColor={draftTeam.secondaryColor}
-                  className="w-8 h-8 object-contain"
-                  alt={draftTeam.name}
-                />
-                <div>
-                  <span className="text-[9px] text-slate-400 uppercase font-bold block">试训指名意向球队</span>
-                  <span className="text-xs font-black text-amber-300">{draftTeam.name}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* NBA Player Comparison Scout Template */}
-            <div className="bg-gradient-to-br from-[#121722] to-[#0a0d13] p-4.5 rounded-2xl border-2 border-amber-500/40 space-y-3.5 relative overflow-hidden shadow-xl">
+              {/* NBA Player Comparison Scout Template */}
+              <div className="bg-gradient-to-br from-[#121722] to-[#0a0d13] p-4.5 rounded-2xl border-2 border-amber-500/40 space-y-3.5 relative overflow-hidden shadow-xl">
               <div className="flex items-center justify-between border-b border-[#232a3c] pb-2.5">
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">{scout.avatar}</span>
@@ -299,10 +282,11 @@ export const RookieDraftAndScoutModal: React.FC<RookieDraftAndScoutModalProps> =
               <p className="text-xs text-slate-300 bg-[#090b10] p-3 rounded-xl border border-[#1e2535] leading-relaxed italic">
                 “{scout.scoutComment}”
               </p>
+              </div>
             </div>
 
             {/* Action Bar */}
-            <div className="pt-2 flex justify-end">
+            <div className="shrink-0 border-t border-[#232834] pt-3 flex justify-end">
               <button
                 type="button"
                 onClick={() => setStage('spotlight')}

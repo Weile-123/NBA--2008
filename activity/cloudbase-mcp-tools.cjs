@@ -4,9 +4,15 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const DEFAULT_TIMEOUT = 120000;
+const CREDENTIALS_PATH = process.env.CLOUDBASE_CREDENTIALS_PATH
+  ? path.resolve(process.env.CLOUDBASE_CREDENTIALS_PATH)
+  : path.join(ROOT, 'credentials.json');
 
 class CloudBaseMcpClient {
-  constructor(command = process.env.CLOUDBASE_MCP_BIN || 'cloudbase-mcp') {
+  constructor(command = process.env.CLOUDBASE_MCP_BIN || (() => {
+    const localCommand = path.join(ROOT, 'node_modules', '.bin', process.platform === 'win32' ? 'cloudbase-mcp.cmd' : 'cloudbase-mcp');
+    return fs.existsSync(localCommand) ? localCommand : 'cloudbase-mcp';
+  })()) {
     this.command = command;
     this.nextId = 1;
     this.pending = new Map();
@@ -96,7 +102,7 @@ class CloudBaseMcpClient {
   }
 
   async login() {
-    const credentials = JSON.parse(fs.readFileSync(path.join(ROOT, 'credentials.json'), 'utf8'));
+    const credentials = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf8'));
     const result = await this.callTool('auth', {
       action: 'login_by_api_key',
       apiKey: credentials.apiKey,

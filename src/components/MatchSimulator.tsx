@@ -35,6 +35,8 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
     fga,
     tpm,
     tpa,
+    ftm,
+    fta,
     turnovers,
     playedMinutes,
     earnedFans,
@@ -60,7 +62,7 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
 
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fadeIn">
+    <div className="fixed inset-0 z-50 bg-[#070913] flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fadeIn isolate [transform:translateZ(0)]">
       <div className="bg-[#11141b] border-2 border-amber-500/40 rounded-2xl p-3 sm:p-6 max-w-4xl w-full shadow-2xl relative space-y-2.5 sm:space-y-4 max-h-[95vh] overflow-y-auto">
         {/* Header Title */}
         <div className="flex items-center gap-2 border-b border-[#232834] pb-2 sm:pb-3">
@@ -271,7 +273,7 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-5 sm:grid-cols-8 gap-1.5 sm:gap-2 text-center text-xs">
+          <div className="grid grid-cols-5 sm:grid-cols-9 gap-1.5 sm:gap-2 text-center text-xs">
             <div className="bg-[#11141b] p-1 sm:p-1.5 rounded border border-[#232834]">
               <span className="text-[8px] sm:text-[9px] text-slate-500 block uppercase font-bold">得分</span>
               <span className="font-black text-amber-400 text-xs sm:text-sm font-mono">{pts}</span>
@@ -301,6 +303,10 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
               <span className="font-bold text-slate-200 font-mono text-xs">{tpm}/{tpa}</span>
             </div>
             <div className="bg-[#11141b] p-1 sm:p-1.5 rounded border border-[#232834] hidden sm:block">
+              <span className="text-[8px] sm:text-[9px] text-slate-500 block uppercase font-bold">罚球</span>
+              <span className="font-bold text-slate-200 font-mono text-xs">{ftm}/{fta}</span>
+            </div>
+            <div className="bg-[#11141b] p-1 sm:p-1.5 rounded border border-[#232834] hidden sm:block">
               <span className="text-[8px] sm:text-[9px] text-slate-500 block uppercase font-bold">失误</span>
               <span className="font-bold text-red-400 font-mono text-xs">{turnovers}</span>
             </div>
@@ -309,7 +315,7 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
 
         {/* BUZZER BEATER POPUP MODAL */}
         {showBuzzerBeaterModal && (
-          <div className="fixed inset-0 z-[70] bg-black/95 backdrop-blur-lg flex items-center justify-center p-3 sm:p-4 animate-fadeIn">
+          <div className="fixed inset-0 z-[70] bg-[#070913] flex items-center justify-center p-3 sm:p-4 animate-fadeIn">
             <div className="bg-[#11141b] border-2 border-red-500 rounded-2xl p-4 sm:p-6 max-w-xl w-full shadow-2xl space-y-3 sm:space-y-4 relative">
               <div className="flex items-center justify-between border-b border-[#232834] pb-2 sm:pb-3">
                 <div className="flex items-center gap-2 sm:gap-2.5">
@@ -410,7 +416,7 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
 
         {/* Quarterly Tactical Event POPUP MODAL */}
         {showQuarterEvent && (
-          <div className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fadeIn">
+          <div className="fixed inset-0 z-[60] bg-[#070913] flex items-center justify-center p-3 sm:p-4 animate-fadeIn">
             <div className="bg-[#11141b] border-2 border-amber-500/80 rounded-2xl p-4 sm:p-6 max-w-xl w-full shadow-2xl space-y-3 sm:space-y-4 relative">
               <div className="flex items-center justify-between border-b border-[#232834] pb-2 sm:pb-3">
                 <div className="flex items-center gap-2 sm:gap-2.5">

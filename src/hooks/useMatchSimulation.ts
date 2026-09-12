@@ -2,7 +2,7 @@ import { useEffect,useRef,useState } from 'react';
 import { MatchBoxScore,MatchLog,PlayerProfile,Team } from '../types';
 import { getUserMinutesAndRole } from '../utils/leagueLogic';
 
-import { ScheduledQuarterEvent,TacticalOption,buildQuarterEvents,isPlayerOnCourt } from '../utils/matchEvents';
+import { ScheduledQuarterEvent,TacticalOption,buildQuarterEvents,calculateInteractiveGrade,isPlayerOnCourt } from '../utils/matchEvents';
 import { generateTacticalOptions } from '../utils/matchTactics';
 export interface MatchSimulatorProps {
   player: PlayerProfile;
@@ -70,7 +70,7 @@ export function useMatchSimulation({
   const [earnedSkillPoints, setEarnedSkillPoints] = useState(0);
 
   // Rotation & Role
-  const { minutes: assignedMPG, role: userRole } = getUserMinutesAndRole(userTeam, player);
+  const { minutes: assignedMPG, role: userRole } = getUserMinutesAndRole(userTeam, player, 0, currentYear - 2007);
 
   // Daily Form Factor (10% hot hand, 10% cold hand, 80% normal form)
   const [playerFormFactor] = useState(() => {
@@ -114,7 +114,9 @@ export function useMatchSimulation({
 
   // Auto-scroll logs to bottom
   useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Events can arrive faster than a smooth-scroll animation finishes. An
+    // immediate scroll prevents a growing queue of compositor animations.
+    logsEndRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [logs]);
 
   // Start Match Handler (Click Start Match / Jump Ball)
@@ -175,9 +177,18 @@ export function useMatchSimulation({
       return;
     }
 
-    const intervalTimeMs = 100; // Tick every 100ms
+    // Five visual updates per second are enough for the accelerated game clock
+    // and cut full MatchSimulator re-renders in half on mobile WebViews.
+    const intervalTimeMs = 200;
+    let lastTickAt = performance.now();
+    let animationFrame = 0;
 
-    const timer = setInterval(() => {
+    const tick = (now: number) => {
+      if (now - lastTickAt < intervalTimeMs) {
+        animationFrame = requestAnimationFrame(tick);
+        return;
+      }
+      lastTickAt = now;
       setRemainingSeconds((prevSecs) => {
         if (prevSecs <= 0) {
           setQuarterSimulated(true);
@@ -185,7 +196,7 @@ export function useMatchSimulation({
           return 0;
         }
 
-        const nextSecs = Math.max(0, prevSecs - speedMultiplier);
+        const nextSecs = Math.max(0, prevSecs - speedMultiplier * 2);
 
         // Check and process scheduled events between prevSecs and nextSecs
         let currIdx = queueIndexRef.current;
@@ -219,6 +230,8 @@ export function useMatchSimulation({
               if (d.fga) setFga((p) => p + d.fga);
               if (d.tpm) setTpm((p) => p + d.tpm);
               if (d.tpa) setTpa((p) => p + d.tpa);
+              if (d.ftm) setFtm((p) => p + d.ftm);
+              if (d.fta) setFta((p) => p + d.fta);
               if (d.turnovers) setTurnovers((p) => p + d.turnovers);
               if (d.minutes) setPlayedMinutes((p) => +(p + d.minutes).toFixed(1));
             }
@@ -251,9 +264,12 @@ export function useMatchSimulation({
         setQueueIndex(currIdx);
         return nextSecs;
       });
-    }, intervalTimeMs);
+      animationFrame = requestAnimationFrame(tick);
+    };
 
-    return () => clearInterval(timer);
+    animationFrame = requestAnimationFrame(tick);
+
+    return () => cancelAnimationFrame(animationFrame);
   }, [
     hasStarted,
     isSimulating,
@@ -280,6 +296,9 @@ export function useMatchSimulation({
     let localFga = 0;
     let localTpm = 0;
     let localTpa = 0;
+    let localFtm = 0;
+    let localFta = 0;
+    let localTurnovers = 0;
     let localMins = 0;
 
     const newLogs: MatchLog[] = [];
@@ -300,6 +319,9 @@ export function useMatchSimulation({
         if (localFga) setFga((prev) => prev + localFga);
         if (localTpm) setTpm((prev) => prev + localTpm);
         if (localTpa) setTpa((prev) => prev + localTpa);
+        if (localFtm) setFtm((prev) => prev + localFtm);
+        if (localFta) setFta((prev) => prev + localFta);
+        if (localTurnovers) setTurnovers((prev) => prev + localTurnovers);
         if (localMins) setPlayedMinutes((prev) => +(prev + localMins).toFixed(1));
 
         if (newLogs.length) setLogs((prev) => [...prev, ...newLogs]);
@@ -325,6 +347,9 @@ export function useMatchSimulation({
         if (localFga) setFga((prev) => prev + localFga);
         if (localTpm) setTpm((prev) => prev + localTpm);
         if (localTpa) setTpa((prev) => prev + localTpa);
+        if (localFtm) setFtm((prev) => prev + localFtm);
+        if (localFta) setFta((prev) => prev + localFta);
+        if (localTurnovers) setTurnovers((prev) => prev + localTurnovers);
         if (localMins) setPlayedMinutes((prev) => +(prev + localMins).toFixed(1));
 
         if (newLogs.length) setLogs((prev) => [...prev, ...newLogs]);
@@ -362,6 +387,9 @@ export function useMatchSimulation({
         if (d.fga) localFga += d.fga;
         if (d.tpm) localTpm += d.tpm;
         if (d.tpa) localTpa += d.tpa;
+        if (d.ftm) localFtm += d.ftm;
+        if (d.fta) localFta += d.fta;
+        if (d.turnovers) localTurnovers += d.turnovers;
         if (d.minutes) localMins += d.minutes;
       }
 
@@ -380,6 +408,9 @@ export function useMatchSimulation({
     if (localFga) setFga((prev) => prev + localFga);
     if (localTpm) setTpm((prev) => prev + localTpm);
     if (localTpa) setTpa((prev) => prev + localTpa);
+    if (localFtm) setFtm((prev) => prev + localFtm);
+    if (localFta) setFta((prev) => prev + localFta);
+    if (localTurnovers) setTurnovers((prev) => prev + localTurnovers);
     if (localMins) setPlayedMinutes((prev) => +(prev + localMins).toFixed(1));
 
     if (newLogs.length) setLogs((prev) => [...prev, ...newLogs]);
@@ -427,6 +458,8 @@ export function useMatchSimulation({
         setReb((prev) => prev + 1);
         setUserScore((prev) => prev + 2);
         setPts((prev) => prev + 2);
+        setFga((prev) => prev + 1);
+        setFgm((prev) => prev + 1);
       }
     } else {
       setEventFeedback(`⚠️ 【战术执行失败】 ${opt.failText}`);
@@ -488,12 +521,7 @@ export function useMatchSimulation({
   };
 
   const finishGame = () => {
-    let ratingGrade: MatchBoxScore['playerStats']['ratingGrade'] = 'B';
-    if (pts >= 35) ratingGrade = 'S+';
-    else if (pts >= 28) ratingGrade = 'S';
-    else if (pts >= 22) ratingGrade = 'A+';
-    else if (pts >= 16) ratingGrade = 'A';
-    else if (pts < 10) ratingGrade = 'C';
+    const ratingGrade = calculateInteractiveGrade({ pts, reb, ast, stl, blk, fgm, fga, ftm, fta, turnovers });
 
     const boxScore: MatchBoxScore = {
       playerStats: {
@@ -521,6 +549,8 @@ export function useMatchSimulation({
       challengesCompleted: pts >= 20 ? ['20+ PTS'] : [],
       rewardSkillPoints: earnedSkillPoints,
       rewardMoney: 0,
+      rewardFans: earnedFans,
+      rewardXp: earnedXp,
       isBuzzerBeaterWin,
     };
 
@@ -548,6 +578,8 @@ export function useMatchSimulation({
     fga,
     tpm,
     tpa,
+    ftm,
+    fta,
     turnovers,
     playedMinutes,
     earnedFans,

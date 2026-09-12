@@ -4,10 +4,11 @@ const { createClient, readToolText } = require('./cloudbase-mcp-tools.cjs');
 
 const ROOT = path.resolve(__dirname, '..');
 const FUNCTION_ROOT = path.join(__dirname, 'cloudfunctions');
-const MIGRATION_VERSION = '20260911120100';
-const MIGRATION_NAME = 'create_legendary_leaderboard';
-const MIGRATION_FILE = path.join(__dirname, 'migrations', `${MIGRATION_VERSION}_${MIGRATION_NAME}.sql`);
-const API_BASE = 'https://app-0f7b7f394c-d8gy4o4bpcde2aff7-1252166086.ap-shanghai.app.tcloudbase.com/api';
+const MIGRATIONS = [
+  ['20260910070000', 'create_global_legends'],
+  ['20260912020000', 'retain_all_legendary_ranks'],
+];
+const API_BASE = process.env.ACTIVITY_API_BASE || 'https://app-a1c57bc9c2-d5glgsllk7b7bd845-1252166086.ap-shanghai.app.tcloudbase.com/api';
 
 function parseToolResult(result) {
   const text = readToolText(result);
@@ -28,14 +29,17 @@ async function call(client, label, name, args, timeout = 120000) {
 }
 
 async function applyMigration(client) {
-  const sql = fs.readFileSync(MIGRATION_FILE, 'utf8');
-  await call(client, '排行榜数据库迁移', 'managePgDatabase', {
-    action: 'applyMigration',
-    migrationName: MIGRATION_NAME,
-    migrationVersion: MIGRATION_VERSION,
-    sql,
-    confirm: true,
-  }, 660000);
+  for (const [migrationVersion, migrationName] of MIGRATIONS) {
+    const migrationFile = path.join(__dirname, 'migrations', `${migrationVersion}_${migrationName}.sql`);
+    const sql = fs.readFileSync(migrationFile, 'utf8');
+    await call(client, `排行榜数据库迁移 ${migrationName}`, 'managePgDatabase', {
+      action: 'applyMigration',
+      migrationName,
+      migrationVersion,
+      sql,
+      confirm: true,
+    }, 660000);
+  }
 }
 
 async function deployFunction(client) {
@@ -49,6 +53,9 @@ async function deployFunction(client) {
 async function ensureRoutes(client) {
   const listed = await call(client, '读取现有网关路由', 'queryGateway', { action: 'listRoutes' });
   const routes = listed?.data?.routes || [];
+  const httpServiceRoute = routes.find((item) => (item.DomainType || item.domainType) === 'HTTPSERVICE') || routes[0];
+  const domain = httpServiceRoute?.Domain || httpServiceRoute?.domain;
+  if (!domain) throw new Error('未找到可用的 HTTPSERVICE 网关域名');
   const desired = [
     { path: '/api/health', auth: false },
     { path: '/api/leaderboard', auth: false },
@@ -56,9 +63,10 @@ async function ensureRoutes(client) {
     { path: '/api/leaderboard/submit', auth: true },
   ];
   for (const route of desired) {
-    const exists = routes.some((item) => item.Path === route.path);
+    const exists = routes.some((item) => (item.Path || item.path) === route.path);
     await call(client, `${exists ? '更新' : '创建'}路由 ${route.path}`, 'manageGateway', {
       action: exists ? 'updateRoute' : 'createRoute',
+      domain,
       path: route.path,
       targetName: 'activity_api',
       upstreamResourceType: 'WEB_SCF',
@@ -102,8 +110,11 @@ async function verifyCloud(client) {
 }
 
 async function main() {
-  if (!fs.existsSync(path.join(ROOT, 'credentials.json'))) throw new Error('缺少 credentials.json');
-  const phase = process.env.DEPLOY_PHASE || 'all';
+  const credentialsPath = process.env.CLOUDBASE_CREDENTIALS_PATH
+    ? path.resolve(process.env.CLOUDBASE_CREDENTIALS_PATH)
+    : path.join(ROOT, 'credentials.json');
+  if (!fs.existsSync(credentialsPath)) throw new Error('缺少 credentials.json');
+  const phase = process.argv[2] || process.env.DEPLOY_PHASE || 'all';
   const client = await createClient();
   try {
     await client.login();

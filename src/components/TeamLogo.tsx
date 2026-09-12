@@ -115,6 +115,8 @@ export const TeamLogo: React.FC<TeamLogoProps> = ({
       src={/\/nba\.(png|svg)([?#]|$)/i.test(currentSource || '') ? LEAGUE_LOGO : currentSource}
       alt={brandText(finalAlt)}
       className={finalClassName}
+      loading="lazy"
+      decoding="async"
       referrerPolicy="no-referrer"
       onError={() => {
         if (!hasError) setHasError(true);

@@ -52,7 +52,8 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
   else if (playerStats.ratingGrade === 'B') gradeMult = 0.9;
   else gradeMult = 0.8;
 
-  const xpEarned = Math.round(baseMatchXp * gradeMult);
+  const tacticalXp = boxScore.rewardXp || 0;
+  const xpEarned = Math.round(baseMatchXp * gradeMult) + tacticalXp;
   const tacticalSp = boxScore.rewardSkillPoints || 0;
   const totalSkillPointsEarned = tacticalSp + milestoneSp;
 
@@ -65,7 +66,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
   const handleFinish = () => {
     let moraleDelta = selectedPressOpt?.moraleChange || 0;
     let mediaRepDelta = selectedPressOpt?.mediaRepChange || 0;
-    let baseFanDelta = selectedPressOpt?.fanChange || 500;
+    let baseFanDelta = (selectedPressOpt?.fanChange ?? 500) + (boxScore.rewardFans || 0);
 
     // Apply 3x Fan multiplier if Buzzer Beater Win
     let fanDelta = boxScore.isBuzzerBeaterWin ? baseFanDelta * 3 : baseFanDelta;

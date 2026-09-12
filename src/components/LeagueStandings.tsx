@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { scheduleRootScrollToTop } from '../utils/scroll';
 import { Team, PlayerProfile, GameState, MatchRosterStats, SingleGamePlayerStats } from '../types';
 import { Trophy, Award, BarChart3, Sparkles, Target, Activity, Users, Crown, Zap, Eye, X, Star, Calendar, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { enrichRosterPlayer, getCompleteTeamRoster, generateFullMatchRosterStats, calculateMatchScores, calculateTeamPowerRating, getPlayerCategoryRatings, getUserPlayerCategoryRatings, calculateTeamUsageContext } from '../utils/leagueLogic';
@@ -226,7 +227,7 @@ const RecentMatchBoxScoreModal: React.FC<RecentMatchBoxScoreModalProps> = ({
                         </div>
                       </td>
                       <td className="py-2 text-center font-mono text-slate-400 text-[11px]">{p.position}</td>
-                      <td className="py-2 text-center font-mono text-slate-400 text-[11px]">{p.minutes}m</td>
+                      <td className="py-2 text-center font-mono text-slate-400 text-[11px]">{p.dnpReason ? 'DNP' : `${p.minutes}m`}</td>
                       <td className="py-2 text-center font-mono font-black text-amber-400 text-xs">{p.pts}</td>
                       <td className="py-2 text-center font-mono text-blue-300 text-[11px]">{p.reb}</td>
                       <td className="py-2 text-center font-mono text-emerald-300 text-[11px]">{p.ast}</td>
@@ -299,7 +300,7 @@ const RecentMatchBoxScoreModal: React.FC<RecentMatchBoxScoreModalProps> = ({
                         </div>
                       </td>
                       <td className="py-2 text-center font-mono text-slate-400 text-[11px]">{p.position}</td>
-                      <td className="py-2 text-center font-mono text-slate-400 text-[11px]">{p.minutes}m</td>
+                      <td className="py-2 text-center font-mono text-slate-400 text-[11px]">{p.dnpReason ? 'DNP' : `${p.minutes}m`}</td>
                       <td className="py-2 text-center font-mono font-black text-amber-400 text-xs">{p.pts}</td>
                       <td className="py-2 text-center font-mono text-blue-300 text-[11px]">{p.reb}</td>
                       <td className="py-2 text-center font-mono text-emerald-300 text-[11px]">{p.ast}</td>
@@ -339,9 +340,8 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
   const [activeSubNav, setActiveSubNav] = useState<'standings' | 'userStats'>('userStats');
 
   useEffect(() => {
-    const rootEl = document.getElementById('root');
-    if (rootEl) rootEl.scrollTop = 0;
-    window.scrollTo(0, 0);
+    const animationFrame = scheduleRootScrollToTop();
+    return () => cancelAnimationFrame(animationFrame);
   }, [activeSubNav]);
   const [leaderCategory, setLeaderCategory] = useState<'ppg' | 'apg' | 'rpg' | 'spg' | 'bpg'>('ppg');
   const [selectedTeamForModal, setSelectedTeamForModal] = useState<Team | null>(null);

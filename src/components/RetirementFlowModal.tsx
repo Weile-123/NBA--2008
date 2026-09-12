@@ -33,7 +33,7 @@ import {
   User,
   Mic,
   Quote,} from 'lucide-react';
-import confetti from 'canvas-confetti';
+import { gameConfetti as confetti } from '../utils/gameConfetti';
 
 interface RetirementFlowModalProps {
   player: PlayerProfile;
@@ -358,7 +358,14 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
 
       saveHallOfFameLegend(legendRecord);
       await flushPersistentWrites();
-      void uploadToGlobalHallOfFame(legendRecord).catch((error) => console.warn('全网传奇榜上传失败，本地记录已保留', error));
+      try {
+        // Do not leave the retirement flow while the global submission is
+        // still in flight. A failure is persisted as pending by the upload
+        // helper and will be retried from the global leaderboard.
+        await uploadToGlobalHallOfFame(legendRecord);
+      } catch (error) {
+        console.warn('全网传奇榜上传失败，本地记录已保留', error);
+      }
       setPosterRecord(legendRecord);
     } catch (err) {
       console.error('Failed to save legend record:', err);
@@ -370,27 +377,23 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
   };
   useEffect(() => {
     if (step === 'timeline' && !isAnimationFinished) {
-      const interval = setInterval(() => {
-        setVisibleIndex((prev) => {
-          if (prev < timelineData.length - 1) {
-            return prev + 1;
-          } else {
-            setIsAnimationFinished(true);
-            clearInterval(interval);
-            // Trigger celebration confetti on timeline completion
-            confetti({
-              particleCount: 50,
-              spread: 60,
-              origin: { y: 0.6 },
-            });
-            return prev;
-          }
+      const revealTimer = setTimeout(() => {
+        if (visibleIndex < timelineData.length - 1) {
+          setVisibleIndex((prev) => prev + 1);
+          return;
+        }
+
+        setIsAnimationFinished(true);
+        confetti({
+          particleCount: 50,
+          spread: 60,
+          origin: { y: 0.6 },
         });
       }, 700);
 
-      return () => clearInterval(interval);
+      return () => clearTimeout(revealTimer);
     }
-  }, [step, isAnimationFinished, timelineData.length]);
+  }, [step, isAnimationFinished, timelineData.length, visibleIndex]);
 
   // Trigger grand celebration confetti when opening HOF speech stage
   useEffect(() => {
@@ -406,7 +409,7 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
   // Scroll to bottom as timeline advances
   useEffect(() => {
     if (step === 'timeline') {
-      timelineEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      timelineEndRef.current?.scrollIntoView({ behavior: 'auto' });
     }
   }, [visibleIndex, step]);
 
@@ -751,8 +754,8 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
 
       {/* Step 3: Career Honors & Lifetime Totals Modal */}
       {step === 'honors' && (
-        <div className="bg-[#0f131d] border border-amber-500/50 rounded-2xl sm:rounded-3xl max-w-2xl w-full p-3.5 sm:p-8 shadow-2xl space-y-4 sm:space-y-6 relative ring-1 ring-amber-500/20 max-h-[90vh] overflow-y-auto my-auto">
-          <div className="text-center space-y-1 border-b border-slate-800 pb-3 sm:pb-4">
+        <div className="bg-[#0f131d] border border-amber-500/50 rounded-2xl sm:rounded-3xl max-w-2xl w-full p-3.5 sm:p-8 shadow-2xl relative ring-1 ring-amber-500/20 max-h-[90svh] overflow-hidden my-auto flex min-h-0 flex-col gap-3 sm:gap-5">
+          <div className="shrink-0 text-center space-y-1 border-b border-slate-800 pb-3 sm:pb-4">
             <div className="inline-flex items-center gap-1 px-2.5 py-0.5 sm:px-3 sm:py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-400 text-[10px] sm:text-xs font-mono font-bold">
               👑 CAREER MILESTONES & STATS
             </div>
@@ -764,8 +767,9 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
             </p>
           </div>
 
-          {/* Section 1: Career Honors Grid */}
-          <div className="space-y-2">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1">
+            {/* Section 1: Career Honors Grid */}
+            <div className="space-y-2">
             <h3 className="text-xs font-black uppercase text-amber-400 tracking-wider flex items-center gap-1.5">
               <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>生涯主要荣誉成就</span>
@@ -852,10 +856,10 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
                 </div>
               </div>
             </div>
-          </div>
+            </div>
 
-          {/* Section 2: Lifetime Totals & Averages */}
-          <div className="space-y-2 pt-2 border-t border-slate-800">
+            {/* Section 2: Lifetime Totals & Averages */}
+            <div className="space-y-2 pt-2 border-t border-slate-800">
             <h3 className="text-xs font-black uppercase text-emerald-400 tracking-wider flex items-center gap-1.5">
               <Medal className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>生涯总数据与场均均值</span>
@@ -892,9 +896,10 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
                 <span className="text-[9px] sm:text-[10px] text-rose-300 block">场均 {careerBpg} 帽</span>
               </div>
             </div>
+            </div>
           </div>
 
-          <div className="pt-2 sm:pt-3 border-t border-slate-800 flex justify-end">
+          <div className="shrink-0 pt-2 sm:pt-3 border-t border-slate-800 flex justify-end">
             <button
               type="button"
               onClick={() => setStep('jersey_retirement')}

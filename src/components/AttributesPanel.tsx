@@ -56,7 +56,7 @@ const attrList: AttrItem[] = [
   { key: 'speed', label: '速度', desc: '快攻冲刺与防守端回追爆发力', icon: '🏃', category: 'physicals' },
   { key: 'vertical', label: '弹跳', desc: '垂直起跳高度、隔人暴扣与滞空争抢', icon: '🚀', category: 'physicals' },
   { key: 'strength', label: '力量', desc: '卡位篮板、背身顶防与身体对抗', icon: '💪', category: 'physicals' },
-  { key: 'stamina', label: '耐力', desc: '降低高强度比赛疲劳与伤病风险', icon: '🫀', category: 'physicals' },
+  { key: 'stamina', label: '耐力', desc: '降低每场比赛后的伤病概率', icon: '🫀', category: 'physicals' },
 ];
 
 export const AttributesPanel: React.FC<AttributesPanelProps> = ({

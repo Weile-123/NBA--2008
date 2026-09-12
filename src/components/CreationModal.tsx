@@ -318,37 +318,12 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
     });
   }, [teamConfFilter, teamSearchQuery]);
 
-  // Core key attributes for quick live preview in sticky header
-  const keyAttrsList = useMemo(() => {
-    const keys: (keyof Attributes)[] = (() => {
-      switch (position) {
-        case 'PG': return ['ballHandle', 'threePoint', 'speed', 'passing'];
-        case 'SG': return ['threePoint', 'midRange', 'speed', 'layup'];
-        case 'SF': return ['threePoint', 'dunk', 'speed', 'perimeterDef'];
-        case 'PF': return ['insideFinish', 'rebounding', 'strength', 'interiorDef'];
-        case 'C': return ['dunk', 'rebounding', 'interiorDef', 'block'];
-        default: return ['threePoint', 'speed', 'dunk', 'ballHandle'];
-      }
-    })();
-
-    return keys.map((k) => {
-      const labelObj = attrLabels.find((al) => al.key === k);
-      return {
-        key: k,
-        label: labelObj?.label || k,
-        icon: labelObj?.icon || '🏀',
-        val: attributes[k],
-        cap: attributeCaps[k],
-      };
-    });
-  }, [position, attributes, attributeCaps, attrLabels]);
-
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto text-slate-200">
-      <div className="bg-[#11141b] border border-[#232834] rounded-2xl max-w-3xl w-full p-5 sm:p-7 shadow-2xl relative my-auto max-h-[92vh] overflow-y-auto">
+      <div className={`bg-[#11141b] border border-[#232834] rounded-2xl max-w-3xl w-full p-5 sm:p-7 shadow-2xl relative my-auto max-h-[92svh] ${step === 'identity' || step === 'customize' ? 'overflow-hidden flex min-h-0 flex-col' : 'overflow-y-auto'}`}>
         {/* TOP HEADER NAVIGATION BAR */}
         {onBackToHome && (
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#232834]">
+          <div className="shrink-0 flex items-center justify-between mb-4 pb-3 border-b border-[#232834]">
             <button
               type="button"
               onClick={onBackToHome}
@@ -358,26 +333,18 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
               <Home className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
               <span>返回首页大厅</span>
             </button>
-            <span className="text-[11px] font-mono font-bold text-slate-500 uppercase tracking-wider">
-              2008 传奇球星创建系统
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-400 sm:px-3 sm:text-xs">
+              <Sparkles className="h-3.5 w-3.5 shrink-0" />
+              传奇球星生涯起源
             </span>
           </div>
         )}
 
         {/* STEP 1: IDENTITY & IMMERSION BACKGROUND */}
         {step === 'identity' && (
-          <form onSubmit={handleStartSimulation} className="space-y-5 py-1">
-            <div className="text-center space-y-1.5">
-              <div className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-400 border border-amber-500/30 px-3.5 py-1 rounded-full text-xs font-bold uppercase">
-                <Sparkles className="w-3.5 h-3.5" /> 开启你的 2008 传奇生涯起源
-              </div>
-              <h3 className="text-2xl sm:text-3xl font-black italic text-white">打造你的球员背景档案</h3>
-              <p className="text-xs text-slate-400 max-w-lg mx-auto">
-                在虎扑 App 内使用你的虎扑昵称，其他环境自动生成中文姓名。你的起源故事将奠定15个高中与NCAA关键选秀事件的基调。
-              </p>
-            </div>
-
-            <div className="bg-[#0d1017] p-4 sm:p-5 rounded-2xl border border-[#232834] space-y-4 max-w-2xl mx-auto">
+          <form onSubmit={handleStartSimulation} className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden py-1">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+              <div className="bg-[#0d1017] p-4 sm:p-5 rounded-2xl border border-[#232834] space-y-4 max-w-2xl mx-auto">
               {/* Hupu account identity */}
               <div>
                 <label className="block text-xs font-bold uppercase text-slate-300 mb-1.5 flex items-center gap-1.5">
@@ -410,10 +377,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                     </button>
                   )}
                 </div>
-                {!isUserLoading && identityNotice && (
-                  <p className={`text-xs font-bold flex items-center gap-1.5 mt-2 ${nameSource === 'hupu' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                    {nameSource === 'hupu' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
-                    <span>{nameSource === 'hupu' ? identityNotice : `当前使用随机姓名；${identityNotice}`}</span>
+                {!isUserLoading && identityNotice && nameSource !== 'hupu' && (
+                  <p className="text-xs font-bold flex items-center gap-1.5 mt-2 text-amber-400">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>当前使用随机姓名；{identityNotice}</span>
                   </p>
                 )}
               </div>
@@ -424,7 +391,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                   <Globe className="w-4 h-4 text-amber-400" /> 出身城市
                 </label>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="flex gap-2 overflow-x-auto overscroll-x-contain pb-2 scrollbar-thin">
                   {BIRTHPLACE_PRESETS.map((p) => {
                     const isSelected = birthplace === p.label;
                     return (
@@ -432,7 +399,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                         key={p.label}
                         type="button"
                         onClick={() => setBirthplace(p.label)}
-                        className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${isSelected
+                        className={`min-w-[108px] flex-1 shrink-0 p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${isSelected
                           ? 'bg-amber-500/20 border-amber-400 text-amber-300 ring-1 ring-amber-400'
                           : 'bg-[#11141b] border-[#232834] text-slate-400 hover:border-slate-600 hover:text-slate-200'
                           }`}
@@ -470,9 +437,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                   })}
                 </div>
               </div>
+              </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 w-full max-w-2xl mx-auto pt-1">
+            <div className="flex shrink-0 flex-col sm:flex-row gap-2 sm:gap-3 w-full max-w-2xl mx-auto pt-2 border-t border-[#232834] sm:border-0 sm:pt-1">
               <button
                 type="submit"
                 disabled={!hasPlayerName}
@@ -738,9 +706,9 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
 
         {/* STEP 4: PLAYER CUSTOMIZATION (身材、位置、号码、模板、心仪球队) */}
         {step === 'customize' && (
-          <form onSubmit={handleSubmitFinalPlayer} className="space-y-4 relative">
-            {/* STICKY LIVE ATTRIBUTE & OVR HEADER (Mobile H5 Optimized: No scrolling up/down needed to inspect changes) */}
-            <div className="sticky -top-5 sm:-top-7 z-20 bg-[#11141b]/95 backdrop-blur-md p-3 sm:p-3.5 -mx-5 sm:-mx-7 px-5 sm:px-7 border-b border-amber-500/30 space-y-2 shadow-xl">
+          <form onSubmit={handleSubmitFinalPlayer} className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden relative">
+            {/* Fixed player summary and attribute entry */}
+            <div className="shrink-0 bg-[#11141b] p-2.5 sm:p-3.5 -mx-5 sm:-mx-7 px-5 sm:px-7 border-b border-amber-500/30 shadow-xl">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-lg sm:text-xl shrink-0">🏀</span>
@@ -768,26 +736,11 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                   </div>
                 </div>
               </div>
-
-              {/* Mobile Live Key Attributes Quick Strip */}
-              <div className="bg-[#0d1017] p-1.5 sm:p-2 rounded-xl border border-[#232834] flex items-center justify-between gap-1 overflow-x-auto text-[11px] font-mono custom-scrollbar">
-                <span className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase shrink-0 mr-1 flex items-center gap-1">
-                  <Zap className="w-3 h-3 text-amber-400 shrink-0" /> 核心属性:
-                </span>
-                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                  {keyAttrsList.map((item) => (
-                    <div key={item.key} className="flex items-center gap-1 bg-[#11141b] px-2 py-0.5 rounded-lg border border-[#232834]">
-                      <span className="text-[9px] text-slate-300">{item.label}</span>
-                      <span className="font-black text-amber-400 text-xs">{item.val}</span>
-                      <span className="text-[8px] text-slate-500">/{item.cap}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
 
-            {/* Section 1: Position */}
-            <div className="bg-[#0d1017] p-3.5 rounded-xl border border-[#232834] space-y-2.5">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1">
+              {/* Section 1: Position */}
+              <div className="bg-[#0d1017] p-3.5 rounded-xl border border-[#232834] space-y-2.5">
               <h3 className="text-xs font-black italic uppercase text-white flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5 text-amber-400" /> 1. 场上位置
               </h3>
@@ -828,10 +781,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                 <option value="PF">PF · 大前锋</option>
                 <option value="C">C · 中锋</option>
               </select>
-            </div>
+              </div>
 
             {/* Section 2: Height & Weight Selection */}
-            <div className="bg-[#0d1017] p-3.5 rounded-xl border border-[#232834] space-y-3">
+              <div className="bg-[#0d1017] p-3.5 rounded-xl border border-[#232834] space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-black italic uppercase text-white flex items-center gap-1.5">
                   <Sliders className="w-3.5 h-3.5 text-amber-400" /> 2. 身高体重定制
@@ -902,10 +855,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                   </div>
                 </div>
               </div>
-            </div>
+              </div>
 
             {/* Section 3: Position-Specific Archetypes */}
-            <div className="bg-[#0d1017] p-3.5 rounded-xl border border-[#232834] space-y-2.5">
+              <div className="bg-[#0d1017] p-3.5 rounded-xl border border-[#232834] space-y-2.5">
               <h3 className="text-xs font-black italic uppercase text-white flex items-center gap-1.5">
                 <Trophy className="w-3.5 h-3.5 text-amber-400" /> 3. 【{position}】专属模板风格
               </h3>
@@ -933,10 +886,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                   </button>
                 ))}
               </div>
-            </div>
+              </div>
 
             {/* Section 4: Favorite NBA Draft Team Selection (SIMPLIFIED INTO POPUP MODAL) */}
-            <div className="bg-[#0d1017] p-3.5 rounded-xl border border-amber-500/20 space-y-3">
+              <div className="bg-[#0d1017] p-3.5 rounded-xl border border-amber-500/20 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-xs font-black italic uppercase text-white flex items-center gap-1.5">
@@ -981,53 +934,30 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                   <span>选择球队</span>
                 </button>
               </div>
-            </div>
-
-            {/* Section 5: 18 Attributes & Caps Grid */}
-            <div className="bg-[#0d1017] p-3.5 rounded-xl border border-[#232834]">
-              <div className="flex items-center justify-between mb-2.5">
-                <h3 className="text-xs font-black italic uppercase text-white flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5 text-amber-400" /> 18项基础属性与个人上限
-                </h3>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {attrLabels.map(({ key, label, icon }) => {
-                  const val = attributes[key];
-                  const cap = attributeCaps[key];
-                  return (
-                    <div
-                      key={key}
-                      className="bg-[#11141b] p-2 rounded-lg border border-[#232834] flex items-center justify-between"
-                    >
-                      <span className="text-xs text-slate-300 flex items-center gap-1 font-medium">
-                        <span>{icon}</span> {label}
-                      </span>
-                      <div className="text-right font-mono">
-                        <span className="text-xs font-bold text-amber-400">{val}</span>
-                        <span className="text-[10px] text-slate-500 ml-1">/ {cap}</span>
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             </div>
 
-            {/* Submit Button */}
-            <button
-              type="button"
-              onClick={handleCreationAd}
-              disabled={isWatchingCreationAd || paidBoostOvr >= 10}
-              className="w-full py-3 rounded-xl border border-violet-400/50 bg-violet-500/15 hover:bg-violet-500/25 disabled:opacity-50 text-violet-200 font-black text-xs transition-all cursor-pointer"
-            >
-              <span className="flex items-center justify-center gap-1.5"><MonitorPlay className="w-3.5 h-3.5" />{isWatchingCreationAd ? '广告加载中…' : paidBoostOvr >= 10 ? '已获得综评 +10' : '综评额外+10'}</span>
-            </button>
-            <button
-              type="submit"
-              className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-black font-black italic rounded-xl text-xs uppercase tracking-tight shadow-xl transition-all cursor-pointer"
-            >
-              进入2008年选秀大会
-            </button>
+            {/* Fixed bottom actions */}
+            <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-[#232834] pt-2">
+              <button
+                type="button"
+                onClick={handleCreationAd}
+                disabled={isWatchingCreationAd || paidBoostOvr >= 10}
+                className="w-full py-3 rounded-xl border border-violet-400/50 bg-violet-500/15 hover:bg-violet-500/25 disabled:opacity-50 text-violet-200 font-black text-xs transition-all cursor-pointer"
+              >
+                <span className="flex items-center justify-center gap-1.5">
+                  <MonitorPlay className="w-3.5 h-3.5" />
+                  {isWatchingCreationAd ? '加载中…' : paidBoostOvr >= 10 ? '已+10' : '综评+10'}
+                </span>
+              </button>
+              <button
+                type="submit"
+                className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-black italic rounded-xl text-xs uppercase tracking-tight shadow-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <span>2008选秀</span>
+                <ArrowRight className="w-4 h-4 shrink-0" />
+              </button>
+            </div>
           </form>
         )}
 

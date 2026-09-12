@@ -1,9 +1,10 @@
 import { normalizeBranding } from '../utils/branding';
-import { useEffect,useLayoutEffect,useMemo,useRef,useState } from 'react';
+import { startTransition,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState } from 'react';
+import type { Dispatch,SetStateAction } from 'react';
 import { HISTORICAL_SEASONS,NBA_TEAMS_2008 } from '../data/nbaData2008';
 import { GameState,MatchBoxScore,PlayerProfile,RosterPlayer,Team } from '../types';
 import { calculateSeasonAwards } from '../utils/awardsLogic';
-import { syncPlayerAgeDecay } from '../utils/calc2k';
+import { mustRetireAtAge,syncPlayerAgeDecay } from '../utils/calc2k';
 import { ContractOffer } from '../utils/contractLogic';
 import { calculateUserDraftPick } from '../utils/draftLogic';
 import { progressLeagueForNewSeason } from '../utils/progressionLogic';
@@ -16,9 +17,16 @@ import { useSeasonSimulation } from './useSeasonSimulation';
 import { detectNewMilestones,MilestoneTrigger } from '../data/milestonesData';
 import { executeHistoricalTradesForSeason,TradeModalData } from '../data/realTradesData';
 import { Accolade } from '../types';
+import { scheduleRootScrollToTop } from '../utils/scroll';
 
 export function useCareerGame() {
-  const [phase, setPhase] = useState<GameState['phase']>('home');
+  const [phase, setPhaseState] = useState<GameState['phase']>('home');
+  const setPhase: Dispatch<SetStateAction<GameState['phase']>> = useCallback((nextPhase) => {
+    // Phase changes frequently cross lazy-loaded chunks. A transition keeps
+    // the current screen visible until the destination is ready instead of
+    // replacing the entire app with the root Suspense fallback for one frame.
+    startTransition(() => setPhaseState(nextPhase));
+  }, []);
   const [prevPhase, setPrevPhase] = useState<GameState['phase']>('regular_season');
   const [currentSaveSlot, setCurrentSaveSlot] = useState<SaveSlotId>('slot_1');
   const [isSaveSlotsOpen, setIsSaveSlotsOpen] = useState(false);
@@ -26,7 +34,12 @@ export function useCareerGame() {
   const [currentYear, setCurrentYear] = useState(2008);
   const [currentSeasonWeek, setCurrentSeasonWeek] = useState(1);
   const [isPlayoffs, setIsPlayoffs] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>('season');
+  const [activeTab, setActiveTabState] = useState<string>('season');
+  const setActiveTab: Dispatch<SetStateAction<string>> = useCallback((nextTab) => {
+    // Navigation is direct user input and must stay synchronous while the
+    // background regular-season simulator is producing transition updates.
+    setActiveTabState(nextTab);
+  }, []);
   const [lastSavedAt, setLastSavedAt] = useState<string>('未保存');
   const [storageReady, setStorageReady] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -36,25 +49,9 @@ export function useCareerGame() {
   const [showAgeDeclineModal, setShowAgeDeclineModal] = useState<boolean>(false);
 
   // Automatically scroll to the top of the page when changing tabs or phases
-  useLayoutEffect(() => {
-    const resetScroll = () => {
-      const rootEl = document.getElementById('root');
-      if (rootEl) {
-        rootEl.scrollTop = 0;
-        rootEl.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
-      }
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    };
-
-    resetScroll();
-    const timer = setTimeout(resetScroll, 0);
-    const animFrame = requestAnimationFrame(resetScroll);
-    return () => {
-      clearTimeout(timer);
-      cancelAnimationFrame(animFrame);
-    };
+  useEffect(() => {
+    const animationFrame = scheduleRootScrollToTop();
+    return () => cancelAnimationFrame(animationFrame);
   }, [activeTab, phase]);
 
   const showToast = (msg: string) => {
@@ -372,10 +369,11 @@ export function useCareerGame() {
     }
   }, [phase, player]);
 
-  // Age 38+ Physical Decline Modal trigger when entering regular season
+  // Age 38+ Physical Decline Modal trigger when entering regular season.
+  // Mandatory retirement must never be suppressed by saved yearly UI state.
   useEffect(() => {
     if (phase === 'regular_season' && player && (player.age || 19) >= 38) {
-      if (declinePromptYear !== currentYear) {
+      if (mustRetireAtAge(player.age) || declinePromptYear !== currentYear) {
         setShowAgeDeclineModal(true);
       }
     }
@@ -390,6 +388,10 @@ export function useCareerGame() {
   };
 
   const handleAgeDeclineContinue = () => {
+    if (mustRetireAtAge(player?.age)) {
+      handleAgeDeclineRetire();
+      return;
+    }
     setDeclinePromptYear(currentYear);
     setShowAgeDeclineModal(false);
   };
@@ -789,7 +791,7 @@ export function useCareerGame() {
   };
 
   // Helper to simulate a full league game week so all 30 NBA teams get win/loss updates using dynamic power ratings
-  const { handleSimulateFullSeason, handleStartMatch, handleFinishMatch, handlePostMatchContinue } = useSeasonSimulation({
+  const { handleSimulateFullSeason, handleStartMatch, handleFinishMatch, handlePostMatchContinue, handleAdvanceInjury } = useSeasonSimulation({
     player,
     currentSeasonWeek,
     teams,
@@ -814,6 +816,10 @@ export function useCareerGame() {
   // Advance to next season handler
   const handleNextSeason = () => {
     if (!player) return;
+    if (mustRetireAtAge(player.age)) {
+      handleAgeDeclineRetire();
+      return;
+    }
 
     // Progress ages, dynamic OVRs, and team ratings across all 30 teams
     const { updatedTeams, updatedUserPlayer } = progressLeagueForNewSeason(teams, player);
@@ -861,12 +867,21 @@ export function useCareerGame() {
       money: player.money + disposableSalary,
       seasonStats: { games: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, minutes: 0 },
       energy: 100,
+      health: {
+        status: 'healthy',
+        cooldownGames: player.health.status === 'injured' ? 10 : (player.health.cooldownGames || 0),
+        occurredThisSeason: false,
+      },
       freeAgencyOfferRefreshUsed: false,
       tradeOfferRefreshUsed: false,
     };
     setPlayer(finalPlayer);
 
     setPhase('regular_season');
+    if (mustRetireAtAge(finalPlayer.age)) {
+      setDeclinePromptYear(null);
+      setShowAgeDeclineModal(true);
+    }
   };
 
   const handleViewSeasonTrades = () => {
@@ -979,6 +994,7 @@ export function useCareerGame() {
     handleStartMatch,
     handleFinishMatch,
     handlePostMatchContinue,
+    handleAdvanceInjury,
     handleUpgradeAttribute,
     handleAddSkillPoints,
     handleWatchAttributeAd,

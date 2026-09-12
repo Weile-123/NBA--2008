@@ -125,6 +125,13 @@ export interface SignatureShoe {
 export interface InjuryStatus {
   status: 'healthy' | 'injured';
   injuryName?: string;
+  /** Remaining scheduled games the player must miss. */
+  gamesRemaining?: number;
+  /** Prevents another injury roll for this many played games after returning. */
+  cooldownGames?: number;
+  /** The simplified system allows at most one injury per season. */
+  occurredThisSeason?: boolean;
+  // Legacy save fields kept optional so older saves continue to load safely.
   severity?: 'minor' | 'moderate' | 'severe';
   daysRemaining?: number;
   attrPenalty?: number;
@@ -287,6 +294,8 @@ export interface MatchBoxScore {
   challengesCompleted: string[];
   rewardSkillPoints: number;
   rewardMoney: number;
+  rewardFans?: number;
+  rewardXp?: number;
   isBuzzerBeaterWin?: boolean;
 }
 
@@ -321,6 +330,7 @@ export interface SingleGamePlayerStats {
   ovr: number;
   isUser?: boolean;
   isStar?: boolean;
+  dnpReason?: string;
   minutes: number;
   pts: number;
   reb: number;

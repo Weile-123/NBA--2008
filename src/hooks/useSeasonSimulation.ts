@@ -3,6 +3,7 @@ import { GameState } from '../types';
 import { MatchBoxScore,PlayerProfile,Team } from '../types';
 import { calculateMatchScores,calculateTeamPowerRating,calculateTeamUsageContext,calcWinProbability,generateFullMatchRosterStats,getUserMinutesAndRole,simulatePlayerMatchStats } from '../utils/leagueLogic';
 import { generateTweets } from '../utils/proceduralEngine';
+import { evaluatePostGameHealth, getPlayerTotalAttributes, mustRetireAtAge } from '../utils/calc2k';
 
 import { MilestoneTrigger } from '../data/milestonesData';
 
@@ -99,6 +100,10 @@ export function useSeasonSimulation({
   // Fast Full Season Simulation Handler (REQUIREMENT 3: 模拟全季 / 跳过常规赛)
   const handleSimulateFullSeason = () => {
     if (!player) return;
+    if (mustRetireAtAge(player.age)) {
+      setPhase('hall_of_fame');
+      return;
+    }
     let week = currentSeasonWeek;
     let curTeams = [...teams];
     let curSched = [...schedule];
@@ -117,6 +122,40 @@ export function useSeasonSimulation({
       const isUserWin = userScore > oppScore;
 
       curTeams = simulateLeagueGameWeek(curTeams, userTeam.id, oppTeam.id, isUserWin);
+
+      // Injured players miss scheduled games while their team continues normally.
+      if (curPlayer.health.status === 'injured') {
+        const gamesRemaining = Math.max(1, curPlayer.health.gamesRemaining || 1) - 1;
+        const nextHealth: PlayerProfile['health'] = gamesRemaining > 0
+          ? { ...curPlayer.health, gamesRemaining }
+          : {
+              status: 'healthy',
+              cooldownGames: 10,
+              occurredThisSeason: true,
+            };
+        const currentSchedItem = curSched[week - 1];
+        curSched[week - 1] = {
+          ...currentSchedItem,
+          isPlayed: true,
+          userWon: isUserWin,
+          userScore,
+          oppScore,
+          rosterStats: generateFullMatchRosterStats(
+            userTeam,
+            oppTeam,
+            curPlayer,
+            userScore,
+            oppScore,
+            currentSchedItem?.isHome ?? true,
+            seasonIdx,
+            undefined,
+            '伤病缺席'
+          ),
+        };
+        curPlayer = { ...curPlayer, health: nextHealth };
+        week += 1;
+        continue;
+      }
 
       // Update schedule item
       curSched[week - 1] = {
@@ -142,6 +181,10 @@ export function useSeasonSimulation({
       const simStats = simulatePlayerMatchStats(curPlayer, assignedMPG, userTeamUsageContext);
       curPlayer = {
         ...curPlayer,
+        health: evaluatePostGameHealth(
+          curPlayer.health,
+          getPlayerTotalAttributes(curPlayer).stamina
+        ),
         seasonStats: {
           ...curPlayer.seasonStats,
           games: curPlayer.seasonStats.games + 1,
@@ -173,6 +216,11 @@ export function useSeasonSimulation({
   // Match start handler
   const handleStartMatch = (isInteractive: boolean) => {
     if (!player) return;
+    if (mustRetireAtAge(player.age)) {
+      setPhase('hall_of_fame');
+      return;
+    }
+    if (player.health.status === 'injured') return;
 
     // Safety check: If all 82 games have been played, do not simulate further!
     const playedCount = schedule.filter((s) => s.isPlayed).length;
@@ -226,7 +274,8 @@ export function useSeasonSimulation({
         userScore,
         oppScore,
         isHome,
-        seasonIndex
+        seasonIndex,
+        simStats
       );
 
       // Update schedule record
@@ -310,6 +359,10 @@ export function useSeasonSimulation({
 
       const playerUpdatedBase = {
         ...player,
+        health: evaluatePostGameHealth(
+          player.health,
+          getPlayerTotalAttributes(player).stamina
+        ),
         xp: newXp,
         maxXp: newMaxXp,
         level: newLevel,
@@ -383,8 +436,10 @@ export function useSeasonSimulation({
     updatedCareerStats.minutes += playerStats.minutes;
     updatedCareerStats.turnovers = (updatedCareerStats.turnovers || 0) + (playerStats.turnovers || 0);
 
-    // Injury system temporarily hidden
-    const healthStatus: PlayerProfile['health'] = { status: 'healthy' };
+    const healthStatus = evaluatePostGameHealth(
+      player.health,
+      getPlayerTotalAttributes(player).stamina
+    );
 
     // Energy drain
     const newEnergy = Math.max(10, player.energy - 15);
@@ -501,6 +556,71 @@ export function useSeasonSimulation({
     setPhase('regular_season');
   };
 
+  const handleAdvanceInjury = (recoverAll: boolean = false) => {
+    if (!player || player.health.status !== 'injured') return;
 
-  return { handleSimulateFullSeason, handleStartMatch, handleFinishMatch, handlePostMatchContinue };
+    let week = currentSeasonWeek;
+    let curTeams = [...teams];
+    const curSchedule = [...schedule];
+    let gamesRemaining = Math.max(1, player.health.gamesRemaining || 1);
+    const gamesToSimulate = recoverAll ? gamesRemaining : 1;
+    let simulated = 0;
+
+    while (simulated < gamesToSimulate && gamesRemaining > 0 && week <= 82) {
+      const userTeam = curTeams.find((team) => team.id === player.currentTeamId) || curTeams[0];
+      const scheduleItem = curSchedule[week - 1];
+      const oppTeam = curTeams.find((team) => team.id === scheduleItem?.opponentId) || curTeams[1];
+      const matchScores = calculateMatchScores(userTeam, oppTeam, userTeam.id);
+      const userScore = matchScores.teamAScore;
+      const oppScore = matchScores.teamBScore;
+      const isUserWin = userScore > oppScore;
+
+      curTeams = simulateLeagueGameWeek(curTeams, userTeam.id, oppTeam.id, isUserWin);
+      curSchedule[week - 1] = {
+        ...scheduleItem,
+        isPlayed: true,
+        userWon: isUserWin,
+        userScore,
+        oppScore,
+        rosterStats: generateFullMatchRosterStats(
+          userTeam,
+          oppTeam,
+          player,
+          userScore,
+          oppScore,
+          scheduleItem?.isHome ?? true,
+          currentYear - 2007,
+          undefined,
+          '伤病缺席'
+        ),
+      };
+
+      gamesRemaining -= 1;
+      week += 1;
+      simulated += 1;
+    }
+
+    const nextHealth: PlayerProfile['health'] = gamesRemaining > 0 && week <= 82
+      ? { ...player.health, gamesRemaining }
+      : {
+          status: 'healthy',
+          cooldownGames: 10,
+          occurredThisSeason: true,
+        };
+
+    setTeams(curTeams);
+    setSchedule(curSchedule);
+    setPlayer({ ...player, health: nextHealth });
+    setCurrentSeasonWeek(Math.min(83, week));
+    setPhase('regular_season');
+  };
+
+
+  return {
+    handleSimulateFullSeason,
+    handleStartMatch,
+    handleFinishMatch,
+    handlePostMatchContinue,
+    handleAdvanceInjury,
+  };
 }

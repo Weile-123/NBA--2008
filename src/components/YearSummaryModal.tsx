@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { PlayerProfile, HistoricalSeason } from '../types';
-import confetti from 'canvas-confetti';
+import { gameConfetti as confetti } from '../utils/gameConfetti';
 import { Trophy, Award, Crown, Sparkles, ChevronRight } from 'lucide-react';
 
 interface YearSummaryModalProps {

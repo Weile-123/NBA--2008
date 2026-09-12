@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { PlayerProfile, Team, Accolade } from '../types';
 import { calculateSeasonAwards, SeasonAwards, AwardWinner, AllTeamSelection } from '../utils/awardsLogic';
-import confetti from 'canvas-confetti';
+import { gameConfetti as confetti } from '../utils/gameConfetti';
 import { Trophy, Award, Crown, Sparkles, ChevronRight, ShieldCheck, UserCheck, Flame, Star } from 'lucide-react';
 import { TeamLogo } from './TeamLogo';
 
@@ -119,7 +119,7 @@ export const SeasonSummaryModal: React.FC<SeasonSummaryModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-      <div className="bg-[#0d1017] border border-[#232834] rounded-2xl max-w-4xl w-full p-5 sm:p-7 shadow-2xl space-y-6 relative my-auto animate-fadeIn overflow-hidden">
+      <div className="bg-[#0d1017] border border-[#232834] rounded-2xl max-w-4xl w-full max-h-[92svh] p-4 sm:p-7 shadow-2xl relative my-auto animate-fadeIn overflow-hidden flex min-h-0 flex-col gap-4 sm:gap-6">
         
         {/* Header */}
         <div className="text-center space-y-2 relative">
@@ -131,8 +131,9 @@ export const SeasonSummaryModal: React.FC<SeasonSummaryModalProps> = ({
           </h2>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex items-center justify-center gap-2 bg-[#141822] p-1.5 rounded-xl border border-[#232834]">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 space-y-4 sm:space-y-6">
+          {/* Navigation Tabs */}
+          <div className="flex items-center justify-center gap-2 bg-[#141822] p-1.5 rounded-xl border border-[#232834]">
           <button
             type="button"
             onClick={() => setActiveTab('major')}
@@ -166,7 +167,7 @@ export const SeasonSummaryModal: React.FC<SeasonSummaryModalProps> = ({
           >
             <ShieldCheck className="w-3.5 h-3.5" /> 最佳防守阵容
           </button>
-        </div>
+          </div>
 
         {/* Tab 1: Major Individual Awards (MVP, Scoring Leader, DPOY, 6th Man, ROY) */}
         {activeTab === 'major' && (
@@ -435,9 +436,10 @@ export const SeasonSummaryModal: React.FC<SeasonSummaryModalProps> = ({
             })}
           </div>
         )}
+        </div>
 
         {/* Bottom Playoff Entrance Status Banner & Action Button */}
-        <div className="bg-[#11141b] border border-[#232834] rounded-xl p-4 space-y-3">
+        <div className="shrink-0 bg-[#11141b] border border-[#232834] rounded-xl p-3 sm:p-4 space-y-2 sm:space-y-3">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
             <div>
                 {awards.userMadePlayoffs ? (

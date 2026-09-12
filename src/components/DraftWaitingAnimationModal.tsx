@@ -10,7 +10,6 @@ export const DraftWaitingAnimationModal: React.FC<DraftWaitingAnimationModalProp
   currentYear,
   onComplete,
 }) => {
-  const [progress, setProgress] = useState(0);
   const [tickerIndex, setTickerIndex] = useState(0);
 
   const newsTickers = [
@@ -21,28 +20,19 @@ export const DraftWaitingAnimationModal: React.FC<DraftWaitingAnimationModalProp
   ];
 
   useEffect(() => {
-    // Progress bar ticker over 3 seconds
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            onComplete();
-          }, 300);
-          return 100;
-        }
-        return prev + 2;
-      });
-    }, 50);
+    // CSS drives the progress animation; JavaScript only schedules completion.
+    const completionTimer = setTimeout(onComplete, 3300);
 
-    // News ticker rotator
-    const tickerInterval = setInterval(() => {
+    let tickerTimer: ReturnType<typeof setTimeout>;
+    const rotateTicker = () => {
       setTickerIndex((prev) => (prev + 1) % newsTickers.length);
-    }, 700);
+      tickerTimer = setTimeout(rotateTicker, 700);
+    };
+    tickerTimer = setTimeout(rotateTicker, 700);
 
     return () => {
-      clearInterval(interval);
-      clearInterval(tickerInterval);
+      clearTimeout(completionTimer);
+      clearTimeout(tickerTimer);
     };
   }, [onComplete, newsTickers.length]);
 
@@ -91,12 +81,11 @@ export const DraftWaitingAnimationModal: React.FC<DraftWaitingAnimationModalProp
         <div className="space-y-2 relative z-10">
           <div className="flex justify-between text-[11px] font-mono text-slate-400 font-bold">
             <span>选秀大会准备进度</span>
-            <span className="text-amber-400">{progress}%</span>
+            <span className="text-amber-400">同步中</span>
           </div>
           <div className="w-full bg-[#111520] h-3 rounded-full overflow-hidden border border-[#232a3c] p-0.5">
             <div
-              className="bg-gradient-to-r from-amber-500 to-amber-300 h-full rounded-full transition-all duration-100 shadow-md shadow-amber-500/30"
-              style={{ width: `${progress}%` }}
+              className="draft-progress-fill bg-gradient-to-r from-amber-500 to-amber-300 h-full rounded-full shadow-md shadow-amber-500/30"
             />
           </div>
         </div>

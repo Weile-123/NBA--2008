@@ -1,29 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createAutoSave } from '../src/utils/autoSave';
-import { clearSlotStorage, loadGameFromStorage, SavedData, saveGameToStorage } from '../src/utils/storage';
+import { clearGameStorage, clearSlotStorage, loadGameFromStorage, SavedData, saveGameToStorage } from '../src/utils/storage';
 
-const latestKey = 'nba2k2008_mycareer_save_v1';
-const slotKey = (slot: string) => `nba2k2008_mycareer_save_${slot}`;
 const snapshot = (name: string) => ({
   version: 1, player: { name }, teams: [{ id: 'lal' }], updatedAt: '2026-09-10T10:00:00Z',
 } as SavedData);
-
-function withStorage(run: (values: Map<string, string>, writes: string[]) => void) {
-  const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
-  const values = new Map<string, string>();
-  const writes: string[] = [];
-  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
-    getItem: (key: string) => values.get(key) ?? null,
-    setItem: (key: string, value: string) => { writes.push(key); values.set(key, value); },
-    removeItem: (key: string) => values.delete(key),
-  } });
-  try { run(values, writes); }
-  finally {
-    if (original) Object.defineProperty(globalThis, 'localStorage', original);
-    else delete globalThis.localStorage;
-  }
-}
 
 function withClock(run: (tick: (ms: number) => void) => void) {
   const originalSet = globalThis.setTimeout;
@@ -94,37 +76,29 @@ test('failed saves remain pending for a later lifecycle flush', () => withClock(
   assert.deepEqual(writes, [3]);
 }));
 
-test('a save stores one payload and a small latest-slot pointer', () => withStorage((values, writes) => {
+test('a save updates the selected slot and makes it the latest save', () => {
+  clearGameStorage();
   assert.equal(saveGameToStorage(snapshot('A'), 'slot_2'), true);
-  assert.equal(values.get(latestKey), 'slot_2');
   assert.equal(loadGameFromStorage()?.player?.name, 'A');
-  writes.length = 0;
   saveGameToStorage(snapshot('B'), 'slot_2');
-  assert.deepEqual(writes, [slotKey('slot_2')]);
   assert.equal(loadGameFromStorage()?.player?.name, 'B');
-}));
+});
 
-test('legacy default snapshots remain readable and are replaced by a pointer on save', () => withStorage(values => {
-  values.set(latestKey, JSON.stringify(snapshot('Legacy')));
-  const legacy = loadGameFromStorage();
-  assert.equal(legacy?.player?.name, 'Legacy');
-  saveGameToStorage(legacy!, 'slot_1');
-  assert.equal(values.get(latestKey), 'slot_1');
-  assert.equal(loadGameFromStorage()?.player?.name, 'Legacy');
-}));
-
-test('slots remain independent and deleting the latest slot removes its pointer', () => withStorage(values => {
+test('slots remain independent and deleting the latest slot falls back safely', () => {
+  clearGameStorage();
   saveGameToStorage(snapshot('A'), 'slot_1');
   saveGameToStorage(snapshot('B'), 'slot_2');
   assert.equal(loadGameFromStorage('slot_1')?.player?.name, 'A');
   assert.equal(loadGameFromStorage()?.player?.name, 'B');
   clearSlotStorage('slot_2');
-  assert.equal(values.has(latestKey), false);
   assert.equal(loadGameFromStorage()?.player?.name, 'A');
-}));
+});
 
-test('a missing pointer target falls back to another occupied slot', () => withStorage(values => {
+test('clearing an explicitly selected slot does not affect another slot', () => {
+  clearGameStorage();
   saveGameToStorage(snapshot('A'), 'slot_1');
-  values.set(latestKey, 'slot_4');
-  assert.equal(loadGameFromStorage()?.player?.name, 'A');
-}));
+  saveGameToStorage(snapshot('B'), 'slot_4');
+  clearSlotStorage('slot_4');
+  assert.equal(loadGameFromStorage('slot_1')?.player?.name, 'A');
+  assert.equal(loadGameFromStorage('slot_4'), null);
+});

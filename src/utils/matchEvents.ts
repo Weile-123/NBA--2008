@@ -33,11 +33,115 @@ export interface ScheduledQuarterEvent {
     fga?: number;
     tpm?: number;
     tpa?: number;
+    ftm?: number;
+    fta?: number;
     turnovers?: number;
     minutes?: number;
   };
   isTacticalTrigger?: boolean;
   isBuzzerBeaterTrigger?: boolean;
+}
+
+const MISSED_SHOT_TEXT = /偏出|打铁|砸筐|未能命中|受干扰/;
+
+/**
+ * Interactive play-by-play is event based, while quick simulation starts from
+ * a per-game statistical target. Reconcile rebound events to that same target
+ * so elite rebounders do not lose most of their production merely because the
+ * user chose to watch the game.
+ */
+export function reconcileQuarterRebounds(
+  events: ScheduledQuarterEvent[],
+  quarter: number,
+  assignedMPG: number,
+  target: number,
+  playerName: string,
+): ScheduledQuarterEvent[] {
+  const desired = Math.max(0, Math.round(target));
+  let current = events.reduce((sum, event) => sum + (event.playerStatsDelta?.reb || 0), 0);
+  if (current >= desired) return events;
+
+  const missedShots = events.filter((event) =>
+    event.quarter === quarter
+    && event.userPtsDelta === 0
+    && event.oppPtsDelta === 0
+    && !!event.playerStatsDelta
+    && isPlayerOnCourt(quarter, event.targetSeconds, assignedMPG)
+    && MISSED_SHOT_TEXT.test(event.text)
+    && !event.playerStatsDelta?.reb
+  );
+
+  // Spread the additions across the quarter instead of clustering them at the
+  // beginning of the event list.
+  missedShots.sort((a, b) => a.targetSeconds - b.targetSeconds);
+  while (current < desired && missedShots.length > 0) {
+    const slot = Math.floor(((current + 0.5) / desired) * missedShots.length);
+    const [event] = missedShots.splice(Math.min(slot, missedShots.length - 1), 1);
+    event.playerStatsDelta = { ...event.playerStatsDelta, reb: 1 };
+    event.text += event.type === 'away'
+      ? ` ${playerName}牢牢卡住身位，保护下后场篮板。`
+      : ` ${playerName}冲入禁区，拼下前场篮板。`;
+    current += 1;
+  }
+  return events;
+}
+
+export function addQuarterFreeThrows(
+  events: ScheduledQuarterEvent[],
+  quarter: number,
+  assignedMPG: number,
+  attempts: number,
+  made: number,
+  playerName: string,
+): ScheduledQuarterEvent[] {
+  const fta = Math.max(0, Math.round(attempts));
+  const ftm = Math.max(0, Math.min(fta, Math.round(made)));
+  if (fta === 0) return events;
+  const event = events.find((candidate) =>
+    candidate.quarter === quarter
+    && candidate.type === 'user'
+    && !!candidate.playerStatsDelta
+    && isPlayerOnCourt(quarter, candidate.targetSeconds, assignedMPG)
+    && candidate.userPtsDelta === 0
+    && candidate.oppPtsDelta === 0
+  ) || events.find((candidate) =>
+    candidate.quarter === quarter
+    && !!candidate.playerStatsDelta
+    && isPlayerOnCourt(quarter, candidate.targetSeconds, assignedMPG)
+  );
+  if (!event) return events;
+  event.userPtsDelta += ftm;
+  event.playerStatsDelta = {
+    ...event.playerStatsDelta,
+    pts: (event.playerStatsDelta.pts || 0) + ftm,
+    ftm: (event.playerStatsDelta.ftm || 0) + ftm,
+    fta: (event.playerStatsDelta.fta || 0) + fta,
+  };
+  event.text = `${playerName}强攻造成犯规，站上罚球线 ${fta} 罚 ${ftm} 中。`;
+  return events;
+}
+
+export function calculateInteractiveGrade(stats: {
+  pts: number; reb: number; ast: number; stl: number; blk: number;
+  fgm: number; fga: number; ftm: number; fta: number; turnovers: number;
+}): 'S+' | 'S' | 'A+' | 'A' | 'B' | 'C' | 'D' {
+  const missedFieldGoals = Math.max(0, stats.fga - stats.fgm);
+  const missedFreeThrows = Math.max(0, stats.fta - stats.ftm);
+  const impact = stats.pts
+    + stats.reb * 1.2
+    + stats.ast * 1.5
+    + stats.stl * 3
+    + stats.blk * 3
+    - stats.turnovers * 1.5
+    - missedFieldGoals * 0.5
+    - missedFreeThrows * 0.25;
+  if (impact >= 50) return 'S+';
+  if (impact >= 40) return 'S';
+  if (impact >= 32) return 'A+';
+  if (impact >= 24) return 'A';
+  if (impact >= 16) return 'B';
+  if (impact >= 8) return 'C';
+  return 'D';
 }
 
 /**
@@ -130,6 +234,8 @@ export function buildQuarterEvents(
   const targetGameStl = Math.round(expectedGameStats.stl * playerFormFactor);
   const targetGameBlk = Math.round(expectedGameStats.blk * playerFormFactor);
   const targetGameTov = Math.round(expectedGameStats.turnovers * playerFormFactor);
+  const targetGameFta = Math.round(expectedGameStats.fta * playerFormFactor);
+  const targetGameFtm = Math.min(targetGameFta, Math.round(expectedGameStats.ftm * playerFormFactor));
 
   // Per quarter targets
   const qTargetFga = targetGameFga / 4;
@@ -185,7 +291,8 @@ export function buildQuarterEvents(
   const minIncrement = +((assignedMPG / 4) / onCourtSlotsInQ).toFixed(1);
 
   // User player action probability per possession when ON COURT
-  const userActionProb = Math.min(0.65, Math.max(0.08, (qTargetFga + qTargetAst + qTargetTov) / Math.max(2, onCourtSlotsInQ * 0.5)));
+  const qTargetAstAttempts = qTargetAst / 0.65;
+  const userActionProb = Math.min(0.65, Math.max(0.08, (qTargetFga + qTargetAstAttempts + qTargetTov) / Math.max(2, onCourtSlotsInQ * 0.5)));
 
   let currentSec = 705;
   let eventCount = 0;
@@ -225,10 +332,10 @@ export function buildQuarterEvents(
 
       if (isUserPlayerAction) {
         // Decide action: 3PT, 2PT, Assist, Turnover based on user target weights
-        const tot = Math.max(0.1, qTargetFga + qTargetAst + qTargetTov);
+        const tot = Math.max(0.1, qTargetFga + qTargetAstAttempts + qTargetTov);
         const p3 = qTarget3pa / tot;
         const p2 = (qTargetFga - qTarget3pa) / tot;
-        const pAst = qTargetAst / tot;
+        const pAst = qTargetAstAttempts / tot;
         const actionRoll = Math.random();
 
         if (actionRoll < p3) {
@@ -334,7 +441,7 @@ export function buildQuarterEvents(
         const teamRoll = Math.random();
         const pRebUser = isOnCourtNow && Math.random() < (qTargetReb / Math.max(1, onCourtSlotsInQ * 0.4));
 
-        if (pRebUser && teamRoll < 0.15) {
+        if (pRebUser) {
           events.push({
             id: `q${q}_play_${eventCount}`,
             quarter: q,
@@ -390,7 +497,7 @@ export function buildQuarterEvents(
       const pStlUser = isOnCourtNow && Math.random() < (qTargetStl / Math.max(1, onCourtSlotsInQ * 0.4));
       const pBlkUser = isOnCourtNow && Math.random() < (qTargetBlk / Math.max(1, onCourtSlotsInQ * 0.4));
 
-      if (pStlUser && oppRoll < 0.12) {
+      if (pStlUser) {
         events.push({
           id: `q${q}_play_${eventCount}`,
           quarter: q,
@@ -402,7 +509,7 @@ export function buildQuarterEvents(
           oppPtsDelta: 0,
           playerStatsDelta: { stl: 1, minutes: minIncrement },
         });
-      } else if (pBlkUser && oppRoll < 0.22) {
+      } else if (pBlkUser) {
         events.push({
           id: `q${q}_play_${eventCount}`,
           quarter: q,
@@ -457,6 +564,18 @@ export function buildQuarterEvents(
     const interval = Math.floor(Math.random() * 7) + 16;
     currentSec -= interval;
   }
+
+  // Distribute the full-game target across four quarters. The previous logic
+  // counted rebounds only on a narrow subset of teammate possessions and then
+  // multiplied by another 15% gate, while recording no defensive rebounds.
+  const baseQuarterRebounds = Math.floor(targetGameReb / 4);
+  const quarterReboundTarget = baseQuarterRebounds + (q <= targetGameReb % 4 ? 1 : 0);
+  reconcileQuarterRebounds(events, q, assignedMPG, quarterReboundTarget, userStarName);
+  const baseQuarterFta = Math.floor(targetGameFta / 4);
+  const quarterFta = baseQuarterFta + (q <= targetGameFta % 4 ? 1 : 0);
+  const baseQuarterFtm = Math.floor(targetGameFtm / 4);
+  const quarterFtm = Math.min(quarterFta, baseQuarterFtm + (q <= targetGameFtm % 4 ? 1 : 0));
+  addQuarterFreeThrows(events, q, assignedMPG, quarterFta, quarterFtm, userStarName);
 
   // Insert Buzzer Beater Event at 00:04 in Q4 if triggered
   if (q === 4 && isBuzzerBeaterGame) {

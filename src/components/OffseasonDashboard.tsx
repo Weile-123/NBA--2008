@@ -32,7 +32,7 @@ import {
   Dices,
   Check,
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
+import { gameConfetti as confetti } from '../utils/gameConfetti';
 import { completeRewardedAd } from '../lib/rewardedAd';
 import { RewardedRefreshButton } from './RewardedRefreshButton';
 

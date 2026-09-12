@@ -15,26 +15,46 @@ type ChunkMarker = { __chunks: number; __bank?: 0 | 1 };
 type HydratedValueValidator = (key: string, value: unknown) => boolean;
 
 function bridge(): ColorBoxStorage | undefined {
-  return window.ColorboxAI?.storage;
+  return typeof window === 'undefined' ? undefined : window.ColorboxAI?.storage;
 }
 
 async function waitForBridge(timeoutMs = 2000): Promise<ColorBoxStorage | undefined> {
+  if (typeof window === 'undefined' || typeof location === 'undefined' || typeof document === 'undefined') {
+    return undefined;
+  }
   const ready = bridge();
   if (ready?.getValue && ready?.setValue) return ready;
   const isLocalBrowser = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
   if (!window.ColorboxAI && isLocalBrowser) return undefined;
   return new Promise((resolve) => {
     const startedAt = Date.now();
-    const timer = window.setInterval(() => {
+    let timer: number | undefined;
+    let settled = false;
+    const finish = (value: ColorBoxStorage | undefined) => {
+      if (settled) return;
+      settled = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+      window.removeEventListener('pagehide', stopWaiting);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      resolve(value);
+    };
+    const stopWaiting = () => finish(undefined);
+    const handleVisibilityChange = () => {
+      if (document.hidden) stopWaiting();
+    };
+    const checkBridge = () => {
       const current = bridge();
       if (current?.getValue && current?.setValue) {
-        window.clearInterval(timer);
-        resolve(current);
+        finish(current);
       } else if (Date.now() - startedAt >= timeoutMs) {
-        window.clearInterval(timer);
-        resolve(undefined);
+        finish(undefined);
+      } else {
+        timer = window.setTimeout(checkBridge, 50);
       }
-    }, 50);
+    };
+    window.addEventListener('pagehide', stopWaiting, { once: true });
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    timer = window.setTimeout(checkBridge, 50);
   });
 }
 
@@ -213,15 +233,23 @@ export function getPersistentValue<T>(key: string): T | null {
 
 export function setPersistentValue(key: string, value: unknown): void {
   cache.set(key, value);
-  void idbSet(key, value).catch((error) => console.error(`Unable to save IndexedDB recovery value: ${key}`, error));
-  void enqueueBridgeWrite(key, value).catch((error) => console.error(`Unable to save ColorBox value: ${key}`, error));
+  if (typeof indexedDB !== 'undefined') {
+    void idbSet(key, value).catch((error) => console.error(`Unable to save IndexedDB recovery value: ${key}`, error));
+  }
+  if (typeof window !== 'undefined') {
+    void enqueueBridgeWrite(key, value).catch((error) => console.error(`Unable to save ColorBox value: ${key}`, error));
+  }
 }
 
 export function removePersistentValue(key: string): void {
   cache.delete(key);
   activeChunkBanks.delete(key);
-  void idbDelete(key).catch((error) => console.error(`Unable to clear IndexedDB value: ${key}`, error));
-  void enqueueBridgeWrite(key, null).catch((error) => console.error(`Unable to clear ColorBox value: ${key}`, error));
+  if (typeof indexedDB !== 'undefined') {
+    void idbDelete(key).catch((error) => console.error(`Unable to clear IndexedDB value: ${key}`, error));
+  }
+  if (typeof window !== 'undefined') {
+    void enqueueBridgeWrite(key, null).catch((error) => console.error(`Unable to clear ColorBox value: ${key}`, error));
+  }
 }
 
 export async function flushPersistentWrites(): Promise<void> {

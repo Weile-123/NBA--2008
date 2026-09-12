@@ -4,7 +4,7 @@ import { getPersistentValue, hydratePersistentValues, removePersistentValue, set
 import { TeamLogo } from './TeamLogo';
 import { calculateMatchScores, getCompleteTeamRoster, calculateTeamPowerRating, getShortTeamName } from '../utils/leagueLogic';
 import { Play, Pause, Trophy, Flame, ShieldAlert, ChevronRight, Sparkles, Crown, Award, Star, CheckCircle2 } from 'lucide-react';
-import confetti from 'canvas-confetti';
+import { gameConfetti as confetti } from '../utils/gameConfetti';
 
 export interface PlayoffSeries {
   id: string;
@@ -74,7 +74,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
   });
   const [showHonorsModal, setShowHonorsModal] = useState(false);
 
-  const autoSimTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoSimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const treeContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -105,22 +105,11 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
     if (!container) return;
 
     const userSeriesEl = container.querySelector('[data-user-series="true"]') as HTMLElement | null;
-    if (userSeriesEl) {
-      const containerRect = container.getBoundingClientRect();
-      const elRect = userSeriesEl.getBoundingClientRect();
-
-      // Calculate target scrollLeft to center the active user series card within container
-      const targetScrollLeft =
-        container.scrollLeft +
-        (elRect.left - containerRect.left) -
-        containerRect.width / 2 +
-        elRect.width / 2;
-
-      container.scrollTo({
-        left: Math.max(0, targetScrollLeft),
-        behavior: 'smooth',
-      });
-    }
+    userSeriesEl?.scrollIntoView({
+      inline: 'center',
+      block: 'nearest',
+      behavior: 'smooth',
+    });
   };
 
   // Auto-save playoff state whenever seriesList, currentRound, or champion changes
@@ -176,6 +165,16 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
   );
 
   const isUserAliveInPlayoffs = userMadePlayoffs && !!activeUserSeries;
+  const activeUserWins = activeUserSeries
+    ? activeUserSeries.teamA.id === userTeam.id
+      ? activeUserSeries.winsA
+      : activeUserSeries.winsB
+    : 0;
+  const activeOpponentWins = activeUserSeries
+    ? activeUserSeries.teamA.id === userTeam.id
+      ? activeUserSeries.winsB
+      : activeUserSeries.winsA
+    : 0;
 
   // Auto-scroll bracket to focus on user team when entering playoff or changing rounds
   useEffect(() => {
@@ -422,15 +421,19 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
   // Auto-simulation timer loop
   useEffect(() => {
     if (isAutoSimulating && !champion) {
-      autoSimTimerRef.current = setInterval(() => {
+      const runNextStep = () => {
         simulatePlayoffStep();
-      }, 750);
+        autoSimTimerRef.current = setTimeout(runNextStep, 750);
+      };
+      autoSimTimerRef.current = setTimeout(runNextStep, 750);
     } else {
-      if (autoSimTimerRef.current) clearInterval(autoSimTimerRef.current);
+      if (autoSimTimerRef.current) clearTimeout(autoSimTimerRef.current);
+      autoSimTimerRef.current = null;
     }
 
     return () => {
-      if (autoSimTimerRef.current) clearInterval(autoSimTimerRef.current);
+      if (autoSimTimerRef.current) clearTimeout(autoSimTimerRef.current);
+      autoSimTimerRef.current = null;
     };
   }, [isAutoSimulating, currentRound, champion]);
 
@@ -638,14 +641,14 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
     <div className="space-y-3 sm:space-y-4 animate-fadeIn">
       {/* Top Playoff Action Banner */}
       <div className="bg-[#11141b] border border-[#232834] rounded-2xl p-3.5 sm:p-5 shadow-2xl space-y-3 sm:space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 border-b border-[#232834] pb-3 sm:pb-4">
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] sm:text-[10px] font-black uppercase">
-              <Trophy className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" /> {currentYear}-{currentYear + 1} 季后赛模式
-            </div>
-            <h3 className="text-base sm:text-xl font-black italic uppercase text-white mt-1">
+        <div className="space-y-3 border-b border-[#232834] pb-3 sm:pb-4">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-base sm:text-xl font-black italic uppercase text-white">
               当前阶段: {getRoundLabel(currentRound)}
             </h3>
+            <div className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] sm:text-[10px] font-black uppercase">
+              <Trophy className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 shrink-0" /> {currentYear}-{currentYear + 1} 赛季
+            </div>
           </div>
 
           {/* Action Buttons */}
@@ -694,30 +697,6 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
             )}
           </div>
         </div>
-
-        {/* User Playoff Status Note */}
-        <div className="bg-[#0d1017] p-2.5 sm:p-3 rounded-xl border border-[#232834] flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] sm:text-xs font-mono gap-1.5 sm:gap-2">
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-            <span className="text-slate-400 font-bold">你的球队:</span>
-            {userMadePlayoffs ? (
-              isUserAliveInPlayoffs ? (
-                <span className="text-emerald-400 font-black flex items-center gap-1">
-                  <Flame className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> 【{userTeam.name}】角逐中 ({activeUserSeries?.winsA} - {activeUserSeries?.winsB})
-                </span>
-              ) : (
-                <span className="text-rose-400 font-black flex items-center gap-1">
-                  <ShieldAlert className="w-3.5 h-3.5 text-rose-400 shrink-0" /> 【{userTeam.name}】已止步
-                </span>
-              )
-            ) : (
-              <span className="text-slate-500 font-bold">【{userTeam.name}】未进入季后赛</span>
-            )}
-          </div>
-
-          <div className="text-amber-400 font-bold text-[10px] sm:text-xs">
-            赛制: 七场四胜制
-          </div>
-        </div>
       </div>
 
       {/* Champion Banner if crowned */}
@@ -749,9 +728,29 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
       {/* REQUIREMENT 4: Playoff Tree Bracket Diagram (季后赛树状图) */}
       <div className="bg-[#11141b] border border-[#232834] rounded-2xl p-3.5 sm:p-5 shadow-xl space-y-3 sm:space-y-4">
         <div className="flex items-center justify-between border-b border-[#232834] pb-2.5 sm:pb-3 gap-2">
-          <h4 className="text-xs sm:text-xs font-black italic uppercase text-white flex items-center gap-1.5 sm:gap-2">
-            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 shrink-0" /> 季后赛树状图
-          </h4>
+          {userMadePlayoffs ? (
+            champion?.id === userTeam.id ? (
+              <h4 className="text-xs sm:text-sm font-black text-emerald-400 flex items-center gap-1.5 sm:gap-2">
+                <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
+                【{userTeam.name}】总冠军
+              </h4>
+            ) : isUserAliveInPlayoffs ? (
+              <h4 className="text-xs sm:text-sm font-black text-emerald-400 flex items-center gap-1.5 sm:gap-2">
+                <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
+                【{userTeam.name}】{activeUserWins}-{activeOpponentWins}
+              </h4>
+            ) : (
+              <h4 className="text-xs sm:text-sm font-black text-rose-400 flex items-center gap-1.5 sm:gap-2">
+                <ShieldAlert className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-400 shrink-0" />
+                【{userTeam.name}】已止步
+              </h4>
+            )
+          ) : (
+            <h4 className="text-xs sm:text-sm font-black text-slate-500 flex items-center gap-1.5 sm:gap-2">
+              <ShieldAlert className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              【{userTeam.name}】未进入季后赛
+            </h4>
+          )}
           <div className="flex items-center gap-2">
             {userMadePlayoffs && (
               <button

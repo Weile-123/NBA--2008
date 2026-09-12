@@ -217,7 +217,7 @@ export const generateTacticalOptions = (player: PlayerProfile, quarter: number):
       title: '💥 冲抢前场篮板二次补扣',
       desc: '在卡位人群中预判落点腾空起跳，力压群雄双手暴力补扣得分！',
       prob: clampProb(((attrs.rebounding || 60) * 0.5 + (attrs.vertical || 60) * 0.3 + attrs.strength * 0.2) / 100),
-      statType: 'pts2',
+      statType: 'reb',
       fanReward: 290,
       xpReward: 95,
       successText: `💥 禁区统治者！${name} 在人群头顶高高跃起抓下前场篮板，顺势双手暴力补扣打进！`,

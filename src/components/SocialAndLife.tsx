@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { scheduleRootScrollToTop } from '../utils/scroll';
 import { PlayerProfile, SocialTweet, Endorsement, SignatureShoe } from '../types';
 import { INITIAL_ENDORSEMENTS, PERSONAL_ASSETS } from '../data/nbaData2008';
 import { MessageSquare, Twitter, DollarSign, Award, Sparkles, CheckCircle, Flame, Footprints, Lock } from 'lucide-react';
@@ -26,9 +27,8 @@ export const SocialAndLife: React.FC<SocialAndLifeProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<'endorsements' | 'lifestyle'>('endorsements');
 
   useEffect(() => {
-    const rootEl = document.getElementById('root');
-    if (rootEl) rootEl.scrollTop = 0;
-    window.scrollTo(0, 0);
+    const animationFrame = scheduleRootScrollToTop();
+    return () => cancelAnimationFrame(animationFrame);
   }, [activeSubTab]);
 
   const [selectedCategory, setSelectedCategory] = useState<'fashion_electronics' | 'sneaker' | 'sports_lifestyle'>('fashion_electronics');

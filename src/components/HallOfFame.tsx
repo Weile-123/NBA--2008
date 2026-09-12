@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { scheduleRootScrollToTop } from '../utils/scroll';
 import { PlayerProfile } from '../types';
 import { calculateGoatScore, TOP_50_LEGENDS } from '../utils/calc2k';
 import { GoatCalculatorModal } from './GoatCalculatorModal';
@@ -218,9 +219,8 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
   const [isCalculatorOpen, setIsCalculatorOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    const rootEl = document.getElementById('root');
-    if (rootEl) rootEl.scrollTop = 0;
-    window.scrollTo(0, 0);
+    const animationFrame = scheduleRootScrollToTop();
+    return () => cancelAnimationFrame(animationFrame);
   }, [activeTab]);
   const [isFormulaExpanded, setIsFormulaExpanded] = useState<boolean>(false);
 

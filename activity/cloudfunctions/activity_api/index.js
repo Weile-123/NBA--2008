@@ -6,6 +6,7 @@ const app = tcb.init({ env: process.env.CLOUDBASE_ENV_ID, accessKey: process.env
 const rdb = app.rdb({ database: 'public' });
 const TABLE = 'leaderboard_entries';
 const MAX_LEGENDS = 50;
+const MAX_CAREER_AGE = 43;
 let cachedRows = null;
 let cacheUntil = 0;
 
@@ -38,13 +39,20 @@ function normalizeRecord(input, score, displayName) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw error('传奇记录格式不正确');
   if (Number(input.goatScore) !== score) throw error('传奇积分校验失败');
   if (!input.player || typeof input.player.name !== 'string') throw error('传奇球员信息不完整');
+  if (!Number.isInteger(Number(input.retireAge)) || Number(input.retireAge) > MAX_CAREER_AGE) throw error('退役年龄超过比赛规则上限');
   if (JSON.stringify(input).length > 160000) throw error('传奇记录内容过大');
   return { ...input, goatScore: score, player: { ...input.player, name: displayName } };
 }
 
+function isEligibleLeaderboardRow(row) {
+  const retireAge = Number(row?.record?.retireAge);
+  return Number.isInteger(retireAge) && retireAge <= MAX_CAREER_AGE;
+}
+
 async function leaderboard() {
   if (cachedRows && Date.now() < cacheUntil) return cachedRows;
-  cachedRows = rows(await rdb.from(TABLE).select('id,display_name,score,record,updated_at').order('score', { ascending: false }).order('updated_at', { ascending: true }).order('id', { ascending: true }).limit(MAX_LEGENDS));
+  const candidates = rows(await rdb.from(TABLE).select('id,display_name,score,record,updated_at').order('score', { ascending: false }).order('updated_at', { ascending: true }).order('id', { ascending: true }).limit(MAX_LEGENDS + 50));
+  cachedRows = candidates.filter(isEligibleLeaderboardRow).slice(0, MAX_LEGENDS);
   cacheUntil = Date.now() + 5000;
   return cachedRows;
 }
@@ -82,9 +90,9 @@ async function submit(puid, displayName, score, record) {
 
 async function mine(puid) {
   const row = rows(await rdb.from(TABLE).select('display_name,score,record,updated_at').eq('puid', puid).limit(1))[0];
-  if (!row) return null;
-  const higher = await rdb.from(TABLE).select('score', { count: 'exact' }).gt('score', Number(row.score));
-  return { rank: (typeof higher.count === 'number' ? higher.count : rows(higher).length) + 1, displayName: row.display_name, score: Number(row.score), record: row.record, updatedAt: row.updated_at };
+  if (!row || !isEligibleLeaderboardRow(row)) return null;
+  const higher = rows(await rdb.from(TABLE).select('score,record').gt('score', Number(row.score)).limit(5000));
+  return { rank: higher.filter(isEligibleLeaderboardRow).length + 1, displayName: row.display_name, score: Number(row.score), record: row.record, updatedAt: row.updated_at };
 }
 
 http.createServer(async (req, res) => {
@@ -100,7 +108,7 @@ http.createServer(async (req, res) => {
       if (!Number.isSafeInteger(score) || score < 0 || score > 2147483647) throw error('传奇积分格式不正确');
       const displayName = typeof input.displayName === 'string' && input.displayName.trim() ? input.displayName.trim().slice(0, 40) : '传奇球员';
       const result = await submit(readPuid(req), displayName, score, normalizeRecord(input.record, score, displayName));
-      const message = result.accepted ? '上传成功' : result.reason === 'below_top_50' ? '本次成绩未进入全网前50' : '已保留更高的历史成绩';
+      const message = result.accepted ? '上传成功' : '已保留更高的历史成绩';
       return send(res, 200, { code: 0, message, data: result });
     }
     return send(res, 404, { code: 404, message: 'not found' });

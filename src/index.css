@@ -167,6 +167,16 @@
   animation: fadeIn 0.2s ease-out forwards;
 }
 
+@keyframes draftProgressFill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+.draft-progress-fill {
+  width: 0%;
+  animation: draftProgressFill 3s linear forwards;
+}
+
 @keyframes trainingReminderShake {
   0%, 78%, 100% { transform: translateX(0) rotate(0); }
   82% { transform: translateX(-2px) rotate(-1.5deg); }
@@ -182,5 +192,46 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-training-reminder {
     animation: none;
+  }
+
+  .draft-progress-fill {
+    width: 100%;
+    animation: none;
+  }
+}
+
+/* Android WebView can flicker when a fixed or sticky layer continuously
+   composites backdrop-filter over animated game content. Mobile layouts use
+   opaque backgrounds already, so dropping only the blur keeps the same visual
+   hierarchy without forcing full-screen GPU readbacks. */
+/* Some embedded Android WebViews report an incomplete or desktop-like pointer
+   capability. Match phone-sized and touch surfaces independently so the
+   compositor fallback cannot be skipped on those devices. */
+@media (max-width: 767px), (hover: none), (pointer: coarse) {
+  .backdrop-blur-sm,
+  .backdrop-blur-md,
+  .backdrop-blur-lg,
+  .backdrop-blur-xl {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Decorative infinite animations are a common source of full-layer
+     recomposition in Android WebViews. Functional loading spinners and short
+     entrance transitions remain enabled. */
+  .animate-pulse,
+  .animate-bounce,
+  .animate-ping,
+  .animate-training-reminder {
+    animation: none !important;
+  }
+
+  /* The global announcement is functional content, not decoration. Keep it
+     moving on touch devices, but use a slower compositor-only transform to
+     reduce Android WebView load. */
+  .animate-ticker {
+    animation-duration: 32s;
+    will-change: transform;
+    transform: translateZ(0);
   }
 }

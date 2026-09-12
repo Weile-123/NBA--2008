@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Play, PlusCircle, FolderOpen, Settings, Trophy, Shield, Sparkles, UserCheck, Flame, Download, Upload, ArrowRight, AlertTriangle, Globe, Loader2 } from 'lucide-react';
+import { Play, PlusCircle, Trophy, Sparkles, UserCheck, Flame, ArrowRight, AlertTriangle, Globe, Loader2, MessageSquareText } from 'lucide-react';
 import { SaveSlotMeta, getAllSaveSlotsMeta } from '../utils/storage';
 import { TeamLogo } from './TeamLogo';
-import { fetchGlobalHallOfFame, retryPendingGlobalHallOfFameUpload } from '../lib/globalLeaderboard';
+import { loadGlobalHallOfFame, retryPendingGlobalHallOfFameUpload } from '../lib/globalLeaderboard';
+import { UserFeedbackModal } from './UserFeedbackModal';
 
 interface HomeScreenProps {
   hasActiveSave: boolean;
@@ -30,6 +31,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [topLegendScore, setTopLegendScore] = useState<number | null>(null);
   const [isBannerLoading, setIsBannerLoading] = useState<boolean>(true);
   const [isBannerTimeout, setIsBannerTimeout] = useState<boolean>(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -37,7 +39,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
     const loadTopLegend = () => {
       if (!isMounted) return;
-      void retryPendingGlobalHallOfFameUpload().catch((error) => console.warn('全网传奇榜待上传记录暂未同步', error)).finally(() => fetchGlobalHallOfFame()
+      void retryPendingGlobalHallOfFameUpload().catch((error) => console.warn('全网传奇榜待上传记录暂未同步', error)).finally(() => loadGlobalHallOfFame()
         .then((records) => {
           if (isMounted) {
             if (records && records.length > 0 && records[0]?.player?.name) {
@@ -159,7 +161,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         {/* Hero Title & Subtitle Area */}
         <main className="relative z-10 w-full max-w-4xl flex flex-col items-center my-auto py-8 text-center">
           <img
-            src="./game-logo.jpg"
+            src="./game-logo.png"
+            decoding="async"
             alt="篮坛传奇：重返2008"
             width={128}
             height={128}
@@ -271,6 +274,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 GOAT Leaderboard
               </span>
             </button>
+
+            {/* User Feedback */}
+            <button
+              onClick={() => setIsFeedbackOpen(true)}
+              className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl bg-[#141822] hover:bg-[#1f2636] border border-[#232a3a] hover:border-sky-400/60 text-white font-bold transition-all shadow-lg active:scale-[0.98] cursor-pointer text-sm group"
+            >
+              <div className="flex items-center gap-3">
+                <MessageSquareText className="w-4 h-4 text-sky-400 group-hover:scale-110 transition-transform" />
+                <span>用户反馈</span>
+              </div>
+              <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-sky-300 uppercase tracking-wider">
+                Feedback
+              </span>
+            </button>
           </div>
         </main>
 
@@ -320,6 +337,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </div>
         </div>
       )}
+
+      <UserFeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
     </div>
   );
 };

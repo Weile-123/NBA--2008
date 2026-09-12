@@ -24,6 +24,7 @@ import {
 import { INITIAL_ENDORSEMENTS, PERSONAL_ASSETS } from '../data/nbaData2008';
 import { getPlayerBaseOvr, getUserPlayerAgePenalty } from '../utils/calc2k';
 import { getAssetPurchaseState } from '../utils/economy';
+import { requestAutoSimStop } from '../utils/gameEvents';
 
 interface HeaderProps {
   player: PlayerProfile;
@@ -97,10 +98,8 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const handleTabClick = (tabId: string) => {
+    requestAutoSimStop();
     setActiveTab(tabId);
-    const rootEl = document.getElementById('root');
-    if (rootEl) rootEl.scrollTop = 0;
-    window.scrollTo(0, 0);
   };
 
   return (
@@ -246,10 +245,14 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Mobile Bottom Fixed Navigation Bar (Option 1) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0d1017]/95 backdrop-blur-md border-t border-[#232834] px-1.5 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.6)]">
+      <nav
+        onPointerDownCapture={requestAutoSimStop}
+        className="fixed bottom-0 left-0 right-0 z-50 bg-[#0d1017]/95 backdrop-blur-md border-t border-[#232834] px-1.5 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] md:hidden shadow-[0_-4px_20px_rgba(0,0,0,0.6)]"
+      >
         <div className="grid grid-cols-5 gap-1 max-w-md mx-auto">
           {/* 1. 赛季 */}
           <button
+            onPointerDown={() => handleTabClick('season')}
             onClick={() => handleTabClick('season')}
             className={`flex min-h-12 flex-col items-center justify-center py-2 px-1 rounded-lg transition-all cursor-pointer ${
               activeTab === 'season'
@@ -263,6 +266,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* 2. 数据 */}
           <button
+            onPointerDown={() => handleTabClick('standings')}
             onClick={() => handleTabClick('standings')}
             className={`flex min-h-12 flex-col items-center justify-center py-2 px-1 rounded-lg transition-all cursor-pointer ${
               activeTab === 'standings'
@@ -276,6 +280,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* 3. 球队 */}
           <button
+            onPointerDown={() => handleTabClick('roster')}
             onClick={() => handleTabClick('roster')}
             className={`flex min-h-12 flex-col items-center justify-center py-2 px-1 rounded-lg transition-all cursor-pointer ${
               activeTab === 'roster'
@@ -289,6 +294,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* 4. 社交 (带有闪烁绿点提示) */}
           <button
+            onPointerDown={() => handleTabClick('social')}
             onClick={() => handleTabClick('social')}
             className={`relative flex min-h-12 flex-col items-center justify-center py-2 px-1 rounded-lg transition-all cursor-pointer ${
               activeTab === 'social'
@@ -305,6 +311,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* 5. 更多 (抽屉入口) */}
           <button
+            onPointerDown={() => setIsMoreMenuOpen(true)}
             onClick={() => setIsMoreMenuOpen(true)}
             className={`relative flex min-h-12 flex-col items-center justify-center py-2 px-1 rounded-lg transition-all cursor-pointer ${
               isMoreMenuOpen || ['timeline', 'milestones', 'hof', 'attributes'].includes(activeTab)

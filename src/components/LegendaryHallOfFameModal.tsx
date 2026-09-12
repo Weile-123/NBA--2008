@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { scheduleRootScrollToTop } from '../utils/scroll';
 import {
   Trophy,
   Award,
@@ -29,7 +30,7 @@ import {
 } from 'lucide-react';
 import { RetiredPlayerRecord } from '../types';
 import { getHallOfFameLegends, deleteHallOfFameLegend, saveHallOfFameLegend } from '../utils/storage';
-import { fetchGlobalHallOfFame, retryPendingGlobalHallOfFameUpload } from '../lib/globalLeaderboard';
+import { loadGlobalHallOfFame, GlobalHallOfFameRank, syncLocalBestAndLoadMyRank } from '../lib/globalLeaderboard';
 import { TeamLogo } from './TeamLogo';
 import { NBA_TEAMS_2008 } from '../data/nbaData2008';
 import { formatLocalDateTime } from '../utils/dateTime';
@@ -133,6 +134,10 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
   const [isLoadingGlobal, setIsLoadingGlobal] = useState<boolean>(false);
   const [isTimeoutGlobal, setIsTimeoutGlobal] = useState<boolean>(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [myGlobalRank, setMyGlobalRank] = useState<GlobalHallOfFameRank | null>(null);
+  const [myGlobalRankError, setMyGlobalRankError] = useState<string | null>(null);
+  const [isSyncingLocal, setIsSyncingLocal] = useState(false);
+  const [localSyncNotice, setLocalSyncNotice] = useState<string | null>(null);
   const [globalRefreshVersion, setGlobalRefreshVersion] = useState(0);
   const [selectedLegend, setSelectedLegend] = useState<RetiredPlayerRecord | null>(null);
   const [searchQuery] = useState('');
@@ -174,17 +179,8 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
     };
   };
 
-  // Helper to force scroll position reset for both #root container and window
-  const resetModalScroll = () => {
-    const rootEl = document.getElementById('root');
-    if (rootEl) {
-      rootEl.scrollTop = 0;
-      rootEl.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
-    }
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  };
+  const resetModalScroll = () => scheduleRootScrollToTop();
+  const hasLocalRetirement = getHallOfFameLegends().length > 0;
 
   // Sync initialMode when modal opens
   useEffect(() => {
@@ -194,17 +190,10 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
   }, [isOpen, initialMode]);
 
   // Reset scroll position when selecting a legend, returning to list, switching tab, or opening modal
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (isOpen !== false) {
-      resetModalScroll();
-      const t1 = setTimeout(resetModalScroll, 0);
-      const t2 = setTimeout(resetModalScroll, 40);
-      const animFrame = requestAnimationFrame(resetModalScroll);
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-        cancelAnimationFrame(animFrame);
-      };
+      const animationFrame = resetModalScroll();
+      return () => cancelAnimationFrame(animationFrame);
     }
   }, [selectedLegend, tabMode, isOpen]);
 
@@ -225,41 +214,56 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
       setIsLoadingGlobal(false);
       setIsTimeoutGlobal(false);
       setGlobalError(null);
+      setMyGlobalRank(null);
+      setMyGlobalRankError(null);
+      setLocalSyncNotice(null);
     } else {
       setIsLoadingGlobal(true);
       setIsTimeoutGlobal(false);
       setGlobalError(null);
+      setMyGlobalRank(null);
+      setMyGlobalRankError(null);
 
-      const loadGlobal = () => {
+      const loadGlobal = async () => {
         if (!isMounted) return;
-        void retryPendingGlobalHallOfFameUpload().catch((error) => console.warn('全网传奇榜待上传记录暂未同步', error)).finally(() => fetchGlobalHallOfFame()
-          .then((records) => {
-            if (isMounted) {
-              setLegends(records.map(sanitizeLegend));
-              setIsLoadingGlobal(false);
-              setIsTimeoutGlobal(false);
-            }
-          })
-          .catch((err: any) => {
-            if (isMounted) {
-              const isTimeout = err?.name === 'GlobalHofTimeoutError' || err?.message?.includes('timed out');
-              if (isTimeout) {
-                // As requested: if global hall of fame request times out, keep showing loading state!
-                setIsLoadingGlobal(true);
-                setIsTimeoutGlobal(true);
-                // Continuously retry fetching in background while keeping loading state active
-                retryTimer = setTimeout(loadGlobal, 3500);
-              } else {
-                console.error('Failed to fetch global hall of fame:', err);
-                setIsLoadingGlobal(false);
-                setIsTimeoutGlobal(false);
-                setGlobalError(err?.message || '全网传奇榜暂时不可用，请稍后重试');
-              }
-            }
-          }));
+        try {
+          let records = await loadGlobalHallOfFame();
+          let mine: GlobalHallOfFameRank | null = null;
+          let rankError: string | null = null;
+          try {
+            // Always reconcile the best local retirement first. This covers
+            // both new retirements and users discarded by the old top-50-only
+            // server rule, even when their previous /me lookup was empty.
+            mine = await syncLocalBestAndLoadMyRank(getHallOfFameLegends());
+            records = await loadGlobalHallOfFame();
+          } catch (error) {
+            rankError = error instanceof Error ? error.message : '本地退役记录暂时无法同步';
+          }
+
+          if (isMounted) {
+            setLegends(records.map(sanitizeLegend));
+            setMyGlobalRank(mine);
+            setMyGlobalRankError(rankError);
+            setIsLoadingGlobal(false);
+            setIsTimeoutGlobal(false);
+          }
+        } catch (err: any) {
+          if (!isMounted) return;
+          const isTimeout = err?.name === 'GlobalHofTimeoutError' || err?.message?.includes('timed out');
+          if (isTimeout) {
+            setIsLoadingGlobal(true);
+            setIsTimeoutGlobal(true);
+            retryTimer = setTimeout(loadGlobal, 3500);
+          } else {
+            console.error('全网传奇榜加载失败:', err);
+            setIsLoadingGlobal(false);
+            setIsTimeoutGlobal(false);
+            setGlobalError(err?.message || '全网传奇榜暂时不可用，请稍后重试');
+          }
+        }
       };
 
-      loadGlobal();
+      void loadGlobal();
     }
 
     return () => {
@@ -267,6 +271,25 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
       if (retryTimer) clearTimeout(retryTimer);
     };
   }, [isOpen, tabMode, globalRefreshVersion]);
+
+  const handleSyncLocalRetirement = async () => {
+    if (isSyncingLocal) return;
+    setIsSyncingLocal(true);
+    setMyGlobalRankError(null);
+    setLocalSyncNotice('正在上传本地最佳退役记录并查询名次…');
+    try {
+      const mine = await syncLocalBestAndLoadMyRank(getHallOfFameLegends());
+      setMyGlobalRank(mine);
+      setLocalSyncNotice(mine ? `同步成功：当前全网第 ${mine.rank} 名` : '没有找到可同步的本地退役记录');
+      const records = await loadGlobalHallOfFame();
+      setLegends(records.map(sanitizeLegend));
+    } catch (error) {
+      setLocalSyncNotice(null);
+      setMyGlobalRankError(error instanceof Error ? error.message : '本地退役记录同步失败，请稍后重试');
+    } finally {
+      setIsSyncingLocal(false);
+    }
+  };
 
   if (isOpen === false) return null;
 
@@ -739,6 +762,50 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
           ) : (
             /* ================= LIST VIEW ================= */
             <div className="space-y-5">
+              {tabMode === 'global' && !isLoadingGlobal && !globalError && (
+                <section className="relative overflow-hidden rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/35 via-[#171b28] to-[#111522] p-4 shadow-xl" aria-label="我的全网排名">
+                  <div className="absolute -right-8 -top-10 h-28 w-28 rounded-full bg-amber-500/10 blur-2xl pointer-events-none" />
+                  <div className="relative flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-amber-400">
+                        <UserCheck className="h-3.5 w-3.5" /> 我的全网排名
+                      </div>
+                      {myGlobalRank ? (
+                        <>
+                          <div className="mt-1 truncate text-sm font-black text-white">{myGlobalRank.displayName}</div>
+                          <div className="mt-0.5 text-[11px] text-slate-400">榜单仅展示前50名，但所有玩家成绩都会参与排名</div>
+                        </>
+                      ) : (
+                        <div className="mt-1 space-y-2">
+                          <div className={`text-xs ${myGlobalRankError ? 'text-red-300' : localSyncNotice ? 'text-emerald-300' : 'text-slate-400'}`}>
+                            {myGlobalRankError || localSyncNotice || (hasLocalRetirement
+                              ? '已检测到本地退役记录，正在等待全网名次同步'
+                              : '完成一次正式退役后即可参与全网排名')}
+                          </div>
+                          {hasLocalRetirement && (
+                            <button
+                              type="button"
+                              onClick={() => void handleSyncLocalRetirement()}
+                              disabled={isSyncingLocal}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-bold text-amber-300 transition-colors hover:bg-amber-500/20 disabled:cursor-wait disabled:opacity-60"
+                            >
+                              {isSyncingLocal ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                              {isSyncingLocal ? '同步中…' : myGlobalRankError ? '重新同步本地退役记录' : '立即同步本地退役记录'}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className="font-mono text-2xl font-black italic text-amber-300">
+                        {myGlobalRank ? `#${myGlobalRank.rank}` : '--'}
+                      </div>
+                      {myGlobalRank && <div className="font-mono text-[10px] font-bold text-slate-400">{myGlobalRank.score} GOAT分</div>}
+                    </div>
+                  </div>
+                </section>
+              )}
+
               {/* Legends List Grid */}
               {isLoadingGlobal ? (
                 <div className="p-8 sm:p-12 rounded-2xl bg-[#111522] border border-amber-500/30 text-center space-y-3.5 my-4 flex flex-col items-center justify-center shadow-xl relative overflow-hidden">

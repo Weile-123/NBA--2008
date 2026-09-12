@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PlayerProfile, Team } from '../types';
-import confetti from 'canvas-confetti';
+import { gameConfetti as confetti } from '../utils/gameConfetti';
 import { Award, CheckCircle2, ChevronRight, Sparkles } from 'lucide-react';
 import { TeamLogo } from './TeamLogo';
 import { getHistoricalDraftData, YearDraftData } from '../data/draftData';

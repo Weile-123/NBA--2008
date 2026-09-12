@@ -1,6 +1,12 @@
 import { Attributes, AttributeCaps, Position, PlayerProfile, RetiredPlayerRecord } from '../types';
 import { PERSONAL_ASSETS } from '../data/nbaData2008';
 
+export const MAX_CAREER_AGE = 43;
+
+export function mustRetireAtAge(age: number | null | undefined): boolean {
+  return Number(age) >= MAX_CAREER_AGE;
+}
+
 const PHYSICAL_ATTRS: (keyof Attributes)[] = ['speed', 'vertical', 'stamina', 'layup', 'dunk', 'insideFinish'];
 const DEFENSIVE_ATTRS: (keyof Attributes)[] = ['perimeterDef', 'interiorDef', 'steal', 'block', 'strength', 'rebounding'];
 const SKILL_ATTRS: (keyof Attributes)[] = ['ballHandle', 'passing', 'threePoint', 'midRange', 'freeThrow', 'postMove'];
@@ -552,25 +558,73 @@ export function calculateGoatScore(player: PlayerProfile): GoatScoreResult {
   };
 }
 
-export function checkInjuryRisk(energy: number, staminaAttr: number): { isInjured: boolean; name?: string; durationDays?: number } {
-  // Fatigue increases injury chance
-  const fatigueFactor = (100 - energy) / 100;
-  const durabilityFactor = (100 - staminaAttr) / 100;
-  const baseChance = 0.02 + fatigueFactor * 0.08 + durabilityFactor * 0.05;
+const SIMPLE_INJURY_NAMES = ['脚踝扭伤', '腿筋拉伤', '膝盖挫伤', '手指挫伤', '肩部酸痛'];
+const MODERATE_INJURY_NAMES = ['中度脚踝扭伤', '小腿拉伤', '腰背拉伤'];
 
-  if (Math.random() < baseChance) {
-    const injuries = [
-      { name: '脚踝扭伤', duration: 7 },
-      { name: '腿筋拉伤', duration: 14 },
-      { name: '膝盖挫伤', duration: 10 },
-      { name: '手指脱脱', duration: 4 },
-      { name: '足底筋膜炎', duration: 21 },
-      { name: '半月板轻微损伤', duration: 45 },
-    ];
-    const picked = injuries[Math.floor(Math.random() * injuries.length)];
-    return { isInjured: true, name: picked.name, durationDays: picked.duration };
+const REGULAR_SEASON_GAMES = 82;
+
+/** Linear stamina curve: 50 stamina => 50% per season, 99 stamina => 10%. */
+export function calculateSeasonInjuryChance(staminaAttr: number): number {
+  const stamina = Math.max(50, Math.min(99, staminaAttr));
+  const staminaProgress = (stamina - 50) / 49;
+  return 0.50 - staminaProgress * 0.40;
+}
+
+/** Converts the season target into an equivalent independent per-game roll. */
+export function calculatePerGameInjuryChance(staminaAttr: number): number {
+  const seasonChance = calculateSeasonInjuryChance(staminaAttr);
+  return 1 - Math.pow(1 - seasonChance, 1 / REGULAR_SEASON_GAMES);
+}
+
+/**
+ * Applies the deliberately lightweight injury rules after a game the user played.
+ * Across a full 82-game season, stamina 50 targets 50% injury probability and
+ * stamina 99 targets 10%, with a smooth linear gradient between them.
+ */
+export function evaluatePostGameHealth(
+  health: PlayerProfile['health'],
+  staminaAttr: number,
+  random: () => number = Math.random
+): PlayerProfile['health'] {
+  if (health.status === 'injured') return health;
+
+  const cooldownGames = Math.max(0, (health.cooldownGames || 0) - 1);
+  const healthyState: PlayerProfile['health'] = {
+    status: 'healthy',
+    cooldownGames,
+    occurredThisSeason: health.occurredThisSeason || false,
+  };
+
+  if (health.occurredThisSeason || (health.cooldownGames || 0) > 0) {
+    return healthyState;
   }
-  return { isInjured: false };
+
+  const injuryChance = calculatePerGameInjuryChance(staminaAttr);
+  if (random() >= injuryChance) return healthyState;
+
+  const durationRoll = random();
+  // 8% of injuries are a slightly more serious, roughly one-week absence.
+  // The remaining 92% retain the agreed 60/30/10 split for 1/2/3 missed games.
+  const isModerate = durationRoll < 0.08;
+  const shortInjuryRoll = Math.max(0, (durationRoll - 0.08) / 0.92);
+  const gamesRemaining = isModerate
+    ? 4
+    : shortInjuryRoll < 0.60
+      ? 1
+      : shortInjuryRoll < 0.90
+        ? 2
+        : 3;
+  const injuryNames = isModerate ? MODERATE_INJURY_NAMES : SIMPLE_INJURY_NAMES;
+  const injuryName = injuryNames[Math.floor(random() * injuryNames.length)];
+
+  return {
+    status: 'injured',
+    injuryName,
+    severity: isModerate ? 'moderate' : 'minor',
+    gamesRemaining,
+    cooldownGames: 10,
+    occurredThisSeason: true,
+  };
 }
 
 // TOP 50 NBA Historical Legends Data (Updated for GOAT Score Formula v2.0)

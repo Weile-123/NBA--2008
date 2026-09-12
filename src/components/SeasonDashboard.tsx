@@ -8,8 +8,11 @@ import { SeasonScheduleTicker } from './SeasonScheduleTicker';
 import { PlayoffPanel } from './PlayoffPanel';
 import { SeasonSummaryModal } from './SeasonSummaryModal';
 import { OffseasonDashboard } from './OffseasonDashboard';
+import { STOP_AUTO_SIM_EVENT } from '../utils/gameEvents';
 
-const AUTO_SIM_GAME_DELAY_MS = 150;
+// The heavy 82-card ticker is replaced by a compact progress view while this
+// loop runs, so we can simulate faster and still yield between games for taps.
+const AUTO_SIM_GAME_DELAY_MS = 100;
 
 interface SeasonDashboardProps {
   gameState: GameState;
@@ -32,6 +35,7 @@ interface SeasonDashboardProps {
   onSetRenewalOffer?: (offer: ContractOffer | null) => void;
   onSetFreeAgencyOffers?: (offers: ContractOffer[]) => void;
   onStartMatch: (isInteractive: boolean) => void;
+  onAdvanceInjury: (recoverAll?: boolean) => void;
   onWorkout: () => void;
   onRest: () => void;
   onAdvanceWeek: () => void;
@@ -70,6 +74,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
   onSetRenewalOffer,
   onSetFreeAgencyOffers,
   onStartMatch,
+  onAdvanceInjury,
   onEnterPlayoffs,
   onEnterOffseason,
   onNextSeason,
@@ -90,9 +95,27 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
   const [sortBy, setSortBy] = useState<'position' | 'points'>('position');
   const [isAutoSimulating, setIsAutoSimulating] = useState(false);
   const [showSeasonSummaryModal, setShowSeasonSummaryModal] = useState(false);
+  const [showInjuryModal, setShowInjuryModal] = useState(false);
   const [isRecentGamesExpandedMobile, setIsRecentGamesExpandedMobile] = useState(false);
 
   const autoSimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isAutoSimulatingRef = useRef(false);
+  const lastInjuryKeyRef = useRef<string | null>(null);
+  const isInjured = player.health.status === 'injured';
+
+  useEffect(() => {
+    if (!isInjured) {
+      lastInjuryKeyRef.current = null;
+      return;
+    }
+
+    const injuryKey = player.health.injuryName || '伤病';
+    if (lastInjuryKeyRef.current !== injuryKey) {
+      lastInjuryKeyRef.current = injuryKey;
+      setShowInjuryModal(true);
+    }
+    setIsAutoSimulating(false);
+  }, [isInjured, player.health.injuryName, player.health.gamesRemaining]);
 
   // If milestone modal pops up during auto simulation, pause immediately
   useEffect(() => {
@@ -111,10 +134,11 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
   // Auto-simulation timer loop for regular season
   useEffect(() => {
     const playedCount = schedule.filter((s) => s.isPlayed).length;
-    if (isAutoSimulating && !hasActiveMilestoneModal && currentGame <= 82 && playedCount < 82 && !isPlayoffs && phase === 'regular_season') {
+    if (isAutoSimulating && !isInjured && !hasActiveMilestoneModal && currentGame <= 82 && playedCount < 82 && !isPlayoffs && phase === 'regular_season') {
       // Schedule one game at a time so simulations cannot overlap or starve
       // higher-priority taps. The next game is scheduled after this render.
       autoSimTimerRef.current = setTimeout(() => {
+        if (!isAutoSimulatingRef.current) return;
         React.startTransition(() => onStartMatch(false));
       }, AUTO_SIM_GAME_DELAY_MS);
     } else {
@@ -127,7 +151,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
     return () => {
       if (autoSimTimerRef.current) clearTimeout(autoSimTimerRef.current);
     };
-  }, [isAutoSimulating, hasActiveMilestoneModal, currentGame, isPlayoffs, phase, onStartMatch, schedule]);
+  }, [isAutoSimulating, isInjured, hasActiveMilestoneModal, currentGame, isPlayoffs, phase, onStartMatch, schedule]);
 
   // Regular season finished -> Pause auto-sim & show Season Summary Modal
   useEffect(() => {
@@ -147,10 +171,31 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
   }, [schedule, isPlayoffs, phase]);
 
   const toggleAutoSim = () => {
-    setIsAutoSimulating((prev) => !prev);
+    setIsAutoSimulating((prev) => {
+      const next = !prev;
+      isAutoSimulatingRef.current = next;
+      return next;
+    });
   };
 
-  const isInjured = player.health.status === 'injured';
+  useEffect(() => {
+    isAutoSimulatingRef.current = isAutoSimulating;
+  }, [isAutoSimulating]);
+
+  useEffect(() => {
+    const stopAutoSimulation = () => {
+      isAutoSimulatingRef.current = false;
+      if (autoSimTimerRef.current) clearTimeout(autoSimTimerRef.current);
+      setIsAutoSimulating(false);
+    };
+    window.addEventListener(STOP_AUTO_SIM_EVENT, stopAutoSimulation);
+    return () => {
+      window.removeEventListener(STOP_AUTO_SIM_EVENT, stopAutoSimulation);
+      isAutoSimulatingRef.current = false;
+      if (autoSimTimerRef.current) clearTimeout(autoSimTimerRef.current);
+    };
+  }, []);
+
   const seasonIndex = currentYear - 2007;
   const seasonStr = `${currentYear}-${(currentYear + 1).toString().slice(-2)} 赛季`;
 
@@ -237,12 +282,33 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
 
   return (
     <div className="space-y-4">
+      {showInjuryModal && isInjured && (
+        <div className="fixed inset-0 z-[70] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-rose-500/50 bg-[#11141b] p-5 shadow-[0_0_50px_rgba(244,63,94,0.22)] text-center">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full border border-rose-500/40 bg-rose-500/15 text-3xl">🏥</div>
+            <div className="text-[10px] font-black tracking-[0.2em] text-rose-400 uppercase">球队医疗报告</div>
+            <h3 className="mt-2 text-xl font-black italic text-white">{player.health.injuryName || '比赛伤病'}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-300">
+              {player.health.severity === 'moderate' ? '预计休战约一周，' : '预计'}缺席 <span className="font-black text-amber-400">{player.health.gamesRemaining || 1}</span> 场比赛。养伤期间球队赛程仍会正常推进，个人数据记为 DNP。
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowInjuryModal(false)}
+              className="mt-5 w-full rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-black text-black hover:bg-amber-400"
+            >
+              查看养伤安排
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 1. 82-Game Schedule Horizontal Ticker Bar */}
       <SeasonScheduleTicker
         schedule={schedule as ScheduleItem[]}
         currentGame={currentGame}
         userTeam={currentTeam}
         teams={teams}
+        isAutoSimulating={isAutoSimulating}
         onSelectMatch={(m, opp) => setSelectedMatchForModal({ match: m, userTeam: currentTeam, oppTeam: opp })}
       />
 
@@ -343,6 +409,34 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
               <Trophy className="w-4 h-4 sm:w-5 sm:h-5 fill-black shrink-0" />
               <span>常规赛已结束 · 点击查看荣誉并进入季后赛</span>
             </button>
+          ) : isInjured ? (
+            <div className="rounded-xl border border-rose-500/35 bg-rose-500/10 p-3">
+              <div className="mb-3 flex items-center gap-2">
+                <HeartHandshake className="h-5 w-5 shrink-0 text-rose-400" />
+                <div className="min-w-0">
+                  <div className="truncate text-xs font-black text-rose-300">
+                    {player.health.injuryName || '比赛伤病'} · {player.health.severity === 'moderate' ? '约一周伤停' : '伤停中'}
+                  </div>
+                  <div className="text-[10px] text-slate-400">还需缺席 {player.health.gamesRemaining || 1} 场，缺席场次记为 DNP</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onAdvanceInjury(false)}
+                  className="rounded-xl border border-[#323846] bg-[#171b24] px-2 py-2.5 text-[11px] font-bold text-slate-200 hover:border-amber-500/50"
+                >
+                  模拟下一场
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onAdvanceInjury(true)}
+                  className="rounded-xl bg-amber-500 px-2 py-2.5 text-[11px] font-black text-black hover:bg-amber-400"
+                >
+                  一键养伤至复出
+                </button>
+              </div>
+            </div>
           ) : (
             <div className="grid grid-cols-2 gap-2 w-full">
               <button
@@ -359,10 +453,13 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
               <button
                 type="button"
                 onClick={toggleAutoSim}
+                onPointerDown={() => {
+                  if (isAutoSimulating) isAutoSimulatingRef.current = false;
+                }}
                 disabled={isInjured || currentGame > 82}
                 className={`w-full justify-center px-2 sm:px-4 py-2.5 font-bold rounded-xl border transition-all flex items-center gap-1.5 text-xs uppercase ${
                   isAutoSimulating
-                    ? 'bg-rose-500 hover:bg-rose-400 text-white border-rose-500 shadow-lg shadow-rose-500/20 animate-pulse'
+                    ? 'bg-rose-500 hover:bg-rose-400 text-white border-rose-500 shadow-lg shadow-rose-500/20'
                     : 'bg-[#0d1017] hover:bg-[#181d29] text-slate-200 border-[#232834]'
                 }`}
               >
@@ -828,7 +925,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
                               </div>
                             </td>
                             <td className="py-2 text-center font-mono text-slate-400 text-[11px]">{p.position}</td>
-                            <td className="py-2 text-center font-mono text-slate-400 text-[11px]">{p.minutes}m</td>
+                            <td className="py-2 text-center font-mono text-slate-400 text-[11px]">{p.dnpReason ? 'DNP' : `${p.minutes}m`}</td>
                             <td className="py-2 text-center font-mono font-black text-amber-400 text-xs">{p.pts}</td>
                             <td className="py-2 text-center font-mono text-blue-300 text-[11px]">{p.reb}</td>
                             <td className="py-2 text-center font-mono text-emerald-300 text-[11px]">{p.ast}</td>
@@ -901,7 +998,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
                               </div>
                             </td>
                             <td className="py-2 text-center font-mono text-slate-400 text-[11px]">{p.position}</td>
-                            <td className="py-2 text-center font-mono text-slate-400 text-[11px]">{p.minutes}m</td>
+                            <td className="py-2 text-center font-mono text-slate-400 text-[11px]">{p.dnpReason ? 'DNP' : `${p.minutes}m`}</td>
                             <td className="py-2 text-center font-mono font-black text-amber-400 text-xs">{p.pts}</td>
                             <td className="py-2 text-center font-mono text-blue-300 text-[11px]">{p.reb}</td>
                             <td className="py-2 text-center font-mono text-emerald-300 text-[11px]">{p.ast}</td>

@@ -1483,7 +1483,8 @@ export function generateFullMatchRosterStats(
   oppScore: number,
   isHome: boolean,
   seasonIndex: number = 0,
-  userBoxScore?: MatchBoxScore['playerStats']
+  userBoxScore?: Omit<MatchBoxScore['playerStats'], 'ratingGrade'>,
+  userDnpReason?: string
 ): MatchRosterStats {
   const homeTeam = isHome ? userTeam : oppTeam;
   const awayTeam = isHome ? oppTeam : userTeam;
@@ -1501,7 +1502,29 @@ export function generateFullMatchRosterStats(
     let userAssignedPts = 0;
     let userStatsEntry: SingleGamePlayerStats | null = null;
 
-    if (isUserTeam) {
+    if (isUserTeam && userDnpReason) {
+      userStatsEntry = {
+        id: userPlayer.id || 'user_player',
+        name: userPlayer.name,
+        position: userPlayer.position,
+        number: userPlayer.number || String(userPlayer.jerseyNum || '23'),
+        ovr: userPlayer.ovr,
+        isUser: true,
+        dnpReason: userDnpReason,
+        minutes: 0,
+        pts: 0,
+        reb: 0,
+        ast: 0,
+        stl: 0,
+        blk: 0,
+        fgm: 0,
+        fga: 0,
+        tpm: 0,
+        tpa: 0,
+        ftm: 0,
+        fta: 0,
+      };
+    } else if (isUserTeam) {
       const uMinutes = rosterInfo.userMinutes || 25;
       if (userBoxScore) {
         userAssignedPts = userBoxScore.pts;

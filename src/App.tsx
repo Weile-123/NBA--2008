@@ -1,29 +1,31 @@
+import { lazy, Suspense } from 'react';
 import { getSaveSlotMeta,loadGameFromStorage,SaveSlotId } from './utils/storage';
 
-import { AgeDeclineModal } from './components/AgeDeclineModal';
-import { AttributesPanel } from './components/AttributesPanel';
-import { ContractSigningModal } from './components/ContractSigningModal';
-import { CreationModal } from './components/CreationModal';
-import { DraftNightModal } from './components/DraftNightModal';
-import { DraftWaitingAnimationModal } from './components/DraftWaitingAnimationModal';
-import { HallOfFame } from './components/HallOfFame';
 import { Header } from './components/Header';
 import { HomeScreen } from './components/HomeScreen';
-import { LeagueStandings } from './components/LeagueStandings';
-import { LegendaryHallOfFameModal } from './components/LegendaryHallOfFameModal';
-import { MatchSimulator } from './components/MatchSimulator';
-import { MilestoneModal } from './components/MilestoneModal';
-import { MilestonesView } from './components/MilestonesView';
-import { PostMatchModal } from './components/PostMatchModal';
-import { RealTradesModal } from './components/RealTradesModal';
-import { RetirementFlowModal } from './components/RetirementFlowModal';
-import { RookieDraftAndScoutModal } from './components/RookieDraftAndScoutModal';
-import { RosterAndTransfers } from './components/RosterAndTransfers';
-import { SaveSlotsModal } from './components/SaveSlotsModal';
-import { SeasonDashboard } from './components/SeasonDashboard';
-import { SettingsModal } from './components/SettingsModal';
-import { SocialAndLife } from './components/SocialAndLife';
-import { TimelinePage } from './components/TimelinePage';
+
+const AgeDeclineModal = lazy(() => import('./components/AgeDeclineModal').then((module) => ({ default: module.AgeDeclineModal })));
+const AttributesPanel = lazy(() => import('./components/AttributesPanel').then((module) => ({ default: module.AttributesPanel })));
+const ContractSigningModal = lazy(() => import('./components/ContractSigningModal').then((module) => ({ default: module.ContractSigningModal })));
+const CreationModal = lazy(() => import('./components/CreationModal').then((module) => ({ default: module.CreationModal })));
+const DraftNightModal = lazy(() => import('./components/DraftNightModal').then((module) => ({ default: module.DraftNightModal })));
+const DraftWaitingAnimationModal = lazy(() => import('./components/DraftWaitingAnimationModal').then((module) => ({ default: module.DraftWaitingAnimationModal })));
+const HallOfFame = lazy(() => import('./components/HallOfFame').then((module) => ({ default: module.HallOfFame })));
+const LeagueStandings = lazy(() => import('./components/LeagueStandings').then((module) => ({ default: module.LeagueStandings })));
+const LegendaryHallOfFameModal = lazy(() => import('./components/LegendaryHallOfFameModal').then((module) => ({ default: module.LegendaryHallOfFameModal })));
+const MatchSimulator = lazy(() => import('./components/MatchSimulator').then((module) => ({ default: module.MatchSimulator })));
+const MilestoneModal = lazy(() => import('./components/MilestoneModal').then((module) => ({ default: module.MilestoneModal })));
+const MilestonesView = lazy(() => import('./components/MilestonesView').then((module) => ({ default: module.MilestonesView })));
+const PostMatchModal = lazy(() => import('./components/PostMatchModal').then((module) => ({ default: module.PostMatchModal })));
+const RealTradesModal = lazy(() => import('./components/RealTradesModal').then((module) => ({ default: module.RealTradesModal })));
+const RetirementFlowModal = lazy(() => import('./components/RetirementFlowModal').then((module) => ({ default: module.RetirementFlowModal })));
+const RookieDraftAndScoutModal = lazy(() => import('./components/RookieDraftAndScoutModal').then((module) => ({ default: module.RookieDraftAndScoutModal })));
+const RosterAndTransfers = lazy(() => import('./components/RosterAndTransfers').then((module) => ({ default: module.RosterAndTransfers })));
+const SaveSlotsModal = lazy(() => import('./components/SaveSlotsModal').then((module) => ({ default: module.SaveSlotsModal })));
+const SeasonDashboard = lazy(() => import('./components/SeasonDashboard').then((module) => ({ default: module.SeasonDashboard })));
+const SettingsModal = lazy(() => import('./components/SettingsModal').then((module) => ({ default: module.SettingsModal })));
+const SocialAndLife = lazy(() => import('./components/SocialAndLife').then((module) => ({ default: module.SocialAndLife })));
+const TimelinePage = lazy(() => import('./components/TimelinePage').then((module) => ({ default: module.TimelinePage })));
 
 import { useCareerGame } from './hooks/useCareerGame';
 
@@ -108,6 +110,7 @@ export default function App() {
     handleStartMatch,
     handleFinishMatch,
     handlePostMatchContinue,
+    handleAdvanceInjury,
     handleUpgradeAttribute,
     handleAddSkillPoints,
     handleWatchAttributeAd,
@@ -129,12 +132,14 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950">
       {/* Draft Waiting Animation Modal */}
-      {showDraftWaitingAnimation && (
-        <DraftWaitingAnimationModal
-          currentYear={currentYear + 1}
-          onComplete={() => setShowDraftWaitingAnimation(false)}
-        />
-      )}
+      <Suspense fallback={null}>
+        {showDraftWaitingAnimation && (
+          <DraftWaitingAnimationModal
+            currentYear={currentYear + 1}
+            onComplete={() => setShowDraftWaitingAnimation(false)}
+          />
+        )}
+      </Suspense>
 
       {/* Floating Toast Notification */}
       {toastMsg && (
@@ -185,36 +190,42 @@ export default function App() {
       })()}
 
       {/* Creation Phase */}
-      {phase === 'creation' && (
-        <CreationModal
-          onComplete={handlePlayerCreated}
-          onBackToHome={() => setPhase('home')}
-        />
-      )}
+      <Suspense fallback={(
+        <div className="min-h-screen bg-[#0a0d14] text-amber-300 flex items-center justify-center font-black tracking-widest">
+          正在加载生涯数据…
+        </div>
+      )}>
+        {phase === 'creation' && (
+          <CreationModal
+            onComplete={handlePlayerCreated}
+            onBackToHome={() => setPhase('home')}
+          />
+        )}
 
-      {/* Scout Report & Spotlight Draft Selection Phase */}
-      {phase === 'scout_draft' && player && (
-        <RookieDraftAndScoutModal
-          player={player}
-          teams={teams}
-          onProceedToContract={() => setPhase('contract_signing')}
-        />
-      )}
+        {/* Scout Report & Spotlight Draft Selection Phase */}
+        {phase === 'scout_draft' && player && (
+          <RookieDraftAndScoutModal
+            player={player}
+            teams={teams}
+            onProceedToContract={() => setPhase('contract_signing')}
+          />
+        )}
 
-      {/* 2008 Draft Night Phase */}
-      {phase === 'draft' && player && (
-        <DraftNightModal player={player} teams={teams} onComplete={handleCompleteDraft} />
-      )}
+        {/* 2008 Draft Night Phase */}
+        {phase === 'draft' && player && (
+          <DraftNightModal player={player} teams={teams} onComplete={handleCompleteDraft} />
+        )}
 
-      {/* Contract Signing Phase */}
-      {phase === 'contract_signing' && player && (
-        <ContractSigningModal
-          player={player}
-          team={currentTeam}
-          pick={player.draftPick || 1}
-          onSignContract={handleSignContract}
-        />
-      )}
+        {/* Contract Signing Phase */}
+        {phase === 'contract_signing' && player && (
+          <ContractSigningModal
+            player={player}
+            team={currentTeam}
+            pick={player.draftPick || 1}
+            onSignContract={handleSignContract}
+          />
+        )}
+      </Suspense>
 
       {/* Main Game Interface (Header & Tabs) */}
       {player && phase !== 'home' && phase !== 'creation' && phase !== 'scout_draft' && phase !== 'draft' && phase !== 'contract_signing' && phase !== 'legendary_hof' && (
@@ -235,6 +246,11 @@ export default function App() {
             setActiveTab={setActiveTab}
           />
 
+          <Suspense fallback={(
+            <main className="max-w-7xl mx-auto px-2 sm:px-4 py-8 pb-24 md:pb-6 text-center text-sm font-bold text-slate-400">
+              正在加载页面…
+            </main>
+          )}>
           <main className="max-w-7xl mx-auto px-2 sm:px-4 py-3 sm:py-6 pb-24 md:pb-6">
             {activeTab === 'season' && (
               <SeasonDashboard
@@ -274,6 +290,7 @@ export default function App() {
                 onSetRenewalOffer={setRenewalOffer}
                 onSetFreeAgencyOffers={setFreeAgencyOffers}
                 onStartMatch={handleStartMatch}
+                onAdvanceInjury={handleAdvanceInjury}
                 onWorkout={handleWorkout}
                 onRest={handleRest}
                 onAdvanceWeek={() => setCurrentSeasonWeek((prev) => Math.min(83, prev + 1))}
@@ -371,21 +388,23 @@ export default function App() {
               />
             )}
           </main>
+          </Suspense>
         </>
       )}
 
-      {/* Match Simulator Modal */}
-      {phase === 'match_sim' && player && (
-        <MatchSimulator
-          player={player}
-          userTeam={currentTeam}
-          oppTeam={oppTeam}
-          isInteractive={isInteractiveMatch}
-          isPlayoffs={isPlayoffs}
-          currentYear={currentYear}
-          onFinishMatch={handleFinishMatch}
-        />
-      )}
+      <Suspense fallback={null}>
+        {/* Match Simulator Modal */}
+        {phase === 'match_sim' && player && (
+          <MatchSimulator
+            player={player}
+            userTeam={currentTeam}
+            oppTeam={oppTeam}
+            isInteractive={isInteractiveMatch}
+            isPlayoffs={isPlayoffs}
+            currentYear={currentYear}
+            onFinishMatch={handleFinishMatch}
+          />
+        )}
 
       {/* Post Match Modal */}
       {phase === 'post_match' && player && lastMatchResult && (
@@ -456,48 +475,59 @@ export default function App() {
         />
       )}
 
-      {/* Save Slots & File Manager Modal */}
-      <SaveSlotsModal
-        isOpen={isSaveSlotsOpen}
-        onClose={() => setIsSaveSlotsOpen(false)}
-        currentSaveData={getCurrentSavedData()}
-        currentSlotId={currentSaveSlot}
-        onLoadSaveData={handleLoadSaveData}
-        onCurrentSlotDeleted={handleCurrentSlotDeleted}
-        onShowToast={showToast}
-      />
+        {/* Save Slots & File Manager Modal */}
+        {isSaveSlotsOpen && (
+          <SaveSlotsModal
+            isOpen={true}
+            onClose={() => setIsSaveSlotsOpen(false)}
+            currentSaveData={getCurrentSavedData()}
+            currentSlotId={currentSaveSlot}
+            onLoadSaveData={handleLoadSaveData}
+            onCurrentSlotDeleted={handleCurrentSlotDeleted}
+            onShowToast={showToast}
+          />
+        )}
+      </Suspense>
 
       {/* Legendary Hall of Fame Page */}
-      {(phase === 'legendary_hof' || isLegendaryHofOpen) && (
-        <LegendaryHallOfFameModal
-          isOpen={true}
-          initialMode={legendaryHofInitialMode}
-          onClose={() => {
-            setIsLegendaryHofOpen(false);
-            if (phase === 'legendary_hof') setPhase(prevPhase || 'home');
-          }}
-          onGoHome={() => {
-            setIsLegendaryHofOpen(false);
-            setPhase('home');
-          }}
-        />
-      )}
+      <Suspense fallback={(
+        phase === 'legendary_hof'
+          ? <div className="min-h-screen bg-[#0a0d14] text-amber-300 flex items-center justify-center font-black tracking-widest">正在加载传奇榜…</div>
+          : null
+      )}>
+        {(phase === 'legendary_hof' || isLegendaryHofOpen) && (
+          <LegendaryHallOfFameModal
+            isOpen={true}
+            initialMode={legendaryHofInitialMode}
+            onClose={() => {
+              setIsLegendaryHofOpen(false);
+              if (phase === 'legendary_hof') setPhase(prevPhase || 'home');
+            }}
+            onGoHome={() => {
+              setIsLegendaryHofOpen(false);
+              setPhase('home');
+            }}
+          />
+        )}
+      </Suspense>
 
       {/* Milestone Modal */}
-      {activeMilestoneModal && (
-        <MilestoneModal
-          milestone={activeMilestoneModal}
-          playerName={player?.name || '球星'}
-          onClose={() => setActiveMilestoneModal(null)}
-          onViewMilestones={() => {
-            setActiveMilestoneModal(null);
-            if (phase === 'home' || phase === 'creation' || phase === 'scout_draft' || phase === 'draft' || phase === 'contract_signing') {
-              setPhase('career');
-            }
-            setActiveTab('milestones');
-          }}
-        />
-      )}
+      <Suspense fallback={null}>
+        {activeMilestoneModal && (
+          <MilestoneModal
+            milestone={activeMilestoneModal}
+            playerName={player?.name || '球星'}
+            onClose={() => setActiveMilestoneModal(null)}
+            onViewMilestones={() => {
+              setActiveMilestoneModal(null);
+              if (phase === 'home' || phase === 'creation' || phase === 'scout_draft' || phase === 'draft' || phase === 'contract_signing') {
+                setPhase('career');
+              }
+              setActiveTab('milestones');
+            }}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

@@ -8,6 +8,7 @@ interface SeasonScheduleTickerProps {
   currentGame: number;
   userTeam: Team;
   teams: Team[];
+  isAutoSimulating?: boolean;
   onSelectMatch: (match: ScheduleItem, oppTeam: Team) => void;
 }
 
@@ -16,6 +17,7 @@ export const SeasonScheduleTicker: React.FC<SeasonScheduleTickerProps> = ({
   currentGame,
   userTeam,
   teams,
+  isAutoSimulating = false,
   onSelectMatch,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -23,16 +25,16 @@ export const SeasonScheduleTicker: React.FC<SeasonScheduleTickerProps> = ({
 
   // Auto-scroll to center current game item whenever currentGame changes
   useEffect(() => {
-    if (activeItemRef.current && containerRef.current) {
-      const container = containerRef.current;
-      const item = activeItemRef.current;
-      const scrollLeft = item.offsetLeft - container.clientWidth / 2 + item.clientWidth / 2;
-      container.scrollTo({
-        left: Math.max(0, scrollLeft),
+    if (isAutoSimulating) return;
+    const animationFrame = requestAnimationFrame(() => {
+      activeItemRef.current?.scrollIntoView({
+        inline: 'center',
+        block: 'nearest',
         behavior: 'smooth',
       });
-    }
-  }, [currentGame, schedule]);
+    });
+    return () => cancelAnimationFrame(animationFrame);
+  }, [currentGame, isAutoSimulating]);
 
   const handleScrollLeft = () => {
     if (containerRef.current) {
@@ -47,6 +49,33 @@ export const SeasonScheduleTicker: React.FC<SeasonScheduleTickerProps> = ({
   };
 
   const playedCount = (schedule || []).filter((s) => s.isPlayed).length;
+
+  // Rendering and reconciling all 82 cards (including team logos) for every
+  // simulated game is much more expensive than the simulation itself on older
+  // Android WebViews. Keep only a static, lightweight progress view running;
+  // the complete interactive ticker returns as soon as simulation pauses.
+  if (isAutoSimulating) {
+    const progress = Math.min(100, Math.round((playedCount / 82) * 100));
+    return (
+      <div className="rounded-2xl border border-[#232834] bg-[#11141b] p-3 shadow-xl">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Calendar className="h-4 w-4 shrink-0 text-amber-400" />
+            <span className="truncate text-xs font-black italic text-white">常规赛快速模拟</span>
+          </div>
+          <span className="shrink-0 font-mono text-[10px] font-bold text-amber-300">
+            {playedCount}/82
+          </span>
+        </div>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#080b11]">
+          <div
+            className="h-full rounded-full bg-amber-500"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#11141b] border border-[#232834] rounded-2xl p-3 shadow-xl space-y-2 relative overflow-hidden">
@@ -87,7 +116,6 @@ export const SeasonScheduleTicker: React.FC<SeasonScheduleTickerProps> = ({
       <div
         ref={containerRef}
         className="flex items-center gap-2.5 overflow-x-auto px-2.5 py-2.5 scrollbar-thin scrollbar-thumb-amber-500/20 scrollbar-track-transparent snap-x"
-        style={{ scrollBehavior: 'smooth' }}
       >
         {schedule.map((item, index) => {
           const gameNum = item.gameNumber || item.week || index + 1;
@@ -107,7 +135,9 @@ export const SeasonScheduleTicker: React.FC<SeasonScheduleTickerProps> = ({
               key={`ticker-game-${gameNum}`}
               ref={isActive ? activeItemRef : null}
               onClick={() => isPlayed && onSelectMatch(item, oppTeam)}
-              className={`snap-center flex-shrink-0 w-28 p-2 rounded-xl border transition-all duration-200 select-none ${
+              className={`snap-center flex-shrink-0 w-28 p-2 rounded-xl border select-none ${
+                isAutoSimulating ? '' : 'transition-all duration-200'
+              } ${
                 isActive
                   ? 'bg-gradient-to-b from-amber-500/20 to-amber-900/10 border-amber-400 shadow-lg shadow-amber-500/20 ring-2 ring-amber-400/50 scale-105 z-10'
                   : isPlayed
@@ -122,7 +152,7 @@ export const SeasonScheduleTicker: React.FC<SeasonScheduleTickerProps> = ({
                 </span>
 
                 {isActive ? (
-                  <span className="px-1.5 py-0.2 bg-amber-500 text-black rounded font-black text-[8px] animate-pulse">
+                  <span className={`px-1.5 py-0.2 bg-amber-500 text-black rounded font-black text-[8px] ${isAutoSimulating ? '' : 'animate-pulse'}`}>
                     进行中
                   </span>
                 ) : isPlayed ? (
