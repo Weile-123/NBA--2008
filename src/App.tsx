@@ -1,5 +1,6 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { getSaveSlotMeta,loadGameFromStorage,SaveSlotId } from './utils/storage';
+import { DEFAULT_GAME_MODE, GameMode } from './gameMode';
 
 import { Header } from './components/Header';
 import { HomeScreen } from './components/HomeScreen';
@@ -30,6 +31,18 @@ const TimelinePage = lazy(() => import('./components/TimelinePage').then((module
 import { useCareerGame } from './hooks/useCareerGame';
 
 export default function App() {
+  const [gameMode, setGameMode] = useState<GameMode>(DEFAULT_GAME_MODE);
+  const [resumeOnMount, setResumeOnMount] = useState(true);
+
+  const handleSelectGameMode = (nextMode: GameMode) => {
+    setResumeOnMount(false);
+    setGameMode(nextMode);
+  };
+
+  return <div key={gameMode}><CareerApp gameMode={gameMode} resumeOnMount={resumeOnMount} onSelectGameMode={handleSelectGameMode} /></div>;
+}
+
+function CareerApp({ gameMode, resumeOnMount, onSelectGameMode }: { gameMode: GameMode; resumeOnMount: boolean; onSelectGameMode: (mode: GameMode) => void }) {
   const {
     handleOpenSaveSlots,
     phase,
@@ -126,7 +139,7 @@ export default function App() {
     handleViewSeasonTrades,
     currentTeam,
     oppTeam,
-  } = useCareerGame();
+  } = useCareerGame(gameMode, resumeOnMount);
 
 
   return (
@@ -151,17 +164,19 @@ export default function App() {
       {/* Title / Home Screen Phase */}
       {phase === 'home' && (() => {
         const slots: SaveSlotId[] = ['slot_1', 'slot_2', 'slot_3', 'slot_4'];
-        const activeMetas = slots.map((s) => getSaveSlotMeta(s)).filter((m) => !m.isEmpty);
+        const activeMetas = slots.map((s) => getSaveSlotMeta(s, gameMode)).filter((m) => !m.isEmpty);
         const hasSave = !!player || (storageReady && activeMetas.length > 0);
-        const latestMeta = activeMetas.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())[0] || getSaveSlotMeta('slot_1');
+        const latestMeta = activeMetas.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())[0] || getSaveSlotMeta('slot_1', gameMode);
 
         return (
           <HomeScreen
             hasActiveSave={hasSave}
             latestSaveMeta={latestMeta}
+            gameMode={gameMode}
+            onSelectGameMode={onSelectGameMode}
             onContinueGame={() => {
               const latestSlot = activeMetas[0]?.slotId || 'slot_1';
-              const saved = loadGameFromStorage(latestSlot) || loadGameFromStorage('slot_1');
+              const saved = loadGameFromStorage(latestSlot, gameMode) || loadGameFromStorage('slot_1', gameMode);
               if (saved && saved.player) {
                 handleLoadSaveData(saved);
               } else if (player) {
@@ -422,6 +437,7 @@ export default function App() {
       {/* Retirement Flow Modal */}
       {phase === 'hall_of_fame' && player && (
         <RetirementFlowModal
+          gameMode={gameMode}
           player={player}
           careerHistory={careerHistory}
           leagueHistory={leagueHistory}
@@ -478,6 +494,7 @@ export default function App() {
         {/* Save Slots & File Manager Modal */}
         {isSaveSlotsOpen && (
           <SaveSlotsModal
+            gameMode={gameMode}
             isOpen={true}
             onClose={() => setIsSaveSlotsOpen(false)}
             currentSaveData={getCurrentSavedData()}
@@ -497,6 +514,7 @@ export default function App() {
       )}>
         {(phase === 'legendary_hof' || isLegendaryHofOpen) && (
           <LegendaryHallOfFameModal
+            gameMode={gameMode}
             isOpen={true}
             initialMode={legendaryHofInitialMode}
             onClose={() => {

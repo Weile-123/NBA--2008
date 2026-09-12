@@ -18,8 +18,9 @@ import { detectNewMilestones,MilestoneTrigger } from '../data/milestonesData';
 import { executeHistoricalTradesForSeason,TradeModalData } from '../data/realTradesData';
 import { Accolade } from '../types';
 import { scheduleRootScrollToTop } from '../utils/scroll';
+import { GameMode } from '../gameMode';
 
-export function useCareerGame() {
+export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   const [phase, setPhaseState] = useState<GameState['phase']>('home');
   const setPhase: Dispatch<SetStateAction<GameState['phase']>> = useCallback((nextPhase) => {
     // Phase changes frequently cross lazy-loaded chunks. A transition keeps
@@ -398,12 +399,12 @@ export function useCareerGame() {
 
   // Load saved game state on initial mount
   useEffect(() => {
-    void hydrateGameStorage().then(() => {
-      const saved = loadGameFromStorage();
-      if (saved?.player) handleLoadSaveData(saved);
+    void hydrateGameStorage(gameMode).then(() => {
+      const saved = loadGameFromStorage(undefined, gameMode);
+      if (resumeOnMount && saved?.player) handleLoadSaveData(saved);
       setStorageReady(true);
     });
-  }, []);
+  }, [gameMode, resumeOnMount]);
 
   const saveSnapshot = useMemo<SavedData | null>(() => {
     if (!player) return null;
@@ -420,6 +421,7 @@ export function useCareerGame() {
 
     return {
       version: 1,
+      gameMode,
       slotId: currentSaveSlot,
       updatedAt: nowStr,
       phase: activeSavePhase,
@@ -454,7 +456,7 @@ export function useCareerGame() {
         freeAgencyOffers,
       },
     };
-  }, [player, phase, currentSaveSlot, currentYear, currentSeasonWeek, isPlayoffs, teams, schedule, tweets, careerHistory, leagueHistory, activeTab, executedTradeYears, activeInSeasonTradeOffers, declinePromptYear, isInteractiveMatch, usedOffseasonEventIds, offseasonMonth, offseasonCompletedPlans, offseasonEventMonths, offseasonPhase, isDraftCompleted, isContractCompleted, contractStep, renewalOffer, freeAgencyOffers]);
+  }, [player, phase, gameMode, currentSaveSlot, currentYear, currentSeasonWeek, isPlayoffs, teams, schedule, tweets, careerHistory, leagueHistory, activeTab, executedTradeYears, activeInSeasonTradeOffers, declinePromptYear, isInteractiveMatch, usedOffseasonEventIds, offseasonMonth, offseasonCompletedPlans, offseasonEventMonths, offseasonPhase, isDraftCompleted, isContractCompleted, contractStep, renewalOffer, freeAgencyOffers]);
 
   const autoSave = useAutoSave(saveSnapshot, (time) => setLastSavedAt(new Date(time).toLocaleTimeString('zh-CN')));
   const getCurrentSavedData = () => saveSnapshot ? { ...saveSnapshot, updatedAt: new Date().toISOString() } : null;
@@ -475,7 +477,7 @@ export function useCareerGame() {
     const nowStr = new Date().toISOString();
     data.updatedAt = nowStr;
     data.slotId = currentSaveSlot;
-    const success = saveGameToStorage(data, currentSaveSlot);
+    const success = saveGameToStorage(data, currentSaveSlot, gameMode);
     if (success) autoSave.cancel();
     if (success) {
       setLastSavedAt(new Date(nowStr).toLocaleTimeString('zh-CN'));
@@ -563,7 +565,7 @@ export function useCareerGame() {
 
   const handleResetGame = () => {
     autoSave.cancel();
-    clearGameStorage();
+    clearGameStorage(gameMode);
     setPlayer(null);
     setPhase('home');
     setCurrentYear(2008);

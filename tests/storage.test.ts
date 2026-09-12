@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createAutoSave } from '../src/utils/autoSave';
-import { clearGameStorage, clearSlotStorage, loadGameFromStorage, SavedData, saveGameToStorage } from '../src/utils/storage';
+import { clearGameStorage, clearSlotStorage, getHallOfFameLegends, loadGameFromStorage, SavedData, saveGameToStorage, saveHallOfFameLegend } from '../src/utils/storage';
+import { RetiredPlayerRecord } from '../src/types';
 
 const snapshot = (name: string) => ({
   version: 1, player: { name }, teams: [{ id: 'lal' }], updatedAt: '2026-09-10T10:00:00Z',
@@ -101,4 +102,31 @@ test('clearing an explicitly selected slot does not affect another slot', () => 
   clearSlotStorage('slot_4');
   assert.equal(loadGameFromStorage('slot_1')?.player?.name, 'A');
   assert.equal(loadGameFromStorage('slot_4'), null);
+});
+
+test('classic and random-trade careers use completely separate save slots', () => {
+  clearGameStorage('classic');
+  clearGameStorage('random_trade');
+  saveGameToStorage(snapshot('经典球员'), 'slot_1', 'classic');
+  saveGameToStorage(snapshot('平行联盟球员'), 'slot_1', 'random_trade');
+
+  assert.equal(loadGameFromStorage('slot_1', 'classic')?.player?.name, '经典球员');
+  assert.equal(loadGameFromStorage('slot_1', 'random_trade')?.player?.name, '平行联盟球员');
+
+  clearGameStorage('random_trade');
+  assert.equal(loadGameFromStorage('slot_1', 'classic')?.player?.name, '经典球员');
+  assert.equal(loadGameFromStorage('slot_1', 'random_trade'), null);
+});
+
+test('classic and random-trade personal leaderboards are independent', () => {
+  const classicLegend = { id: 'classic-legend', goatScore: 100 } as RetiredPlayerRecord;
+  const randomLegend = { id: 'random-legend', goatScore: 200 } as RetiredPlayerRecord;
+
+  saveHallOfFameLegend(classicLegend, 'classic');
+  saveHallOfFameLegend(randomLegend, 'random_trade');
+
+  assert.equal(getHallOfFameLegends('classic').some((legend) => legend.id === classicLegend.id), true);
+  assert.equal(getHallOfFameLegends('classic').some((legend) => legend.id === randomLegend.id), false);
+  assert.equal(getHallOfFameLegends('random_trade').some((legend) => legend.id === randomLegend.id), true);
+  assert.equal(getHallOfFameLegends('random_trade').some((legend) => legend.id === classicLegend.id), false);
 });

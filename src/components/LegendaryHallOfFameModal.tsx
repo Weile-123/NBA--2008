@@ -34,8 +34,10 @@ import { loadGlobalHallOfFame, GlobalHallOfFameRank, syncLocalBestAndLoadMyRank 
 import { TeamLogo } from './TeamLogo';
 import { NBA_TEAMS_2008 } from '../data/nbaData2008';
 import { formatLocalDateTime } from '../utils/dateTime';
+import { DEFAULT_GAME_MODE, GameMode, GAME_MODE_CONFIG } from '../gameMode';
 
 interface LegendaryHallOfFameModalProps {
+  gameMode?: GameMode;
   isOpen?: boolean;
   onClose?: () => void;
   onGoHome?: () => void;
@@ -124,6 +126,7 @@ const DEMO_KOBE_LEGEND: RetiredPlayerRecord = {
 };
 
 export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> = ({
+  gameMode = DEFAULT_GAME_MODE,
   isOpen,
   onClose,
   onGoHome,
@@ -180,7 +183,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
   };
 
   const resetModalScroll = () => scheduleRootScrollToTop();
-  const hasLocalRetirement = getHallOfFameLegends().length > 0;
+  const hasLocalRetirement = getHallOfFameLegends(gameMode).length > 0;
 
   // Sync initialMode when modal opens
   useEffect(() => {
@@ -209,7 +212,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
     setShowFullEpilogueModal(false);
 
     if (tabMode === 'local') {
-      const stored = getHallOfFameLegends().map(sanitizeLegend);
+      const stored = getHallOfFameLegends(gameMode).map(sanitizeLegend);
       setLegends(stored);
       setIsLoadingGlobal(false);
       setIsTimeoutGlobal(false);
@@ -234,7 +237,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
             // Always reconcile the best local retirement first. This covers
             // both new retirements and users discarded by the old top-50-only
             // server rule, even when their previous /me lookup was empty.
-            mine = await syncLocalBestAndLoadMyRank(getHallOfFameLegends());
+            mine = await syncLocalBestAndLoadMyRank(getHallOfFameLegends(gameMode));
             records = await loadGlobalHallOfFame();
           } catch (error) {
             rankError = error instanceof Error ? error.message : '本地退役记录暂时无法同步';
@@ -270,7 +273,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
       isMounted = false;
       if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [isOpen, tabMode, globalRefreshVersion]);
+  }, [isOpen, tabMode, globalRefreshVersion, gameMode]);
 
   const handleSyncLocalRetirement = async () => {
     if (isSyncingLocal) return;
@@ -278,7 +281,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
     setMyGlobalRankError(null);
     setLocalSyncNotice('正在上传本地最佳退役记录并查询名次…');
     try {
-      const mine = await syncLocalBestAndLoadMyRank(getHallOfFameLegends());
+      const mine = await syncLocalBestAndLoadMyRank(getHallOfFameLegends(gameMode));
       setMyGlobalRank(mine);
       setLocalSyncNotice(mine ? `同步成功：当前全网第 ${mine.rank} 名` : '没有找到可同步的本地退役记录');
       const records = await loadGlobalHallOfFame();
@@ -309,7 +312,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
 
   const handleConfirmDelete = () => {
     if (!deleteConfirmTarget) return;
-    deleteHallOfFameLegend(deleteConfirmTarget.id);
+    deleteHallOfFameLegend(deleteConfirmTarget.id, gameMode);
     const updated = legends.filter((l) => l.id !== deleteConfirmTarget.id);
     setLegends(updated);
     if (selectedLegend?.id === deleteConfirmTarget.id) {
@@ -319,8 +322,8 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
   };
 
   const handleAddDemoLegend = () => {
-    saveHallOfFameLegend(DEMO_KOBE_LEGEND);
-    setLegends(getHallOfFameLegends());
+    saveHallOfFameLegend(DEMO_KOBE_LEGEND, gameMode);
+    setLegends(getHallOfFameLegends(gameMode));
   };
 
   return (
@@ -363,7 +366,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
                   <p className="text-[11px] text-slate-400 font-mono mt-0.5">
                     {tabMode === 'global'
                       ? '全网玩家云端实时同步，按 GOAT 综合积分排名决出的终极传奇殿堂'
-                      : '记录您在此设备上缔造的全部退役球星荣耀与完整赛季时间线'}
+                      : `记录您在此设备上缔造的${GAME_MODE_CONFIG[gameMode].shortName}退役球星荣耀与完整赛季时间线`}
                   </p>
                 </div>
               </div>
@@ -372,7 +375,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
             {/* Top Right Mode Toggle Tab */}
             <div className="flex items-center gap-2 relative z-10 w-full sm:w-auto justify-end">
               <div className="flex items-center gap-1 bg-[#0b0e17] p-1 rounded-xl border border-amber-500/20 w-full sm:w-auto">
-                <button
+                {gameMode === 'classic' && <button
                   type="button"
                   onClick={() => {
                     setTabMode('local');
@@ -386,7 +389,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
                 >
                   <User className="w-3.5 h-3.5" />
                   <span>个人传奇榜</span>
-                </button>
+                </button>}
                 <button
                   type="button"
                   onClick={() => {

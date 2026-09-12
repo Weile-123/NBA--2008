@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, FolderOpen, Trash2 } from 'lucide-react';
 import { SaveSlotId, SaveSlotMeta, getAllSaveSlotsMeta, loadGameFromStorage, clearSlotStorage, SavedData } from '../utils/storage';
+import { DEFAULT_GAME_MODE, GameMode, GAME_MODE_CONFIG } from '../gameMode';
 
 interface SaveSlotsModalProps {
+  gameMode?: GameMode;
   isOpen: boolean;
   onClose: () => void;
   currentSaveData: SavedData | null;
@@ -13,6 +15,7 @@ interface SaveSlotsModalProps {
 }
 
 export const SaveSlotsModal: React.FC<SaveSlotsModalProps> = ({
+  gameMode = DEFAULT_GAME_MODE,
   isOpen,
   onClose,
   currentSaveData,
@@ -21,21 +24,21 @@ export const SaveSlotsModal: React.FC<SaveSlotsModalProps> = ({
   onCurrentSlotDeleted,
   onShowToast,
 }) => {
-  const [slots, setSlots] = useState<SaveSlotMeta[]>(() => getAllSaveSlotsMeta());
+  const [slots, setSlots] = useState<SaveSlotMeta[]>(() => getAllSaveSlotsMeta(gameMode));
   const [confirmDeleteSlot, setConfirmDeleteSlot] = useState<SaveSlotId | null>(null);
 
   useEffect(() => {
-    if (isOpen) setSlots(getAllSaveSlotsMeta());
-  }, [isOpen]);
+    if (isOpen) setSlots(getAllSaveSlotsMeta(gameMode));
+  }, [isOpen, gameMode]);
 
   if (!isOpen) return null;
 
   const refreshSlots = () => {
-    setSlots(getAllSaveSlotsMeta());
+    setSlots(getAllSaveSlotsMeta(gameMode));
   };
 
   const handleLoadSlot = (slotId: SaveSlotId) => {
-    const data = loadGameFromStorage(slotId);
+    const data = loadGameFromStorage(slotId, gameMode);
     if (data && data.player) {
       onLoadSaveData(data, slotId);
       // No floating toast on load as requested
@@ -47,7 +50,7 @@ export const SaveSlotsModal: React.FC<SaveSlotsModalProps> = ({
 
   const handleDeleteSlot = (slotId: SaveSlotId) => {
     const isDeletingCurrent = slotId === currentSlotId && !!currentSaveData?.player;
-    clearSlotStorage(slotId);
+    clearSlotStorage(slotId, gameMode);
     refreshSlots();
     setConfirmDeleteSlot(null);
     onShowToast('🗑️ 已清空该槽位存档');
@@ -66,7 +69,7 @@ export const SaveSlotsModal: React.FC<SaveSlotsModalProps> = ({
           <div className="flex items-center gap-2">
             <FolderOpen className="w-5 h-5 text-amber-400" />
             <h3 className="text-lg font-black text-white italic tracking-wide uppercase">
-              读取生涯存档 & 槽位管理 <span className="text-xs font-normal text-amber-400 font-mono">LOAD SAVES</span>
+              {GAME_MODE_CONFIG[gameMode].shortName} · 生涯存档 <span className="text-xs font-normal text-amber-400 font-mono">LOAD SAVES</span>
             </h3>
           </div>
           <button

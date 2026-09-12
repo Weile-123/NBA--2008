@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Play, PlusCircle, Trophy, Sparkles, UserCheck, Flame, ArrowRight, AlertTriangle, Globe, Loader2, MessageSquareText } from 'lucide-react';
+import { Play, PlusCircle, Trophy, Sparkles, UserCheck, Flame, ArrowRight, ArrowLeft, AlertTriangle, Globe, Loader2, MessageSquareText, Shuffle, LockKeyhole } from 'lucide-react';
 import { SaveSlotMeta, getAllSaveSlotsMeta } from '../utils/storage';
 import { TeamLogo } from './TeamLogo';
 import { loadGlobalHallOfFame, retryPendingGlobalHallOfFameUpload } from '../lib/globalLeaderboard';
 import { UserFeedbackModal } from './UserFeedbackModal';
+import { GameMode, GAME_MODE_CONFIG } from '../gameMode';
 
 interface HomeScreenProps {
+  gameMode: GameMode;
+  onSelectGameMode: (mode: GameMode) => void;
   hasActiveSave: boolean;
   latestSaveMeta: SaveSlotMeta | null;
   onContinueGame: () => void;
@@ -17,6 +20,8 @@ interface HomeScreenProps {
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
+  gameMode,
+  onSelectGameMode,
   hasActiveSave,
   latestSaveMeta,
   onContinueGame,
@@ -34,6 +39,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   useEffect(() => {
+    if (gameMode !== 'classic') {
+      setTopLegendName('');
+      setTopLegendScore(null);
+      setIsBannerLoading(false);
+      setIsBannerTimeout(false);
+      return;
+    }
+
     let isMounted = true;
     let retryTimer: any = null;
 
@@ -69,13 +82,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       isMounted = false;
       if (retryTimer) clearTimeout(retryTimer);
     };
-  }, []);
+  }, [gameMode]);
 
   const displayTopName = topLegendName;
   const displayTopScore = topLegendScore;
 
   const handleNewCareerClick = () => {
-    const hasAnySave = hasActiveSave || getAllSaveSlotsMeta().some((s) => !s.isEmpty);
+    const hasAnySave = hasActiveSave || getAllSaveSlotsMeta(gameMode).some((s) => !s.isEmpty);
     if (hasAnySave) {
       setShowConfirmModal(true);
     } else {
@@ -92,9 +105,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     <div className="relative min-h-screen bg-[#0a0d14] text-white flex flex-col items-center justify-between p-0 overflow-hidden select-none">
       {/* Top Global Legend Scrolling Banner Ticker */}
       <div 
-        onClick={onOpenGlobalHallOfFame || onOpenHallOfFame}
-        className="safe-area-home-banner relative z-30 w-full bg-gradient-to-r from-amber-950/90 via-amber-900/95 to-amber-950/90 border-b border-amber-500/40 text-amber-200 text-xs py-2 overflow-hidden cursor-pointer group shadow-lg select-none transition-colors hover:bg-amber-900/95"
-        title="点击查看全网传奇榜"
+        onClick={gameMode === 'classic' ? (onOpenGlobalHallOfFame || onOpenHallOfFame) : undefined}
+        className={`safe-area-home-banner relative z-30 w-full bg-gradient-to-r from-amber-950/90 via-amber-900/95 to-amber-950/90 border-b border-amber-500/40 text-amber-200 text-xs py-2 overflow-hidden group shadow-lg select-none transition-colors ${gameMode === 'classic' ? 'cursor-pointer hover:bg-amber-900/95' : ''}`}
+        title={gameMode === 'classic' ? '点击查看全网传奇榜' : '平行联盟模式公告'}
       >
         <div className="w-full max-w-7xl mx-auto px-4 flex items-center overflow-hidden">
           <div className="shrink-0 flex items-center gap-1.5 pr-3 bg-gradient-to-r from-amber-950 via-amber-950 to-transparent z-10 font-black text-amber-400 text-xs tracking-wider uppercase border-r border-amber-500/30">
@@ -106,7 +119,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <div className="animate-ticker flex items-center gap-12 font-medium">
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="flex items-center gap-2">
-                  {isBannerLoading ? (
+                  {gameMode === 'random_trade' ? (
+                    <>
+                      <Shuffle className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
+                      <span className="text-amber-100 font-bold">平行联盟独立开发中：存档与经典模式完全隔离</span>
+                      <span className="text-cyan-300/70 font-mono text-[10px]">RANDOM TRADE MODE</span>
+                    </>
+                  ) : isBannerLoading ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin shrink-0" />
                       <span className="text-amber-200 font-bold">
@@ -152,7 +171,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </div>
           <div className="flex items-center gap-3">
             <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-[10px]">
-              本地存档已就绪
+              {GAME_MODE_CONFIG[gameMode].shortName} · 独立存档
             </span>
             <span className="hidden sm:inline text-slate-500">v2.50</span>
           </div>
@@ -172,17 +191,60 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           />
           <div className="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/20 via-amber-400/10 to-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-black tracking-widest uppercase shadow-lg">
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>黄金时代 ·  2008-2025</span>
+            <span>{gameMode === 'classic' ? '黄金时代 · 2008-2025' : '平行时空 · 随机交易'}</span>
           </div>
 
           {/* Title Heading */}
           <h1 className="px-4 text-3xl sm:text-5xl lg:text-6xl leading-tight font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-amber-100 to-amber-500 drop-shadow-[0_10px_20px_rgba(245,158,11,0.2)] mb-2">
-            篮坛传奇：<span className="inline-block">重返2008</span>
+            篮坛传奇：<span className="inline-block">{gameMode === 'classic' ? '重返2008' : '平行联盟'}</span>
           </h1>
           <h2 className="text-xl sm:text-3xl font-black uppercase italic tracking-widest text-slate-300 mb-6 drop-shadow">
-            我的职业生涯 · <span className="text-amber-400">MY CAREER</span>
+            {GAME_MODE_CONFIG[gameMode].name} · <span className="text-amber-400">MY CAREER</span>
           </h2>
 
+          {gameMode === 'random_trade' ? (
+            <div className="w-full max-w-md space-y-3 text-left">
+              <div className="relative overflow-hidden rounded-2xl border border-cyan-400/40 bg-gradient-to-br from-cyan-500/10 via-[#141b28] to-violet-500/10 p-5 shadow-2xl shadow-cyan-950/30">
+                <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-cyan-400/10 blur-3xl" />
+                <div className="relative flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-cyan-400/40 bg-cyan-400/10">
+                    <Shuffle className="h-6 w-6 text-cyan-300" />
+                  </div>
+                  <div>
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <h3 className="text-lg font-black italic text-white">平行联盟 · 随机交易</h3>
+                      <span className="rounded border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-[9px] font-black tracking-wider text-cyan-300">独立模式</span>
+                    </div>
+                    <p className="text-xs leading-relaxed text-slate-300">
+                      每个赛季将拥有独立生成的联盟交易轨迹。该模式的四个存档槽位、个人传奇记录与经典模式完全隔离。
+                    </p>
+                  </div>
+                </div>
+                <div className="relative mt-4 flex items-center gap-2 rounded-xl border border-amber-500/25 bg-black/20 px-3 py-2.5 text-xs text-amber-200">
+                  <LockKeyhole className="h-4 w-4 shrink-0 text-amber-400" />
+                  <span>基础框架已完成，随机交易规则将在下一步接入后开放。</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled
+                className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/70 px-5 py-3.5 text-sm font-black text-slate-500"
+              >
+                <LockKeyhole className="h-4 w-4" />
+                <span>新模式开发中</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSelectGameMode('classic')}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/35 bg-[#141822] px-5 py-3.5 text-sm font-bold text-amber-300 transition-all hover:border-amber-400 hover:bg-[#1f2636] active:scale-[0.98]"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>返回经典历史模式</span>
+              </button>
+            </div>
+          ) : <>
           {/* Active Save Quick Card (If exists) */}
           {hasActiveSave && latestSaveMeta && !latestSaveMeta.isEmpty && (
             <div className="w-full max-w-md mb-8 p-4 rounded-xl bg-gradient-to-r from-[#141923] via-[#1a2232] to-[#141923] border border-amber-500/40 shadow-2xl relative group overflow-hidden">
@@ -223,6 +285,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
           {/* Primary Menu Options Grid */}
           <div className="w-full max-w-md flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => onSelectGameMode('random_trade')}
+              className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500/10 via-[#151c2b] to-violet-500/10 hover:from-cyan-500/20 hover:to-violet-500/20 border border-cyan-400/35 hover:border-cyan-300 text-white font-bold transition-all shadow-lg active:scale-[0.98] cursor-pointer text-sm group"
+            >
+              <div className="flex items-center gap-3">
+                <Shuffle className="w-4 h-4 text-cyan-300 group-hover:rotate-180 transition-transform duration-500" />
+                <div className="text-left">
+                  <div>平行联盟 · 随机交易</div>
+                  <div className="text-[9px] font-mono text-cyan-300/80">全新独立模式 · 开发中</div>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-cyan-300/70 group-hover:translate-x-1 transition-transform" />
+            </button>
+
             {/* Start New Career (If no active save) */}
             {!hasActiveSave && (
               <button
@@ -289,6 +366,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               </span>
             </button>
           </div>
+          </>}
         </main>
 
         {/* Bottom Footer Info */}
@@ -297,7 +375,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             篮坛传奇：重返2008 · 提示：全过程自动本地快照，支持无网离线运行
           </div>
           <div className="flex items-center gap-4">
-            <span>2008 - 2025 年真实赛季模拟</span>
+            <span>{gameMode === 'classic' ? '2008 - 2025 年真实赛季模拟' : '平行联盟 · 独立存档空间'}</span>
           </div>
         </footer>
       </div>

@@ -34,8 +34,10 @@ import {
   Mic,
   Quote,} from 'lucide-react';
 import { gameConfetti as confetti } from '../utils/gameConfetti';
+import { DEFAULT_GAME_MODE, GameMode } from '../gameMode';
 
 interface RetirementFlowModalProps {
+  gameMode?: GameMode;
   player: PlayerProfile;
   careerHistory?: GameState['careerHistory'];
   leagueHistory?: GameState['leagueHistory'];
@@ -246,6 +248,7 @@ function calculateJerseyRetirements(
 }
 
 export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
+  gameMode = DEFAULT_GAME_MODE,
   player,
   careerHistory = [],
   leagueHistory = [],
@@ -356,9 +359,9 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
         timeline,
       };
 
-      saveHallOfFameLegend(legendRecord);
+      saveHallOfFameLegend(legendRecord, gameMode);
       await flushPersistentWrites();
-      try {
+      if (gameMode === 'classic') try {
         // Do not leave the retirement flow while the global submission is
         // still in flight. A failure is persisted as pending by the upload
         // helper and will be retried from the global leaderboard.
