@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Team, PlayerProfile } from '../types';
 import { getPersistentValue, hydratePersistentValues, removePersistentValue, setPersistentValue } from '../lib/persistentStorage';
 import { TeamLogo } from './TeamLogo';
-import { calculateMatchScores, getCompleteTeamRoster, calculateTeamPowerRating, getShortTeamName } from '../utils/leagueLogic';
+import { calculateMatchScores, getCompleteTeamRoster, calculateTeamPowerRating, getShortTeamName, simulatePlayerMatchStats } from '../utils/leagueLogic';
 import { Play, Pause, Trophy, Flame, ShieldAlert, ChevronRight, Sparkles, Crown, Award, Star, CheckCircle2 } from 'lucide-react';
 import { gameConfetti as confetti } from '../utils/gameConfetti';
 
@@ -17,6 +17,15 @@ export interface PlayoffSeries {
   winnerId?: string;
   seedA?: number; // Conference seed (1-8)
   seedB?: number; // Conference seed (1-8)
+  lastUserGame?: PlayoffGameSummary;
+}
+
+interface PlayoffGameSummary {
+  teamAId: string;
+  teamBId: string;
+  teamAScore: number;
+  teamBScore: number;
+  playerStats: ReturnType<typeof simulatePlayerMatchStats>;
 }
 
 const PLAYOFF_STORAGE_KEY_PREFIX = 'nba2k2008_playoff_state_';
@@ -48,6 +57,7 @@ interface PlayoffPanelProps {
   player: PlayerProfile;
   currentYear: number;
   onStartInteractiveMatch: () => void;
+  onUpdatePlayer?: (player: PlayerProfile) => void;
   onFinishPlayoffs: (championTeam: Team, fmvpName?: string) => void;
 }
 
@@ -57,6 +67,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
   player,
   currentYear,
   onStartInteractiveMatch,
+  onUpdatePlayer,
   onFinishPlayoffs,
 }) => {
   const [currentRound, setCurrentRound] = useState<1 | 2 | 3 | 4>(() => {
@@ -75,6 +86,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
   const [showHonorsModal, setShowHonorsModal] = useState(false);
 
   const autoSimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const honorsFrameRef = useRef<number | null>(null);
   const treeContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -83,6 +95,10 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
       if (saved) { setCurrentRound(saved.currentRound); setSeriesList(saved.seriesList); setChampion(saved.champion); }
     });
   }, [currentYear]);
+
+  useEffect(() => () => {
+    if (honorsFrameRef.current !== null) cancelAnimationFrame(honorsFrameRef.current);
+  }, []);
 
   // Compute current/active series ID for user team in the bracket tree to focus properly
   const activeUserSeriesId = (() => {
@@ -157,23 +173,32 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
     setChampion(null);
   }, [teams, currentYear]);
 
-  // Check if user team made playoffs and is still alive in active series
-  const userMadePlayoffs = seriesList.some((s) => s.teamA.id === userTeam.id || s.teamB.id === userTeam.id);
-  
+  // A completed series is not an elimination unless the winner is the opponent.
+  // During round advancement there is one render where the next series has not
+  // been created yet, so using only an unfinished active series would incorrectly
+  // label a 4-x winner as eliminated.
+  const userSeriesList = seriesList.filter(
+    (s) => s.teamA.id === userTeam.id || s.teamB.id === userTeam.id
+  );
+  const userMadePlayoffs = userSeriesList.length > 0;
   const activeUserSeries = seriesList.find(
     (s) => s.round === currentRound && !s.winnerId && (s.teamA.id === userTeam.id || s.teamB.id === userTeam.id)
   );
-
-  const isUserAliveInPlayoffs = userMadePlayoffs && !!activeUserSeries;
-  const activeUserWins = activeUserSeries
-    ? activeUserSeries.teamA.id === userTeam.id
-      ? activeUserSeries.winsA
-      : activeUserSeries.winsB
+  const latestUserSeries = [...userSeriesList].sort((a, b) => b.round - a.round)[0];
+  const displayedUserSeries = activeUserSeries ?? latestUserSeries;
+  const userWasEliminated = userSeriesList.some(
+    (series) => !!series.winnerId && series.winnerId !== userTeam.id
+  );
+  const isUserAliveInPlayoffs = userMadePlayoffs && !userWasEliminated;
+  const activeUserWins = displayedUserSeries
+    ? displayedUserSeries.teamA.id === userTeam.id
+      ? displayedUserSeries.winsA
+      : displayedUserSeries.winsB
     : 0;
-  const activeOpponentWins = activeUserSeries
-    ? activeUserSeries.teamA.id === userTeam.id
-      ? activeUserSeries.winsB
-      : activeUserSeries.winsA
+  const activeOpponentWins = displayedUserSeries
+    ? displayedUserSeries.teamA.id === userTeam.id
+      ? displayedUserSeries.winsB
+      : displayedUserSeries.winsA
     : 0;
 
   // Auto-scroll bracket to focus on user team when entering playoff or changing rounds
@@ -257,11 +282,39 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
 
   // Helper to simulate the next game in a playoff series with strict 3:0 -> 50% 4:0 / 50% 3:1 and 3:1 -> 100% 4:1 logic
   // and seed-based win probability weighting
-  const simulateNextSeriesGame = (series: PlayoffSeries): { winsA: number; winsB: number; winnerId?: string } => {
+  const createUserGameSummary = (series: PlayoffSeries, teamAWon: boolean): PlayoffGameSummary | undefined => {
+    const includesUser = series.teamA.id === userTeam.id || series.teamB.id === userTeam.id;
+    if (!includesUser) return undefined;
+
+    const generated = calculateMatchScores(series.teamA, series.teamB, userTeam.id);
+    let teamAScore = generated.teamAScore;
+    let teamBScore = generated.teamBScore;
+    const generatedTeamAWon = teamAScore > teamBScore;
+    if (generatedTeamAWon !== teamAWon) {
+      [teamAScore, teamBScore] = [teamBScore, teamAScore];
+    }
+    if (teamAScore === teamBScore) {
+      if (teamAWon) teamAScore += 1;
+      else teamBScore += 1;
+    }
+
+    const { userMinutes } = getCompleteTeamRoster(userTeam, player, currentYear - 2007);
+    return {
+      teamAId: series.teamA.id,
+      teamBId: series.teamB.id,
+      teamAScore,
+      teamBScore,
+      playerStats: simulatePlayerMatchStats(player, userMinutes),
+    };
+  };
+
+  const simulateNextSeriesGame = (series: PlayoffSeries): { winsA: number; winsB: number; winnerId?: string; lastUserGame?: PlayoffGameSummary } => {
     let { winsA, winsB, teamA, teamB } = series;
     if (winsA >= 4 || winsB >= 4) {
-      return { winsA, winsB, winnerId: winsA >= 4 ? teamA.id : teamB.id };
+      return { winsA, winsB, winnerId: winsA >= 4 ? teamA.id : teamB.id, lastUserGame: series.lastUserGame };
     }
+
+    const winsABefore = winsA;
 
     // Requirement: 如果当一支球队3：0对方（唯一前提条件），那下一场，50%的概率3：1，50%的概率4：0，如果3：1，则再下一场100%概率4：1
     if (winsA === 3 && winsB === 0) {
@@ -295,7 +348,12 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
     if (winsA >= 4) winnerId = teamA.id;
     else if (winsB >= 4) winnerId = teamB.id;
 
-    return { winsA, winsB, winnerId };
+    return {
+      winsA,
+      winsB,
+      winnerId,
+      lastUserGame: createUserGameSummary(series, winsA > winsABefore),
+    };
   };
 
   // Single step simulation for 1 game across active series
@@ -319,6 +377,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
             winsA: result.winsA,
             winsB: result.winsB,
             winnerId: result.winnerId,
+            lastUserGame: result.lastUserGame ?? nextList[idx].lastUserGame,
           };
         }
       }
@@ -344,6 +403,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
               winsA: result.winsA,
               winsB: result.winsB,
               winnerId: result.winnerId,
+              lastUserGame: result.lastUserGame ?? currentList[idx].lastUserGame,
             };
           }
         }
@@ -409,11 +469,14 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
         const finalsSeries = currentRoundSeries[0];
         const champ = finalsSeries.winnerId === finalsSeries.teamA.id ? finalsSeries.teamA : finalsSeries.teamB;
         setChampion(champ);
-        setShowHonorsModal(true);
-
-        if (champ.id === userTeam.id) {
-          confetti({ particleCount: 250, spread: 140, origin: { y: 0.4 } });
-        }
+        if (honorsFrameRef.current !== null) cancelAnimationFrame(honorsFrameRef.current);
+        honorsFrameRef.current = requestAnimationFrame(() => {
+          honorsFrameRef.current = null;
+          setShowHonorsModal(true);
+          if (champ.id === userTeam.id) {
+            confetti({ particleCount: 90, spread: 110, origin: { y: 0.4 } });
+          }
+        });
       }
     }
   }, [seriesList, currentRound, champion, userTeam.id]);
@@ -461,7 +524,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
   // 2. 必须是球队战术核心 (Tactical core: top starters sorted by OVR)
   // 3. 综评排名队内第一 90% 概率，排名队内第二 10% 概率；如果第一和第二差距大于 5，则第一 100% 概率拿 FMVP
   const getFmvpWinner = (champ: Team) => {
-    const { roster } = getCompleteTeamRoster(champ, player, 1);
+    const { roster } = getCompleteTeamRoster(champ, player, currentYear - 2007);
 
     // 1. Filter starters (roles: '战术核心' or '绝对首发')
     let starters = roster.filter((p) => p.role === '战术核心' || p.role === '绝对首发');
@@ -636,6 +699,12 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
   const westR3Series = seriesList.filter((s) => s.round === 3 && s.conference === 'West');
 
   const finalsSeries = seriesList.find((s) => s.round === 4);
+  const latestUserGame = [...seriesList]
+    .filter((series) => series.lastUserGame)
+    .sort((a, b) => b.round - a.round)[0]?.lastUserGame;
+  const latestTeamA = latestUserGame ? teams.find((team) => team.id === latestUserGame.teamAId) : undefined;
+  const latestTeamB = latestUserGame ? teams.find((team) => team.id === latestUserGame.teamBId) : undefined;
+  const formatPercentage = (made: number, attempted: number) => attempted > 0 ? `${Math.round((made / attempted) * 100)}%` : '0%';
 
   return (
     <div className="space-y-3 sm:space-y-4 animate-fadeIn">
@@ -697,6 +766,62 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
             )}
           </div>
         </div>
+
+        {userMadePlayoffs && (
+          <div className="rounded-xl border border-[#2b3343] bg-[#0c1018] px-3 py-2.5 sm:px-4 sm:py-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <h4 className="text-xs font-black text-amber-300 sm:text-sm">数据统计</h4>
+              <span className="text-[9px] font-mono text-slate-500 sm:text-[10px]">上一场比赛</span>
+            </div>
+
+            {latestUserGame && latestTeamA && latestTeamB ? (
+              <div className="flex items-center gap-3">
+                <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[#252d3d] bg-[#111722] px-2 py-1.5">
+                  <TeamLogo
+                    logo={latestTeamA.logo}
+                    abbrev={latestTeamA.abbrev}
+                    primaryColor={latestTeamA.primaryColor}
+                    secondaryColor={latestTeamA.secondaryColor}
+                    className="h-7 w-7 object-contain"
+                  />
+                  <span className={`font-mono text-sm font-black ${latestTeamA.id === userTeam.id ? 'text-amber-300' : 'text-white'}`}>
+                    {latestUserGame.teamAScore}
+                  </span>
+                  <span className="text-[10px] text-slate-600">-</span>
+                  <span className={`font-mono text-sm font-black ${latestTeamB.id === userTeam.id ? 'text-amber-300' : 'text-white'}`}>
+                    {latestUserGame.teamBScore}
+                  </span>
+                  <TeamLogo
+                    logo={latestTeamB.logo}
+                    abbrev={latestTeamB.abbrev}
+                    primaryColor={latestTeamB.primaryColor}
+                    secondaryColor={latestTeamB.secondaryColor}
+                    className="h-7 w-7 object-contain"
+                  />
+                </div>
+
+                <div className="grid min-w-0 flex-1 grid-cols-4 gap-x-2 gap-y-1 text-center">
+                  {[
+                    ['得分', latestUserGame.playerStats.pts],
+                    ['篮板', latestUserGame.playerStats.reb],
+                    ['助攻', latestUserGame.playerStats.ast],
+                    ['抢断', latestUserGame.playerStats.stl],
+                    ['盖帽', latestUserGame.playerStats.blk],
+                    ['命中率', formatPercentage(latestUserGame.playerStats.fgm, latestUserGame.playerStats.fga)],
+                    ['三分', formatPercentage(latestUserGame.playerStats.tpm, latestUserGame.playerStats.tpa)],
+                  ].map(([label, value]) => (
+                    <div key={label} className="min-w-0">
+                      <div className="truncate text-[8px] text-slate-500 sm:text-[9px]">{label}</div>
+                      <div className="truncate font-mono text-[11px] font-black text-slate-100 sm:text-xs">{value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="py-1 text-center text-[10px] text-slate-500 sm:text-xs">完成首场季后赛后显示比赛数据</div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Champion Banner if crowned */}
@@ -734,15 +859,20 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
                 <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
                 【{userTeam.name}】总冠军
               </h4>
+            ) : userWasEliminated ? (
+              <h4 className="text-xs sm:text-sm font-black text-rose-400 flex items-center gap-1.5 sm:gap-2">
+                <ShieldAlert className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-400 shrink-0" />
+                【{userTeam.name}】已止步
+              </h4>
             ) : isUserAliveInPlayoffs ? (
               <h4 className="text-xs sm:text-sm font-black text-emerald-400 flex items-center gap-1.5 sm:gap-2">
                 <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400 shrink-0" />
                 【{userTeam.name}】{activeUserWins}-{activeOpponentWins}
               </h4>
             ) : (
-              <h4 className="text-xs sm:text-sm font-black text-rose-400 flex items-center gap-1.5 sm:gap-2">
-                <ShieldAlert className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-400 shrink-0" />
-                【{userTeam.name}】已止步
+              <h4 className="text-xs sm:text-sm font-black text-slate-400 flex items-center gap-1.5 sm:gap-2">
+                <ShieldAlert className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                【{userTeam.name}】等待晋级确认
               </h4>
             )
           ) : (
@@ -901,7 +1031,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
         const fmvp = getFmvpWinner(champion);
 
         return (
-          <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-2.5 sm:p-4 animate-fadeIn overflow-y-auto">
+          <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto">
             <div className="bg-[#11141b] border-2 border-amber-500/60 rounded-3xl max-w-2xl w-full p-4 sm:p-8 space-y-4 sm:space-y-6 shadow-2xl relative my-auto">
               
               {/* Header Title */}
@@ -984,11 +1114,12 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    let nextAccolades = [...(player.accolades || [])];
                     if (fmvp.isUser) {
-                      const existingFmvp = player.accolades?.find((a) => a.year === currentYear && a.type === 'FMVP');
+                      const existingFmvp = nextAccolades.find((a) => a.year === currentYear && a.type === 'FMVP');
                       if (!existingFmvp) {
-                        player.accolades = [
-                          ...(player.accolades || []),
+                        nextAccolades = [
+                          ...nextAccolades,
                           {
                             year: currentYear,
                             seasonStr: `${currentYear}-${currentYear + 1}`,
@@ -1000,10 +1131,10 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
                       }
                     }
                     if (champion && champion.id === userTeam.id) {
-                      const existingChamp = player.accolades?.find((a) => a.year === currentYear && a.type === 'CHAMPION');
+                      const existingChamp = nextAccolades.find((a) => a.year === currentYear && a.type === 'CHAMPION');
                       if (!existingChamp) {
-                        player.accolades = [
-                          ...(player.accolades || []),
+                        nextAccolades = [
+                          ...nextAccolades,
                           {
                             year: currentYear,
                             seasonStr: `${currentYear}-${currentYear + 1}`,
@@ -1013,6 +1144,9 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
                           },
                         ];
                       }
+                    }
+                    if (nextAccolades.length !== (player.accolades || []).length) {
+                      onUpdatePlayer?.({ ...player, accolades: nextAccolades });
                     }
                     clearPlayoffStorage(currentYear);
                     setShowHonorsModal(false);

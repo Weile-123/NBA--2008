@@ -49,6 +49,8 @@ export default function App() {
     setActiveTab,
     lastSavedAt,
     storageReady,
+    isRegularSeasonAutoSimulating,
+    setIsRegularSeasonAutoSimulating,
     showSettingsModal,
     setShowSettingsModal,
     isLegendaryHofOpen,
@@ -128,9 +130,8 @@ export default function App() {
     oppTeam,
   } = useCareerGame();
 
-
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950">
+    <div className={`min-h-full bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 ${isRegularSeasonAutoSimulating ? 'app-auto-simulating' : ''}`}>
       {/* Draft Waiting Animation Modal */}
       <Suspense fallback={null}>
         {showDraftWaitingAnimation && (
@@ -306,6 +307,7 @@ export default function App() {
                 onViewSeasonTrades={handleViewSeasonTrades}
                 hasActiveMilestoneModal={!!activeMilestoneModal || showAgeDeclineModal}
                 isSettingsOpen={showSettingsModal}
+                onAutoSimulationChange={setIsRegularSeasonAutoSimulating}
               />
             )}
 
@@ -316,7 +318,6 @@ export default function App() {
                 player={player}
                 currentYear={currentYear}
                 careerHistory={careerHistory}
-                schedule={schedule}
               />
             )}
 

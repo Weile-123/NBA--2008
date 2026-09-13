@@ -62,7 +62,7 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
 
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#070913] flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fadeIn isolate [transform:translateZ(0)]">
+    <div className="fixed inset-0 z-50 bg-[#070913] flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fadeIn isolate">
       <div className="bg-[#11141b] border-2 border-amber-500/40 rounded-2xl p-3 sm:p-6 max-w-4xl w-full shadow-2xl relative space-y-2.5 sm:space-y-4 max-h-[95vh] overflow-y-auto">
         {/* Header Title */}
         <div className="flex items-center gap-2 border-b border-[#232834] pb-2 sm:pb-3">

@@ -72,6 +72,12 @@ function shouldDisableConfetti(): boolean {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return true;
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return true;
 
+  // Full-screen Canvas effects are the least reliable compositor path in
+  // embedded mobile WebViews. They are decorative, so keep them desktop-only
+  // instead of risking a flash or a lost GPU surface during award transitions.
+  if (window.matchMedia?.('(hover: none), (pointer: coarse)').matches) return true;
+  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) return true;
+
   const device = navigator as Navigator & { deviceMemory?: number };
   return (device.deviceMemory !== undefined && device.deviceMemory <= 4)
     || (navigator.hardwareConcurrency !== undefined && navigator.hardwareConcurrency <= 4);

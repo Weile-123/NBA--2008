@@ -12,6 +12,8 @@
 
 页面组件使用 Vite 标准 `import(...)` 加载构建时确定的 `./文件名.js` 本地分包。发布构建通过 `modulePreload: false` 关闭实际依赖预加载，因此 `__vitePreload` 的依赖参数均为空数组；Vite 6 仍会保留通用的 `assetsURL(dep, importerUrl)` 包装器，但没有资源依赖进入该解析分支。当前入口中的22个动态导入全部为构建期生成的静态相对路径，对应文件均存在于上传包 `assets/` 目录，不包含外部地址，也不接收 URL、表单或其他用户输入。
 
+动态分包直接使用 React `lazy()`。项目未使用 `window.location.replace` 或附加 `CHUNK_RETRY_PARAM` 的自动整页重载机制；分包加载失败会进入页面内错误边界。只有用户明确点击“安全重新加载”按钮后才调用 `window.location.reload()` 手动恢复，避免部分 WebView 拦截自动导航或出现无提示闪屏。
+
 预扫描提到的 `getHistoricalDraftData` 定义于 `src/data/draftData.ts`，仅按年份读取随包构建的本地历史选秀数据。调用方通过常规 ES Module import 引用该函数，不进行网络请求、文件系统访问或动态资源下载。
 
 ## 请求调用链与白名单
@@ -51,7 +53,7 @@ CloudBase 排行榜接口按技能要求使用 `cloud.request`，公开读取不
 
 预扫描归属到 `SeasonDashboard` 分包的两次 `getBoundingClientRect()` 实际来自 `src/components/PlayoffPanel.tsx`。代码先连续读取容器和当前用户系列卡片的矩形，再统一调用一次 `scrollTo`；不存在读取、写入、再次读取的交替操作。该函数仅在季后赛轮次变化后的单次定时回调或用户点击“定位”按钮时执行，不位于滚动事件、循环或动画帧高频回调中，因此不构成 layout thrashing。
 
-`vendor` 分包中的 Canvas 尺寸读写来自 `canvas-confetti` 第三方庆祝动画。项目只在选秀、获奖、夺冠和退役等离散事件发生时调用该库，并由 `src/utils/gameConfetti.ts` 创建单例 Canvas，明确传入 `resize: false`，不会执行依赖内部的同步 resize 分支。项目侧只在动画存续期间注册一个 `{ passive: true }` 的窗口监听；回调通过 `requestAnimationFrame` 合并，同一帧内只终止并清理旧动画，不读取布局或修改 Canvas 尺寸。动画自然结束、窗口变化或页面隐藏后都会移除 Canvas 与监听器。
+`vendor` 分包中的 Canvas 尺寸读写来自 `canvas-confetti` 第三方庆祝动画。项目只在选秀、获奖、夺冠和退役等离散事件发生时调用该库，并由 `src/utils/gameConfetti.ts` 创建单例 Canvas，明确传入 `resize: false`，不会执行依赖内部的同步 resize 分支。手机、触屏设备以及 Android/iOS WebView 会直接跳过该装饰动画，避免全屏 Canvas 合成导致闪屏；桌面端只在动画存续期间注册一个 `{ passive: true }` 的窗口监听，回调通过 `requestAnimationFrame` 合并，同一帧内只终止并清理旧动画，不读取布局或修改 Canvas 尺寸。动画自然结束、窗口变化或页面隐藏后都会移除 Canvas 与监听器。
 
 ## 游戏随机数与存储复核
 

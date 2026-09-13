@@ -38,6 +38,11 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
   const [isRequesting, setIsRequesting] = React.useState(false);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [isRefreshingOffers, setIsRefreshingOffers] = React.useState(false);
+  const requestTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => () => {
+    if (requestTimerRef.current) clearTimeout(requestTimerRef.current);
+  }, []);
 
   React.useEffect(() => {
     if (activeInSeasonTradeOffers.length > 3) {
@@ -72,12 +77,13 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
     }
 
     setIsRequesting(true);
-    setTimeout(() => {
+    requestTimerRef.current = setTimeout(() => {
       // Exclude the current team from receiving offers
       const offers = generateFreeAgencyOffers(player.ovr, currentTeam.id, allTeams);
       onSetActiveInSeasonTradeOffers(offers);
       setIsRequesting(false);
       setIsModalOpen(true); // Open the modal once offers are generated
+      requestTimerRef.current = null;
     }, 600); // 600ms immersive simulation delay
   };
 

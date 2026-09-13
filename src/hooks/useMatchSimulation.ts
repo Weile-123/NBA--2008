@@ -2,7 +2,7 @@ import { useEffect,useRef,useState } from 'react';
 import { MatchBoxScore,MatchLog,PlayerProfile,Team } from '../types';
 import { getUserMinutesAndRole } from '../utils/leagueLogic';
 
-import { ScheduledQuarterEvent,TacticalOption,buildQuarterEvents,calculateInteractiveGrade,isPlayerOnCourt } from '../utils/matchEvents';
+import { ScheduledQuarterEvent,TacticalOption,buildQuarterEvents,calculateInteractiveGrade,createInteractiveMatchScorePlan,isPlayerOnCourt,resolveInteractiveFinalScore,shouldTriggerBuzzerBeater } from '../utils/matchEvents';
 import { generateTacticalOptions } from '../utils/matchTactics';
 export interface MatchSimulatorProps {
   player: PlayerProfile;
@@ -50,6 +50,18 @@ export function useMatchSimulation({
   // Scores
   const [userScore, setUserScore] = useState(0);
   const [oppScore, setOppScore] = useState(0);
+  const userScoreRef = useRef(0);
+  const oppScoreRef = useRef(0);
+  const [scorePlan] = useState(() => createInteractiveMatchScorePlan(userTeam, oppTeam));
+
+  const addUserScore = (points: number) => {
+    userScoreRef.current += points;
+    setUserScore(userScoreRef.current);
+  };
+  const addOppScore = (points: number) => {
+    oppScoreRef.current += points;
+    setOppScore(oppScoreRef.current);
+  };
 
   // Player Stats
   const [pts, setPts] = useState(0);
@@ -89,11 +101,12 @@ export function useMatchSimulation({
     return quarters.slice(0, count);
   });
 
-  // Requirement 3: Buzzer Beater Event
-  // Trigger condition: 1. Role is 战术核心, 2. Interactive simulation, 3. 3/82 probability per season match
+  // Buzzer-beater candidate: every interactive game led by the user's
+  // tactical core is eligible. The prompt itself is still shown only when
+  // the user's team is actually down by exactly one point with four seconds left.
   const [isBuzzerBeaterGame] = useState<boolean>(() => {
     const isTacticalCore = userRole === '战术核心';
-    return isInteractive && isTacticalCore && Math.random() < (3 / 82);
+    return isInteractive && isTacticalCore;
   });
 
   const [showBuzzerBeaterModal, setShowBuzzerBeaterModal] = useState(false);
@@ -121,6 +134,10 @@ export function useMatchSimulation({
 
   // Start Match Handler (Click Start Match / Jump Ball)
   const startMatchSimulation = () => {
+    userScoreRef.current = 0;
+    oppScoreRef.current = 0;
+    setUserScore(0);
+    setOppScore(0);
     setHasStarted(true);
     setCurrentQuarter(1);
     setRemainingSeconds(720);
@@ -136,7 +153,8 @@ export function useMatchSimulation({
       playerFormFactor,
       { userScore: 0, oppScore: 0 },
       hasTacticalTrigger,
-      isBuzzerBeaterGame
+      isBuzzerBeaterGame,
+      scorePlan,
     );
     setQuarterQueue(events);
     updateQueueIndex(0);
@@ -159,9 +177,10 @@ export function useMatchSimulation({
         player,
         assignedMPG,
         playerFormFactor,
-        { userScore, oppScore },
+        { userScore: userScoreRef.current, oppScore: oppScoreRef.current },
         hasTacticalTrigger,
-        isBuzzerBeaterGame
+        isBuzzerBeaterGame,
+        scorePlan,
       );
       setQuarterQueue(events);
       updateQueueIndex(0);
@@ -203,6 +222,11 @@ export function useMatchSimulation({
         while (currIdx < quarterQueue.length) {
           const ev = quarterQueue[currIdx];
           if (ev.targetSeconds >= nextSecs) {
+            if (ev.isBuzzerBeaterTrigger && !shouldTriggerBuzzerBeater(isBuzzerBeaterGame, userScoreRef.current, oppScoreRef.current)) {
+              currIdx++;
+              queueIndexRef.current = currIdx;
+              continue;
+            }
             // Process this event!
             setLogs((prev) => [
               ...prev,
@@ -216,8 +240,8 @@ export function useMatchSimulation({
               },
             ]);
 
-            if (ev.userPtsDelta) setUserScore((prev) => prev + ev.userPtsDelta);
-            if (ev.oppPtsDelta) setOppScore((prev) => prev + ev.oppPtsDelta);
+            if (ev.userPtsDelta) addUserScore(ev.userPtsDelta);
+            if (ev.oppPtsDelta) addOppScore(ev.oppPtsDelta);
 
             if (ev.playerStatsDelta) {
               const d = ev.playerStatsDelta;
@@ -308,8 +332,16 @@ export function useMatchSimulation({
 
       // Check if Buzzer Beater trigger hit
       if (ev.isBuzzerBeaterTrigger && isInteractive) {
-        if (localUserScore) setUserScore((prev) => prev + localUserScore);
-        if (localOppScore) setOppScore((prev) => prev + localOppScore);
+        const scoreAtTrigger = {
+          user: userScoreRef.current + localUserScore,
+          opp: oppScoreRef.current + localOppScore,
+        };
+        if (!shouldTriggerBuzzerBeater(isBuzzerBeaterGame, scoreAtTrigger.user, scoreAtTrigger.opp)) {
+          currIdx++;
+          continue;
+        }
+        if (localUserScore) addUserScore(localUserScore);
+        if (localOppScore) addOppScore(localOppScore);
         if (localPts) setPts((prev) => prev + localPts);
         if (localReb) setReb((prev) => prev + localReb);
         if (localAst) setAst((prev) => prev + localAst);
@@ -336,8 +368,8 @@ export function useMatchSimulation({
       // Check if tactical trigger hit
       if (ev.isTacticalTrigger && isInteractive && isPlayerOnCourt(ev.quarter, ev.targetSeconds, assignedMPG)) {
         // Apply accumulated deltas so far
-        if (localUserScore) setUserScore((prev) => prev + localUserScore);
-        if (localOppScore) setOppScore((prev) => prev + localOppScore);
+        if (localUserScore) addUserScore(localUserScore);
+        if (localOppScore) addOppScore(localOppScore);
         if (localPts) setPts((prev) => prev + localPts);
         if (localReb) setReb((prev) => prev + localReb);
         if (localAst) setAst((prev) => prev + localAst);
@@ -397,8 +429,8 @@ export function useMatchSimulation({
     }
 
     // Finished all events
-    if (localUserScore) setUserScore((prev) => prev + localUserScore);
-    if (localOppScore) setOppScore((prev) => prev + localOppScore);
+    if (localUserScore) addUserScore(localUserScore);
+    if (localOppScore) addOppScore(localOppScore);
     if (localPts) setPts((prev) => prev + localPts);
     if (localReb) setReb((prev) => prev + localReb);
     if (localAst) setAst((prev) => prev + localAst);
@@ -436,27 +468,31 @@ export function useMatchSimulation({
       );
 
       if (opt.statType === 'pts3') {
-        setUserScore((prev) => prev + 3);
+        addUserScore(3);
         setPts((prev) => prev + 3);
         setFga((prev) => prev + 1);
         setFgm((prev) => prev + 1);
         setTpa((prev) => prev + 1);
         setTpm((prev) => prev + 1);
       } else if (opt.statType === 'pts2') {
-        setUserScore((prev) => prev + 2);
+        addUserScore(2);
         setPts((prev) => prev + 2);
         setFga((prev) => prev + 1);
         setFgm((prev) => prev + 1);
       } else if (opt.statType === 'ast') {
-        setUserScore((prev) => prev + 2);
+        addUserScore(3);
         setAst((prev) => prev + 1);
       } else if (opt.statType === 'stl') {
         setStl((prev) => prev + 1);
+        addUserScore(2);
+        setPts((prev) => prev + 2);
+        setFga((prev) => prev + 1);
+        setFgm((prev) => prev + 1);
       } else if (opt.statType === 'blk') {
         setBlk((prev) => prev + 1);
       } else if (opt.statType === 'reb') {
         setReb((prev) => prev + 1);
-        setUserScore((prev) => prev + 2);
+        addUserScore(2);
         setPts((prev) => prev + 2);
         setFga((prev) => prev + 1);
         setFgm((prev) => prev + 1);
@@ -466,7 +502,10 @@ export function useMatchSimulation({
       if (opt.statType === 'pts3' || opt.statType === 'pts2') {
         setFga((prev) => prev + 1);
       }
-      setOppScore((prev) => prev + 2);
+      // The generated quarter score already contains the opponent's normal
+      // possessions. A failed user choice is recorded in the personal box
+      // score, but must not create an extra opponent basket on top of that
+      // baseline; doing so made interactive games systematically harder.
     }
 
     setEventProcessed(true);
@@ -479,8 +518,7 @@ export function useMatchSimulation({
 
     if (isSuccess) {
       const ptsEarned = shotType === '3pt' ? 3 : 2;
-      // Ensure user team wins
-      setUserScore((prev) => Math.max(prev + ptsEarned, oppScore + 1));
+      addUserScore(ptsEarned);
       setPts((prev) => prev + ptsEarned);
       setFgm((prev) => prev + 1);
       setFga((prev) => prev + 1);
@@ -503,7 +541,6 @@ export function useMatchSimulation({
       setEventFeedback("🔥【压哨绝杀爆火成功！】完美终场打进！获得 +3 倍粉丝加成 & +3 点属性点！");
     } else {
       setFga((prev) => prev + 1);
-      setOppScore((prev) => Math.max(prev, userScore + 1));
       const failLog: MatchLog = {
         id: `buzzer_fail_${Date.now()}`,
         quarter: 4,
@@ -522,6 +559,20 @@ export function useMatchSimulation({
 
   const finishGame = () => {
     const ratingGrade = calculateInteractiveGrade({ pts, reb, ast, stl, blk, fgm, fga, ftm, fta, turnovers });
+    const finalScore = resolveInteractiveFinalScore(
+      userScoreRef.current,
+      oppScoreRef.current,
+      scorePlan.finalUserScore > scorePlan.finalOppScore,
+    );
+    const finalLogs = finalScore.wentToOvertime
+      ? [...logs, {
+          id: `overtime_${Date.now()}`,
+          quarter: 5,
+          time: '00:00',
+          text: `双方常规时间战平，比赛进入加时并最终分出胜负。`,
+          type: 'system' as const,
+        }]
+      : logs;
 
     const boxScore: MatchBoxScore = {
       playerStats: {
@@ -540,12 +591,12 @@ export function useMatchSimulation({
         turnovers,
         ratingGrade,
       },
-      userTeamScore: userScore,
-      opponentScore: oppScore,
+      userTeamScore: finalScore.userScore,
+      opponentScore: finalScore.oppScore,
       userTeamId: userTeam.id,
       opponentTeamId: oppTeam.id,
       isPlayoffs,
-      logs,
+      logs: finalLogs,
       challengesCompleted: pts >= 20 ? ['20+ PTS'] : [],
       rewardSkillPoints: earnedSkillPoints,
       rewardMoney: 0,

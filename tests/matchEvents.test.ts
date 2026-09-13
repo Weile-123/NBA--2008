@@ -1,8 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { addQuarterFreeThrows, buildQuarterEvents, calculateInteractiveGrade, reconcileQuarterRebounds, type ScheduledQuarterEvent } from '../src/utils/matchEvents';
+import {
+  addQuarterFreeThrows,
+  buildQuarterEvents,
+  calculateInteractiveGrade,
+  createInteractiveMatchScorePlan,
+  reconcileQuarterRebounds,
+  reconcileQuarterTeamScore,
+  resolveInteractiveFinalScore,
+  shouldTriggerBuzzerBeater,
+  type ScheduledQuarterEvent,
+} from '../src/utils/matchEvents';
 import type { Attributes, PlayerProfile, Team } from '../src/types';
-import { simulatePlayerMatchStats } from '../src/utils/leagueLogic';
+import { calculateMatchScores, simulatePlayerMatchStats } from '../src/utils/leagueLogic';
 
 function missedShot(index: number, type: 'user' | 'away'): ScheduledQuarterEvent {
   return {
@@ -49,6 +59,50 @@ test('game grade rewards all-around impact instead of points alone', () => {
     pts: 10, reb: 20, ast: 5, stl: 2, blk: 2, fgm: 4, fga: 9, ftm: 2, fta: 3, turnovers: 2,
   });
   assert.equal(grade, 'S');
+});
+
+test('interactive score plan uses one full-game result and keeps every quarter realistic', () => {
+  const makeTeam = (id: string, rating: number): Team => ({
+    id, name: id, city: id, abbrev: id, primaryColor: '#000', secondaryColor: '#fff', rating,
+    conference: 'West', starPlayer: '球星', wins: 0, losses: 0, roster: [],
+  });
+  const plan = createInteractiveMatchScorePlan(makeTeam('HOME', 92), makeTeam('AWAY', 76));
+  assert.equal(plan.quarters.reduce((sum, quarter) => sum + quarter.user, 0), plan.finalUserScore);
+  assert.equal(plan.quarters.reduce((sum, quarter) => sum + quarter.opp, 0), plan.finalOppScore);
+  for (const quarter of plan.quarters) {
+    assert.ok(quarter.user >= 14 && quarter.user <= 40, `unrealistic user quarter: ${quarter.user}`);
+    assert.ok(quarter.opp >= 14 && quarter.opp <= 40, `unrealistic opponent quarter: ${quarter.opp}`);
+  }
+});
+
+test('quarter play-by-play reconciles to its fixed scoreboard target', () => {
+  const events: ScheduledQuarterEvent[] = [
+    { ...missedShot(0, 'user'), userPtsDelta: 2, text: '主队命中两分。' },
+    { ...missedShot(1, 'away'), oppPtsDelta: 3, text: '客队命中三分。' },
+  ];
+  reconcileQuarterTeamScore(events, 1, 'user', 25, '主队');
+  reconcileQuarterTeamScore(events, 1, 'opp', 24, '客队');
+  assert.equal(events.reduce((sum, event) => sum + event.userPtsDelta, 0), 25);
+  assert.equal(events.reduce((sum, event) => sum + event.oppPtsDelta, 0), 24);
+});
+
+test('buzzer-beater prompt appears only when the user is actually down one', () => {
+  assert.equal(shouldTriggerBuzzerBeater(true, 88, 89), true);
+  assert.equal(shouldTriggerBuzzerBeater(true, 90, 40), false);
+  assert.equal(shouldTriggerBuzzerBeater(true, 88, 88), false);
+  assert.equal(shouldTriggerBuzzerBeater(false, 88, 89), false);
+});
+
+test('interactive final score sends a tie to overtime and never records it as a loss by equality', () => {
+  const userWin = resolveInteractiveFinalScore(88, 88, true);
+  const userLoss = resolveInteractiveFinalScore(88, 88, false);
+  assert.equal(userWin.wentToOvertime, true);
+  assert.ok(userWin.userScore > userWin.oppScore);
+  assert.equal(userLoss.wentToOvertime, true);
+  assert.ok(userLoss.userScore < userLoss.oppScore);
+  assert.deepEqual(resolveInteractiveFinalScore(91, 88, false), {
+    userScore: 91, oppScore: 88, wentToOvertime: false,
+  });
 });
 
 test('a 99-rebounding starting center produces elite rebound totals in interactive games', () => {
@@ -132,6 +186,54 @@ test('interactive box-score categories stay in range of quick simulation', () =>
       const ratio = totals.interactive[key] / totals.quick[key];
       assert.ok(ratio >= 0.65 && ratio <= 1.45, `${key} parity ratio was ${ratio.toFixed(2)}`);
     }
+  } finally {
+    Math.random = originalRandom;
+  }
+});
+
+test('regular-season score generation always resolves a winner', () => {
+  const makeTeam = (id: string, rating: number): Team => ({
+    id, name: id, city: id, abbrev: id, primaryColor: '#000', secondaryColor: '#fff', rating,
+    conference: 'West', starPlayer: '球星', wins: 0, losses: 0, roster: [],
+  });
+  const originalRandom = Math.random;
+  let seed = 20082009;
+  Math.random = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  try {
+    for (let game = 0; game < 5000; game += 1) {
+      const result = calculateMatchScores(makeTeam('A', 84), makeTeam('B', 84), 'A');
+      assert.notEqual(result.teamAScore, result.teamBScore);
+      assert.equal(result.isUserWin, result.teamAScore > result.teamBScore);
+    }
+  } finally {
+    Math.random = originalRandom;
+  }
+});
+
+test('low-minute point guards accumulate occasional steals and blocks', () => {
+  const attributes = Object.fromEntries([
+    'midRange', 'threePoint', 'freeThrow', 'layup', 'dunk', 'insideFinish', 'postMove', 'ballHandle',
+    'passing', 'perimeterDef', 'interiorDef', 'block', 'steal', 'rebounding', 'speed', 'vertical',
+    'strength', 'stamina',
+  ].map((key) => [key, 60])) as unknown as Attributes;
+  const player = {
+    id: 'rookie-pg', name: '新秀控卫', jerseyNum: 1, height: '188', weight: '82', position: 'PG',
+    archetype: '组织后卫', attributes, attributeCaps: attributes, ovr: 69, currentTeamId: 'HOME',
+  } as PlayerProfile;
+  const originalRandom = Math.random;
+  let seed = 20260913;
+  Math.random = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  try {
+    let steals = 0;
+    let blocks = 0;
+    for (let game = 0; game < 500; game += 1) {
+      const stats = simulatePlayerMatchStats(player, 12);
+      steals += stats.stl;
+      blocks += stats.blk;
+    }
+    assert.ok(steals > 0, 'expected a low-minute PG to record some steals');
+    assert.ok(blocks > 0, 'expected a low-minute PG to record some blocks');
+    assert.ok(steals < 250 && blocks < 100, `unexpected defensive totals: ${steals} STL, ${blocks} BLK`);
   } finally {
     Math.random = originalRandom;
   }

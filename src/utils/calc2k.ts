@@ -1,7 +1,38 @@
-import { Attributes, AttributeCaps, Position, PlayerProfile, RetiredPlayerRecord } from '../types';
+import { Accolade, Attributes, AttributeCaps, Position, PlayerProfile, RetiredPlayerRecord } from '../types';
 import { PERSONAL_ASSETS } from '../data/nbaData2008';
 
 export const MAX_CAREER_AGE = 43;
+
+export function countExclusiveTeamSelections(accolades: Accolade[]) {
+  const allNba = new Map<number, 1 | 2 | 3>();
+  const defense = new Map<number, 1 | 2>();
+  accolades.forEach((accolade) => {
+    const title = accolade.title || '';
+    let nbaTier: 1 | 2 | 3 | null = null;
+    if (accolade.type === 'ALL_NBA_1ST' || (title.includes('一阵') && title.includes('最佳') && !title.includes('防守'))) nbaTier = 1;
+    else if (accolade.type === 'ALL_NBA_2ND' || accolade.type === 'ALL_NBA' || (title.includes('二阵') && title.includes('最佳') && !title.includes('防守'))) nbaTier = 2;
+    else if (accolade.type === 'ALL_NBA_3RD' || (title.includes('三阵') && title.includes('最佳') && !title.includes('防守'))) nbaTier = 3;
+    if (nbaTier !== null) {
+      const prior = allNba.get(accolade.year);
+      if (prior === undefined || nbaTier < prior) allNba.set(accolade.year, nbaTier);
+    }
+
+    let defenseTier: 1 | 2 | null = null;
+    if (accolade.type === 'ALL_DEFENSE_1ST' || (title.includes('防守') && title.includes('一阵'))) defenseTier = 1;
+    else if (accolade.type === 'ALL_DEFENSE_2ND' || (title.includes('防守') && title.includes('二阵'))) defenseTier = 2;
+    if (defenseTier !== null) {
+      const prior = defense.get(accolade.year);
+      if (prior === undefined || defenseTier < prior) defense.set(accolade.year, defenseTier);
+    }
+  });
+  return {
+    allNbaFirsts: [...allNba.values()].filter((tier) => tier === 1).length,
+    allNbaSeconds: [...allNba.values()].filter((tier) => tier === 2).length,
+    allNbaThirds: [...allNba.values()].filter((tier) => tier === 3).length,
+    allDefenseFirsts: [...defense.values()].filter((tier) => tier === 1).length,
+    allDefenseSeconds: [...defense.values()].filter((tier) => tier === 2).length,
+  };
+}
 
 export function mustRetireAtAge(age: number | null | undefined): boolean {
   return Number(age) >= MAX_CAREER_AGE;
@@ -403,6 +434,8 @@ export function calculateGoatScore(player: PlayerProfile): GoatScoreResult {
   let allDef1st = 0;
   let allDef2nd = 0;
   let allStar = 0;
+  const allNbaBySeason = new Map<number, 1 | 2 | 3>();
+  const allDefenseBySeason = new Map<number, 1 | 2>();
 
   accolades.forEach((a) => {
     const title = a.title || '';
@@ -433,13 +466,14 @@ export function calculateGoatScore(player: PlayerProfile): GoatScoreResult {
     }
 
     // 2. 阵容与防守分
+    let allNbaTier: 1 | 2 | 3 | null = null;
     if (
       type === 'ALL_NBA_1ST' ||
       title.includes('最佳一阵') ||
       title.includes('最佳阵容一阵') ||
       (title.includes('最佳阵容') && title.includes('一阵') && !title.includes('防守'))
     ) {
-      allNba1st++;
+      allNbaTier = 1;
     } else if (
       type === 'ALL_NBA_2ND' ||
       type === 'ALL_NBA_3RD' ||
@@ -450,29 +484,43 @@ export function calculateGoatScore(player: PlayerProfile): GoatScoreResult {
       title.includes('最佳阵容三阵') ||
       (title.includes('最佳阵容') && !title.includes('一阵') && !title.includes('防守'))
     ) {
-      allNba2nd3rd++;
+      allNbaTier = type === 'ALL_NBA_3RD' || title.includes('三阵') ? 3 : 2;
+    }
+    if (allNbaTier !== null) {
+      const current = allNbaBySeason.get(a.year);
+      if (current === undefined || allNbaTier < current) allNbaBySeason.set(a.year, allNbaTier);
     }
 
+    let allDefenseTier: 1 | 2 | null = null;
     if (
       type === 'ALL_DEFENSE_1ST' ||
       title.includes('最佳一防') ||
       title.includes('最佳防守阵容一阵') ||
       (title.includes('防守') && title.includes('一阵'))
     ) {
-      allDef1st++;
+      allDefenseTier = 1;
     } else if (
       type === 'ALL_DEFENSE_2ND' ||
       title.includes('最佳二防') ||
       title.includes('最佳防守阵容二阵') ||
       (title.includes('防守') && (title.includes('二阵') || title.includes('三阵') || title.includes('二防')) && title.includes('阵容'))
     ) {
-      allDef2nd++;
+      allDefenseTier = 2;
+    }
+    if (allDefenseTier !== null) {
+      const current = allDefenseBySeason.get(a.year);
+      if (current === undefined || allDefenseTier < current) allDefenseBySeason.set(a.year, allDefenseTier);
     }
 
     if (type === 'ALL_STAR' || title.includes('全明星')) {
       allStar++;
     }
   });
+
+  allNba1st = [...allNbaBySeason.values()].filter((tier) => tier === 1).length;
+  allNba2nd3rd = [...allNbaBySeason.values()].filter((tier) => tier !== 1).length;
+  allDef1st = [...allDefenseBySeason.values()].filter((tier) => tier === 1).length;
+  allDef2nd = [...allDefenseBySeason.values()].filter((tier) => tier === 2).length;
 
   // 【1. 统治荣誉分 (S_honor)】
   // 常规赛 MVP: 每个 +350 分

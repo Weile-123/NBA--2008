@@ -9,6 +9,8 @@ interface SeasonSummaryModalProps {
   player: PlayerProfile;
   teams: Team[];
   currentYear: number;
+  onUpdatePlayer?: (player: PlayerProfile) => void;
+  onAwardsSettled?: (awards: SeasonAwards) => void;
   onProceedToPlayoffs: () => void;
 }
 
@@ -16,17 +18,22 @@ export const SeasonSummaryModal: React.FC<SeasonSummaryModalProps> = ({
   player,
   teams,
   currentYear,
+  onUpdatePlayer,
+  onAwardsSettled,
   onProceedToPlayoffs,
 }) => {
-  const [awards, setAwards] = useState<SeasonAwards | null>(null);
+  // The modal is mounted for one finished season. Compute its immutable
+  // snapshot once instead of recalculating after every parent identity change.
+  const [awards] = useState<SeasonAwards>(() => calculateSeasonAwards(teams, player, currentYear));
   const [activeTab, setActiveTab] = useState<'major' | 'allNba' | 'defense'>('major');
 
   useEffect(() => {
-    const computedAwards = calculateSeasonAwards(teams, player, currentYear);
-    setAwards(computedAwards);
+    onAwardsSettled?.(awards);
+  }, [awards, onAwardsSettled]);
 
+  useEffect(() => {
     // Sync season awards won by user into player.accolades
-    const newAccolades = [...(player.accolades || [])];
+    let newAccolades = [...(player.accolades || [])];
     let updated = false;
     const seasonStr = `${currentYear}-${currentYear + 1}`;
 
@@ -44,47 +51,69 @@ export const SeasonSummaryModal: React.FC<SeasonSummaryModalProps> = ({
       }
     };
 
-    if (computedAwards.mvp.isUser) {
+    if (awards.mvp.isUser) {
       addAccoladeIfMissing('MVP', '常规赛 MVP', `荣膺 ${seasonStr} 赛季 联盟 常规赛最有价值球员`);
     }
-    if (computedAwards.scoringLeader.isUser) {
-      addAccoladeIfMissing('SCORING_TITLE', '常规赛得分王', `以常规赛场均狂轰 ${computedAwards.scoringLeader.ppg} 分加冕 ${seasonStr} 赛季 联盟 得分王`);
+    if (awards.scoringLeader.isUser) {
+      addAccoladeIfMissing('SCORING_TITLE', '常规赛得分王', `以常规赛场均狂轰 ${awards.scoringLeader.ppg} 分加冕 ${seasonStr} 赛季 联盟 得分王`);
     }
-    if (computedAwards.dpoy.isUser) {
+    if (awards.dpoy.isUser) {
       addAccoladeIfMissing('DPOY', '最佳防守球员', `荣膺 ${seasonStr} 赛季 联盟 最佳防守球员`);
     }
-    if (computedAwards.sixthMan.isUser) {
+    if (awards.sixthMan.isUser) {
       addAccoladeIfMissing('SIXTH_MAN', '最佳第六人', `荣膺 ${seasonStr} 赛季 联盟 最佳第六人`);
     }
-    if (computedAwards.roy.isUser) {
+    if (awards.roy.isUser) {
       addAccoladeIfMissing('ROY', '最佳新秀', `荣膺 ${seasonStr} 赛季 联盟 年度最佳新秀`);
     }
 
-    // All-NBA 1st, 2nd & 3rd
-    if (computedAwards.allNbaTeams[0]?.players.some((p) => p.isUser)) {
-      addAccoladeIfMissing('ALL_NBA_1ST', '最佳阵容一阵', `入选 ${seasonStr} 赛季 联盟 最佳阵容第一阵容`);
-    }
-    if (computedAwards.allNbaTeams[1]?.players.some((p) => p.isUser)) {
-      addAccoladeIfMissing('ALL_NBA_2ND', '最佳阵容二阵', `入选 ${seasonStr} 赛季 联盟 最佳阵容第二阵容`);
-    }
-    if (computedAwards.allNbaTeams[2]?.players.some((p) => p.isUser)) {
-      addAccoladeIfMissing('ALL_NBA_3RD', '最佳阵容三阵', `入选 ${seasonStr} 赛季 联盟 最佳阵容第三阵容`);
-    }
+    const syncExclusiveSelection = (
+      groupTypes: Accolade['type'][],
+      selected: { type: Accolade['type']; title: string; description: string } | null,
+    ) => {
+      const existing = newAccolades.filter((a) => a.year === currentYear && groupTypes.includes(a.type));
+      if (selected && existing.length === 1 && existing[0].type === selected.type) return;
+      if (!selected && existing.length === 0) return;
 
-    // All-Defensive 1st & 2nd
-    if (computedAwards.allDefensiveTeams[0]?.players.some((p) => p.isUser)) {
-      addAccoladeIfMissing('ALL_DEFENSE_1ST', '最佳防守一阵', `入选 ${seasonStr} 赛季 联盟 最佳防守阵容第一阵容`);
-    }
-    if (computedAwards.allDefensiveTeams[1]?.players.some((p) => p.isUser)) {
-      addAccoladeIfMissing('ALL_DEFENSE_2ND', '最佳防守二阵', `入选 ${seasonStr} 赛季 联盟 最佳防守阵容第二阵容`);
-    }
+      newAccolades = newAccolades.filter((a) => !(a.year === currentYear && groupTypes.includes(a.type)));
+      if (selected) {
+        newAccolades.push({ year: currentYear, seasonStr, ...selected });
+      }
+      updated = true;
+    };
+
+    // A player can belong to exactly one All-NBA and one All-Defensive team
+    // per season. Keep the highest team if malformed input marks more than one.
+    const allNbaSelection = awards.allNbaTeams.find((team) => team.players.some((p) => p.isUser));
+    syncExclusiveSelection(
+      ['ALL_NBA_1ST', 'ALL_NBA_2ND', 'ALL_NBA_3RD', 'ALL_NBA'],
+      allNbaSelection
+        ? {
+            type: `ALL_NBA_${allNbaSelection.teamIndex === 1 ? '1ST' : allNbaSelection.teamIndex === 2 ? '2ND' : '3RD'}` as Accolade['type'],
+            title: `最佳阵容${allNbaSelection.teamIndex === 1 ? '一' : allNbaSelection.teamIndex === 2 ? '二' : '三'}阵`,
+            description: `入选 ${seasonStr} 赛季 联盟 最佳阵容第${allNbaSelection.teamIndex === 1 ? '一' : allNbaSelection.teamIndex === 2 ? '二' : '三'}阵容`,
+          }
+        : null,
+    );
+
+    const allDefenseSelection = awards.allDefensiveTeams.find((team) => team.players.some((p) => p.isUser));
+    syncExclusiveSelection(
+      ['ALL_DEFENSE_1ST', 'ALL_DEFENSE_2ND'],
+      allDefenseSelection
+        ? {
+            type: allDefenseSelection.teamIndex === 1 ? 'ALL_DEFENSE_1ST' : 'ALL_DEFENSE_2ND',
+            title: `最佳防守${allDefenseSelection.teamIndex === 1 ? '一' : '二'}阵`,
+            description: `入选 ${seasonStr} 赛季 联盟 最佳防守阵容第${allDefenseSelection.teamIndex === 1 ? '一' : '二'}阵容`,
+          }
+        : null,
+    );
 
     // All-Star Selection
     const isUserAllStar =
-      computedAwards.mvp.isUser ||
-      computedAwards.dpoy.isUser ||
-      computedAwards.sixthMan.isUser ||
-      computedAwards.allNbaTeams.some((t) => t.players.some((p) => p.isUser)) ||
+      awards.mvp.isUser ||
+      awards.dpoy.isUser ||
+      awards.sixthMan.isUser ||
+      awards.allNbaTeams.some((t) => t.players.some((p) => p.isUser)) ||
       (player.careerStats && player.careerStats.games > 0 && (player.careerStats.pts / player.careerStats.games) >= 16) ||
       player.ovr >= 82;
 
@@ -93,33 +122,31 @@ export const SeasonSummaryModal: React.FC<SeasonSummaryModalProps> = ({
     }
 
     if (updated) {
-      player.accolades = newAccolades;
+      onUpdatePlayer?.({ ...player, accolades: newAccolades });
     }
+  }, [awards, currentYear, onUpdatePlayer, player]);
 
+  useEffect(() => {
     // Trigger confetti if user won any major honor
     const isUserMajorWinner =
-      computedAwards.mvp.isUser ||
-      computedAwards.dpoy.isUser ||
-      computedAwards.sixthMan.isUser ||
-      computedAwards.roy.isUser ||
-      computedAwards.userMadePlayoffs;
+      awards.mvp.isUser ||
+      awards.dpoy.isUser ||
+      awards.sixthMan.isUser ||
+      awards.roy.isUser ||
+      awards.userMadePlayoffs;
 
-    if (isUserMajorWinner) {
-      confetti({
-        particleCount: 160,
-        spread: 100,
-        origin: { y: 0.5 },
-      });
-    }
-  }, [teams, player, currentYear]);
-
-  if (!awards) return null;
+    if (!isUserMajorWinner) return;
+    const animationFrame = requestAnimationFrame(() => {
+      confetti({ particleCount: 80, spread: 90, origin: { y: 0.5 } });
+    });
+    return () => cancelAnimationFrame(animationFrame);
+  }, [awards]);
 
   const userTeam = teams.find((t) => t.id === player.currentTeamId);
 
   return (
-    <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-      <div className="bg-[#0d1017] border border-[#232834] rounded-2xl max-w-4xl w-full max-h-[92svh] p-4 sm:p-7 shadow-2xl relative my-auto animate-fadeIn overflow-hidden flex min-h-0 flex-col gap-4 sm:gap-6">
+    <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+      <div className="bg-[#0d1017] border border-[#232834] rounded-2xl max-w-4xl w-full max-h-[92svh] p-4 sm:p-7 shadow-2xl relative my-auto overflow-hidden flex min-h-0 flex-col gap-4 sm:gap-6">
         
         {/* Header */}
         <div className="text-center space-y-2 relative">

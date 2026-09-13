@@ -1,6 +1,5 @@
 import React, { ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw, RotateCcw } from 'lucide-react';
-import { clearGameStorage } from '../utils/storage';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
@@ -39,13 +38,6 @@ export class ErrorBoundary extends React.Component<Props, State> {
     window.location.reload();
   };
 
-  private handleResetStorage = () => {
-    if (window.confirm('确定要清空本地缓存并重新加载游戏吗？这可以修复损坏的存档数据。')) {
-      clearGameStorage();
-      window.location.reload();
-    }
-  };
-
   render() {
     if (this.state.hasError) {
       return (
@@ -68,21 +60,13 @@ export class ErrorBoundary extends React.Component<Props, State> {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3 pt-2">
+            <div className="pt-2">
               <button
                 onClick={this.handleReload}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition shadow-lg shadow-amber-500/20"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition shadow-lg shadow-amber-500/20"
               >
                 <RefreshCw className="w-4 h-4" />
-                刷新页面
-              </button>
-
-              <button
-                onClick={this.handleResetStorage}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 font-bold text-xs transition"
-              >
-                <RotateCcw className="w-4 h-4" />
-                重置/修复数据
+                安全重新加载
               </button>
             </div>
           </div>

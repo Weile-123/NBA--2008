@@ -7,7 +7,7 @@
   html, body {
     width: 100%;
     height: 100%;
-    height: 100dvh;
+    min-height: 100%;
     margin: 0;
     padding: 0;
     overflow: hidden; /* Lock browser page from bouncing/moving */
@@ -32,11 +32,11 @@
   #root {
     width: 100%;
     height: 100%;
-    height: 100dvh;
+    min-height: 100%;
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: none; /* Prevent scroll propagation to body */
-    -webkit-overflow-scrolling: touch; /* Smooth inertia scrolling on iOS */
+    background-color: #0a0c10;
   }
 }
 
@@ -208,6 +208,20 @@
    capability. Match phone-sized and touch surfaces independently so the
    compositor fallback cannot be skipped on those devices. */
 @media (max-width: 767px), (hover: none), (pointer: coarse) {
+  /* Embedded Android WebViews may continuously change dvh/vh while their
+     native chrome is settling. Keep the app attached to the stable WebView
+     containing block instead of resizing and repainting the whole page. */
+  html,
+  body,
+  #root {
+    height: 100% !important;
+    min-height: 100% !important;
+  }
+
+  .min-h-screen {
+    min-height: 100% !important;
+  }
+
   .backdrop-blur-sm,
   .backdrop-blur-md,
   .backdrop-blur-lg,
@@ -216,9 +230,21 @@
     backdrop-filter: none !important;
   }
 
-  /* Decorative infinite animations are a common source of full-layer
-     recomposition in Android WebViews. Functional loading spinners and short
-     entrance transitions remain enabled. */
+  /* Large CSS blur surfaces allocate oversized off-screen textures. Several
+     Android WebViews evict and recreate those textures under memory pressure,
+     which is visible as intermittent page flashing. */
+  .blur-2xl,
+  .blur-3xl {
+    filter: none !important;
+  }
+
+  /* Repeated mounts during simulation and award settlement must not restart
+     full-screen opacity/scale animations. On affected WebViews that presents
+     as the entire page flashing even though the DOM never becomes blank. */
+  .animate-in,
+  .animate-fade-in,
+  .animate-fadeIn,
+  .animate-slide-up,
   .animate-pulse,
   .animate-bounce,
   .animate-ping,
@@ -231,7 +257,16 @@
      reduce Android WebView load. */
   .animate-ticker {
     animation-duration: 32s;
-    will-change: transform;
-    transform: translateZ(0);
+    will-change: auto;
   }
+}
+
+/* The regular-season loop updates several pieces of state for every game.
+   Keep those commits paint-only: transitions or animations on newly rendered
+   descendants can otherwise create and discard compositor layers every tick. */
+.app-auto-simulating *,
+.app-auto-simulating *::before,
+.app-auto-simulating *::after {
+  animation: none !important;
+  transition: none !important;
 }

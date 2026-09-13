@@ -42,6 +42,111 @@ export interface ScheduledQuarterEvent {
   isBuzzerBeaterTrigger?: boolean;
 }
 
+export interface InteractiveMatchScorePlan {
+  finalUserScore: number;
+  finalOppScore: number;
+  quarters: Array<{ user: number; opp: number }>;
+}
+
+function distributeScoreAcrossQuarters(total: number): number[] {
+  const scores: number[] = [];
+  let remaining = total;
+  for (let quarter = 0; quarter < 3; quarter += 1) {
+    const quartersLeft = 4 - quarter;
+    const lower = Math.max(14, remaining - 40 * (quartersLeft - 1));
+    const upper = Math.min(40, remaining - 14 * (quartersLeft - 1));
+    const variedAverage = Math.round(remaining / quartersLeft + (Math.random() * 9 - 4));
+    const score = Math.max(lower, Math.min(upper, variedAverage));
+    scores.push(score);
+    remaining -= score;
+  }
+  scores.push(remaining);
+  return scores;
+}
+
+export function createInteractiveMatchScorePlan(userTeam: Team, oppTeam: Team): InteractiveMatchScorePlan {
+  const target = calculateMatchScores(userTeam, oppTeam, userTeam.id);
+  const userQuarters = distributeScoreAcrossQuarters(target.teamAScore);
+  const oppQuarters = distributeScoreAcrossQuarters(target.teamBScore);
+  return {
+    finalUserScore: target.teamAScore,
+    finalOppScore: target.teamBScore,
+    quarters: userQuarters.map((user, index) => ({ user, opp: oppQuarters[index] })),
+  };
+}
+
+export function shouldTriggerBuzzerBeater(isSelectedGame: boolean, userScore: number, oppScore: number): boolean {
+  return isSelectedGame && oppScore - userScore === 1;
+}
+
+export function resolveInteractiveFinalScore(
+  userScore: number,
+  oppScore: number,
+  plannedUserWin: boolean,
+): { userScore: number; oppScore: number; wentToOvertime: boolean } {
+  if (userScore !== oppScore) return { userScore, oppScore, wentToOvertime: false };
+  const overtimeMargin = 1 + Math.floor(Math.random() * 6);
+  return plannedUserWin
+    ? { userScore: userScore + overtimeMargin, oppScore, wentToOvertime: true }
+    : { userScore, oppScore: oppScore + overtimeMargin, wentToOvertime: true };
+}
+
+function hasPersonalScoringStats(event: ScheduledQuarterEvent): boolean {
+  const stats = event.playerStatsDelta;
+  return !!stats && !!(stats.pts || stats.fgm || stats.fga || stats.tpm || stats.tpa || stats.ftm || stats.fta || stats.ast);
+}
+
+/** Keep the visible play-by-play on the same team-strength result as quick sim. */
+export function reconcileQuarterTeamScore(
+  events: ScheduledQuarterEvent[],
+  quarter: number,
+  side: 'user' | 'opp',
+  targetPoints: number,
+  teamName: string,
+): ScheduledQuarterEvent[] {
+  const scoreKey = side === 'user' ? 'userPtsDelta' : 'oppPtsDelta';
+  let current = events.reduce((sum, event) => sum + event[scoreKey], 0);
+
+  if (current > targetPoints) {
+    const removable = [...events].reverse().filter((event) =>
+      event.quarter === quarter && event[scoreKey] > 0 && (side === 'opp' || !hasPersonalScoringStats(event)),
+    );
+    for (const event of removable) {
+      if (current <= targetPoints) break;
+      const reduction = Math.min(event[scoreKey], current - targetPoints);
+      event[scoreKey] -= reduction;
+      current -= reduction;
+      event.text = event[scoreKey] > 0
+        ? `${teamName}制造犯规后通过罚球得到 ${event[scoreKey]} 分。`
+        : `${teamName}本次进攻受到严密干扰，投篮偏出。`;
+    }
+  }
+
+  let eventNumber = 0;
+  while (current < targetPoints) {
+    const remaining = targetPoints - current;
+    const points = remaining >= 3 ? (Math.random() < 0.35 ? 3 : 2) : remaining;
+    const targetSeconds = Math.max(12, 690 - eventNumber * 22);
+    events.push({
+      id: `q${quarter}_${side}_score_reconcile_${eventNumber}`,
+      quarter,
+      targetSeconds,
+      timeStr: `${Math.floor(targetSeconds / 60).toString().padStart(2, '0')}:${(targetSeconds % 60).toString().padStart(2, '0')}`,
+      text: points === 3
+        ? `${teamName}通过团队配合命中三分。`
+        : points === 2
+          ? `${teamName}完成一次稳健的两分进攻。`
+          : `${teamName}站上罚球线命中一球。`,
+      type: side === 'user' ? 'user' : 'away',
+      userPtsDelta: side === 'user' ? points : 0,
+      oppPtsDelta: side === 'opp' ? points : 0,
+    });
+    current += points;
+    eventNumber += 1;
+  }
+  return events;
+}
+
 const MISSED_SHOT_TEXT = /偏出|打铁|砸筐|未能命中|受干扰/;
 
 /**
@@ -192,7 +297,8 @@ export function buildQuarterEvents(
   playerFormFactor: number = 1.0,
   currentScores?: { userScore: number; oppScore: number },
   hasTacticalTrigger: boolean = true,
-  isBuzzerBeaterGame: boolean = false
+  isBuzzerBeaterGame: boolean = false,
+  scorePlan?: InteractiveMatchScorePlan,
 ): ScheduledQuarterEvent[] {
   const events: ScheduledQuarterEvent[] = [];
   const userStarName = player.name;
@@ -252,9 +358,9 @@ export function buildQuarterEvents(
   const pMake3 = Math.min(0.50, Math.max(0.24, (0.30 + (attrs.threePoint - 50) * 0.004) * (0.9 + playerFormFactor * 0.1)));
 
   // Dynamic score pacing mapped to team power ratings formula (80-120 total game score range)
-  const calculatedMatch = calculateMatchScores(userTeam, oppTeam, player.currentTeamId);
-  const targetUserScore = calculatedMatch.teamAScore;
-  const targetOppScore = calculatedMatch.teamBScore;
+  const calculatedMatch = scorePlan || createInteractiveMatchScorePlan(userTeam, oppTeam);
+  const targetUserScore = calculatedMatch.finalUserScore;
+  const targetOppScore = calculatedMatch.finalOppScore;
 
   const expectedUserBase = Math.round(((q - 1) / 4) * targetUserScore);
   const expectedOppBase = Math.round(((q - 1) / 4) * targetOppScore);
@@ -576,6 +682,12 @@ export function buildQuarterEvents(
   const baseQuarterFtm = Math.floor(targetGameFtm / 4);
   const quarterFtm = Math.min(quarterFta, baseQuarterFtm + (q <= targetGameFtm % 4 ? 1 : 0));
   addQuarterFreeThrows(events, q, assignedMPG, quarterFta, quarterFtm, userStarName);
+
+  const quarterTarget = calculatedMatch.quarters[q - 1];
+  if (quarterTarget) {
+    reconcileQuarterTeamScore(events, q, 'user', quarterTarget.user, userTeam.name);
+    reconcileQuarterTeamScore(events, q, 'opp', quarterTarget.opp, oppTeam.name);
+  }
 
   // Insert Buzzer Beater Event at 00:04 in Q4 if triggered
   if (q === 4 && isBuzzerBeaterGame) {

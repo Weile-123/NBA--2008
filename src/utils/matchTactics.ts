@@ -210,7 +210,7 @@ export const generateTacticalOptions = (player: PlayerProfile, quarter: number):
       fanReward: 320,
       xpReward: 100,
       successText: `🛡️ 遮天蔽日！${name} 原地起飞单手把对手的扣篮硬按死在空中！`,
-      failText: `❌ ${name} 护筐动作稍慢被打进吹犯规。`,
+      failText: `❌ ${name} 护筐动作稍慢，身体接触后被吹罚普通犯规。`,
     },
     {
       id: 'c_reb_putback',
@@ -243,7 +243,7 @@ export const generateTacticalOptions = (player: PlayerProfile, quarter: number):
     fanReward: 50,
     xpReward: 40,
     statType: 'none',
-    successText: `✅ 【团队战术稳健执行】 ${name} 遵从教练指示将球稳稳分出，队友空位接球打进！保持了良好的团队战术纪律。(粉丝 +50 / 经验 +40)`,
+    successText: `✅ 【团队战术稳健执行】 ${name} 遵从教练指示稳稳推进战术，保持了良好的团队攻防阵型。`,
     failText: '',
   };
 

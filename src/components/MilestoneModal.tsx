@@ -21,11 +21,11 @@ export const MilestoneModal: React.FC<MilestoneModalProps> = ({
   const isTop3 = milestone.type === 'TOP3';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fade-in select-none overflow-hidden">
-      <div className="relative w-full max-w-md sm:max-w-lg overflow-hidden bg-[#11141b] border-2 border-amber-500/80 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-[0_0_50px_rgba(245,158,11,0.35)] text-center space-y-3 sm:space-y-4 animate-scale-up [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/95 select-none overflow-hidden">
+      <div className="relative w-full max-w-md sm:max-w-lg overflow-hidden bg-[#11141b] border-2 border-amber-500/80 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-xl text-center space-y-3 sm:space-y-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {/* Background Glowing Rings */}
-        <div className="absolute -top-24 -left-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="hidden sm:block absolute -top-24 -left-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="hidden sm:block absolute -bottom-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
         {/* Close Icon */}
         <button

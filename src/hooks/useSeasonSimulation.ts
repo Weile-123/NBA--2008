@@ -168,7 +168,7 @@ export function useSeasonSimulation({
 
       // Give player stats & XP for simulated game with team usage context & dynamic minutes
       const seasonIndex = currentYear - 2007;
-      const { minutes: assignedMPG } = getUserMinutesAndRole(userTeam, curPlayer, seasonIndex);
+      const { minutes: assignedMPG } = getUserMinutesAndRole(userTeam, curPlayer, 0, seasonIndex);
       const nonUserRoster = (userTeam.roster || []).filter(
         (p) => !(p.id === curPlayer.id || p.name === curPlayer.name || (p as any).isUser)
       );
@@ -248,7 +248,7 @@ export function useSeasonSimulation({
       );
 
       const seasonIndex = currentYear - 2007;
-      const { minutes: assignedMPG, role: userRole } = getUserMinutesAndRole(userTeam, player, seasonIndex);
+      const { minutes: assignedMPG, role: userRole } = getUserMinutesAndRole(userTeam, player, 0, seasonIndex);
       const isStarter = userRole === '绝对首发' || userRole === '战术核心';
 
       // Calculate user team usage context to apply ball-share / solo carry logic to quick sim
@@ -398,7 +398,7 @@ export function useSeasonSimulation({
 
     const seasonIndex = currentYear - 2007;
     const userTeam = teams.find((t) => t.id === player.currentTeamId) || teams[0];
-    const { role: userRole } = getUserMinutesAndRole(userTeam, player, seasonIndex);
+    const { role: userRole } = getUserMinutesAndRole(userTeam, player, 0, seasonIndex);
     const isStarter = userRole === '绝对首发' || userRole === '战术核心';
 
     // Update player season stats

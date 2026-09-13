@@ -11,7 +11,6 @@ interface LeagueStandingsProps {
   player?: PlayerProfile;
   currentYear?: number;
   careerHistory?: GameState['careerHistory'];
-  schedule?: GameState['schedule'];
 }
 
 interface RecentMatchBoxScoreModalProps {
@@ -333,7 +332,6 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
   player,
   currentYear = 2008,
   careerHistory = [],
-  schedule = [],
 }) => {
   const seasonIndex = currentYear - 2007;
   const seasonStr = `${currentYear}-${(currentYear + 1).toString().slice(-2)} 赛季`;
@@ -345,7 +343,6 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
   }, [activeSubNav]);
   const [leaderCategory, setLeaderCategory] = useState<'ppg' | 'apg' | 'rpg' | 'spg' | 'bpg'>('ppg');
   const [selectedTeamForModal, setSelectedTeamForModal] = useState<Team | null>(null);
-  const [selectedMatchForModal, setSelectedMatchForModal] = useState<any | null>(null);
   const [showPowerRating, setShowPowerRating] = useState<boolean>(false);
   const [isAccoladesExpanded, setIsAccoladesExpanded] = useState<boolean>(false);
   const [teamModalViewMode, setTeamModalViewMode] = useState<'stats' | 'ratings'>('stats');
@@ -430,8 +427,6 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
     teamName: string;
     teamId: string;
     conference: 'East' | 'West';
-    confRank?: number;
-    isTop5Seed?: boolean;
     position: string;
     ovr: number;
     ppg: number;
@@ -457,10 +452,6 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
 
     const teamUsageContext = calculateTeamUsageContext(t.roster || []);
 
-    const confTeams = t.conference === 'East' ? eastTeams : westTeams;
-    const confRank = confTeams.findIndex((item) => item.id === t.id) + 1 || 8;
-    const isTop5Seed = confRank <= 6;
-
     t.roster.forEach((p, idx) => {
       // Skip user player entries from team roster as user is added explicitly below
       if (player && (p.id === player.id || p.name === player.name || (p as any).isUser)) {
@@ -479,8 +470,6 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
         teamName: t.name,
         teamId: t.id,
         conference: t.conference || 'East',
-        confRank,
-        isTop5Seed,
         position: p.position,
         ovr: p.ovr,
         ppg: hasPlayed ? st.ppg : 0,
@@ -503,10 +492,6 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
     const currentWeekGames = Math.max(1, totalG);
     const hasPlayed = season.games > 0;
 
-    const uConfTeams = userTeam.conference === 'East' ? eastTeams : westTeams;
-    const uConfRank = uConfTeams.findIndex((item) => item.id === userTeam.id) + 1 || 8;
-    const uIsTop5Seed = uConfRank <= 6;
-
     const userRosterInfo = getCompleteTeamRoster(userTeam, player, seasonIndex);
     const userEntryInRoster = userRosterInfo.roster.find((r) => r.isUser);
     const userStats = userEntryInRoster?.stats || { ppg: 0, rpg: 0, apg: 0, spg: 0, bpg: 0, fgPct: 0, mpg: 0 };
@@ -527,8 +512,6 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
       teamName: userTeam.name,
       teamId: userTeam.id,
       conference: userTeam.conference || 'East',
-      confRank: uConfRank,
-      isTop5Seed: uIsTop5Seed,
       position: player.position,
       ovr: player.ovr,
       ppg: uPpg,
@@ -547,31 +530,6 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
   const getCategoryLeaders = () => {
     return [...allLeaguePlayers].sort((a, b) => b[leaderCategory] - a[leaderCategory]).slice(0, 10);
   };
-
-  // Calculate MVP Race Leaderboard (Top 5 seed requirement + enhanced PPG weight)
-  const calculateMvpList = () => {
-    const scored = allLeaguePlayers.map((p) => {
-      const mvpScore =
-        p.ppg * 2.5 +
-        p.rpg * 0.7 +
-        p.apg * 1.1 +
-        p.spg * 1.0 +
-        p.bpg * 1.0 +
-        p.winPct * 22.0;
-      return { ...p, mvpScore };
-    });
-
-    const top5SeedCandidates = scored.filter((p) => (p as any).isTop5Seed);
-    const candidatePool = top5SeedCandidates.length > 0 ? top5SeedCandidates : scored;
-
-    const sorted = candidatePool.sort((a, b) => b.mvpScore - a.mvpScore);
-    const top10 = sorted.slice(0, 10);
-    const userIndex = sorted.findIndex((p) => p.isUser);
-
-    return { top10, userRank: userIndex !== -1 ? userIndex + 1 : '10+', userCandidate: sorted[userIndex] };
-  };
-
-  const { top10: mvpTop10, userRank, userCandidate } = calculateMvpList();
 
   // All-Star voting lists (East top 10 & West top 10)
   const eastAllStarLeaders = [...allLeaguePlayers]
@@ -1049,123 +1007,6 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
 
 
 
-      {/* 赛事中心最下方：最近 5 场比赛数据列表 */}
-      {(() => {
-        const userTeam = teams.find((t) => t.id === userTeamId) || teams[0];
-        const playedSchedule = (schedule || []).filter((s) => s.isPlayed);
-        const listToShow = playedSchedule.slice(-5).reverse();
-
-        if (listToShow.length === 0) {
-          return (
-            <div className="bg-[#11141b] border border-[#232834] rounded-2xl p-6 shadow-2xl space-y-3 mt-6 animate-fadeIn text-center">
-              <div className="flex items-center justify-center gap-2">
-                <Calendar className="w-5 h-5 text-amber-400" />
-                <h3 className="text-base font-black italic uppercase text-white">最近 5 场比赛数据列表</h3>
-              </div>
-              <div className="py-6 bg-[#0d1017] rounded-xl border border-[#232834] text-slate-400 text-xs">
-                <p className="font-bold text-slate-300">🏀 赛季初开打中 · 暂无比赛记录</p>
-                <p className="text-[11px] text-slate-500 mt-1">开始常规赛模拟或亲自出战后，这里将实时呈现最新单场高精数据单</p>
-              </div>
-            </div>
-          );
-        }
-
-        return (
-          <div className="bg-[#11141b] border border-[#232834] rounded-2xl p-3.5 sm:p-6 shadow-2xl space-y-3 sm:space-y-4 mt-4 sm:mt-6 animate-fadeIn">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#232834] pb-2.5 sm:pb-3 gap-1.5 sm:gap-2">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" />
-                <h3 className="text-xs sm:text-base font-black italic uppercase text-white">最近 5 场比赛数据列表</h3>
-              </div>
-              <span className="text-[10px] sm:text-xs text-slate-400 font-mono">
-                点击任意比赛查看完整单场高精球员数据
-              </span>
-            </div>
-
-            <div className="divide-y divide-[#232834]">
-              {listToShow.map((m, idx) => {
-                const oppTeam = teams.find((t) => t.id === m.opponentId) || teams[1];
-                const homeTeam = m.isHome ? userTeam : oppTeam;
-                const awayTeam = m.isHome ? oppTeam : userTeam;
-
-                const homeScore = m.isHome ? (m.userScore ?? 100) : (m.oppScore ?? 90);
-                const awayScore = m.isHome ? (m.oppScore ?? 90) : (m.userScore ?? 100);
-
-                const isUserWin = m.userWon ?? (m.userScore! > m.oppScore!);
-
-                return (
-                  <div
-                    key={`ls-recent-${m.week || idx}-${idx}`}
-                    onClick={() => setSelectedMatchForModal({ match: m, userTeam, oppTeam })}
-                    className="py-2.5 sm:py-3 px-2 sm:px-3 hover:bg-[#181e2a] rounded-xl cursor-pointer transition-colors flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 sm:gap-4 group"
-                  >
-                    {/* Left: Week & Status */}
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <span className="text-[10px] sm:text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-[#0d1017] text-slate-300 border border-[#232834]">
-                        第 {m.week} 轮
-                      </span>
-                      <span
-                        className={`text-[10px] sm:text-xs font-black px-1.5 sm:px-2 py-0.5 rounded font-mono ${
-                          isUserWin
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                        }`}
-                      >
-                        {isUserWin ? '胜' : '负'}
-                      </span>
-                    </div>
-
-                    {/* Middle: Matchup & Score */}
-                    <div className="flex items-center gap-2 sm:gap-4">
-                      {/* Home Team */}
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        <span className={`text-[11px] sm:text-xs font-bold ${m.isHome ? 'text-amber-300 font-black' : 'text-slate-300'}`}>
-                          {homeTeam.name}
-                        </span>
-                        <TeamLogo
-                          logo={homeTeam.logo}
-                          abbrev={homeTeam.abbrev}
-                          primaryColor={homeTeam.primaryColor}
-                          secondaryColor={homeTeam.secondaryColor}
-                          className="w-5 h-5 sm:w-6 sm:h-6 object-contain"
-                        />
-                      </div>
-
-                      {/* Score display */}
-                      <div className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-lg bg-[#0d1017] border border-[#232834] font-mono font-black text-xs sm:text-sm text-amber-400 flex items-center gap-1 sm:gap-2">
-                        <span>{homeScore}</span>
-                        <span className="text-slate-600 text-[10px] sm:text-xs font-normal">:</span>
-                        <span>{awayScore}</span>
-                      </div>
-
-                      {/* Away Team */}
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        <TeamLogo
-                          logo={awayTeam.logo}
-                          abbrev={awayTeam.abbrev}
-                          primaryColor={awayTeam.primaryColor}
-                          secondaryColor={awayTeam.secondaryColor}
-                          className="w-5 h-5 sm:w-6 sm:h-6 object-contain"
-                        />
-                        <span className={`text-[11px] sm:text-xs font-bold ${!m.isHome ? 'text-amber-300 font-black' : 'text-slate-300'}`}>
-                          {awayTeam.name}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Right: Button prompt */}
-                    <div className="flex items-center gap-1 text-[11px] sm:text-xs text-amber-400 font-bold group-hover:translate-x-1 transition-transform ml-auto sm:ml-0">
-                      <span className="hidden sm:inline">查看高精数据单</span>
-                      <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
-
       {/* Team Roster Modal */}
       {selectedTeamForModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto">
@@ -1330,17 +1171,6 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
         </div>
       )}
 
-      {/* Match Box Score Modal */}
-      {selectedMatchForModal && (
-        <RecentMatchBoxScoreModal
-          match={selectedMatchForModal.match}
-          userTeam={selectedMatchForModal.userTeam}
-          oppTeam={selectedMatchForModal.oppTeam}
-          player={player}
-          seasonIndex={seasonIndex}
-          onClose={() => setSelectedMatchForModal(null)}
-        />
-      )}
     </div>
   );
 };

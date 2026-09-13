@@ -7,6 +7,7 @@ import { flushPersistentWrites } from '../lib/persistentStorage';
 import { formatLocalDateTime } from '../utils/dateTime';
 import {
   calculateGoatScore,
+  countExclusiveTeamSelections,
   getUserGoatRank,
   getHofSpeechInfo,
   getPlayerCareerPeakOvr,} from '../utils/calc2k';
@@ -274,7 +275,8 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
     try {
       const timeline = buildFullCareerTimeline(player, careerHistory, leagueHistory, currentYear);
       const jerseyRetirements = calculateJerseyRetirements(player, timeline, leagueHistory);
-      const goatScore = calculateGoatScore(player).score;
+      const goatResult = calculateGoatScore(player);
+      const goatScore = goatResult.score;
       const peakOvr = getPlayerCareerPeakOvr(player, careerHistory.map((season) => season.ovr || 0));
 
       let championships = 0;
@@ -287,6 +289,7 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
       let allNbaFirsts = 0;
       let allNbaSeconds = 0;
       let allNbaThirds = 0;
+      const allNbaBySeason = new Map<number, 1 | 2 | 3>();
 
       (player.accolades || []).forEach((acc) => {
         const title = acc.title || '';
@@ -297,10 +300,18 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
         if (acc.type === 'ROY' || title.includes('ROY') || title.includes('最佳新秀')) roys++;
         if (acc.type === 'SCORING_TITLE' || title.includes('得分王')) scoringTitles++;
         if (acc.type === 'ALL_STAR' || title.includes('全明星')) allStarApps++;
-        if (title.includes('最佳阵容一阵') || acc.type === 'ALL_NBA_1ST') allNbaFirsts++;
-        if (title.includes('最佳阵容二阵') || acc.type === 'ALL_NBA_2ND') allNbaSeconds++;
-        if (title.includes('最佳阵容三阵') || acc.type === 'ALL_NBA_3RD') allNbaThirds++;
+        let tier: 1 | 2 | 3 | null = null;
+        if (title.includes('最佳阵容一阵') || acc.type === 'ALL_NBA_1ST') tier = 1;
+        else if (title.includes('最佳阵容二阵') || acc.type === 'ALL_NBA_2ND' || acc.type === 'ALL_NBA') tier = 2;
+        else if (title.includes('最佳阵容三阵') || acc.type === 'ALL_NBA_3RD') tier = 3;
+        if (tier !== null) {
+          const currentTier = allNbaBySeason.get(acc.year);
+          if (currentTier === undefined || tier < currentTier) allNbaBySeason.set(acc.year, tier);
+        }
       });
+      allNbaFirsts = [...allNbaBySeason.values()].filter((tier) => tier === 1).length;
+      allNbaSeconds = [...allNbaBySeason.values()].filter((tier) => tier === 2).length;
+      allNbaThirds = [...allNbaBySeason.values()].filter((tier) => tier === 3).length;
 
       const legendRecord: RetiredPlayerRecord = {
         id: retirementRecordIdRef.current,
@@ -441,34 +452,11 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
   const dpoyCount = accoladesList.filter((a) => a.type === 'DPOY' || a.title.includes('最佳防守球员') || (a.title.includes('DPOY') && !a.title.includes('阵') && !a.title.includes('阵容'))).length;
   const royCount = accoladesList.filter((a) => a.type === 'ROY' || a.title.includes('ROY')).length;
   const allStarCount = accoladesList.filter((a) => a.type === 'ALL_STAR' || a.title.includes('全明星')).length;
+  const exclusiveTeamSelections = countExclusiveTeamSelections(accoladesList);
 
   // Granular All-NBA and All-Defensive counts
-  const allNba1stCount = accoladesList.filter(
-    (a) =>
-      a.type === 'ALL_NBA_1ST' ||
-      a.title.includes('最佳阵容一阵') ||
-      a.title.includes('最佳一阵') ||
-      (a.title.includes('最佳阵容') && (a.title.includes('一阵') || a.title.includes('1队') || a.title.includes('一队')) && !a.title.includes('防守'))
-  ).length;
-
-  const allNba2nd3rdCount = accoladesList.filter(
-    (a) =>
-      a.type === 'ALL_NBA_2ND' ||
-      a.type === 'ALL_NBA_3RD' ||
-      a.title.includes('最佳阵容二阵') ||
-      a.title.includes('最佳阵容三阵') ||
-      a.title.includes('最佳二阵') ||
-      a.title.includes('最佳三阵') ||
-      (a.title.includes('最佳阵容') && (a.title.includes('二阵') || a.title.includes('三阵') || a.title.includes('2队') || a.title.includes('3队') || a.title.includes('二队') || a.title.includes('三队')) && !a.title.includes('防守'))
-  ).length;
-
-  const genericAllNbaCount = accoladesList.filter(
-    (a) =>
-      (a.type === 'ALL_NBA' || (a.title.includes('最佳阵容') && !a.title.includes('防守'))) &&
-      !a.title.includes('一阵') && !a.title.includes('1队') && !a.title.includes('一队') &&
-      !a.title.includes('二阵') && !a.title.includes('三阵') && !a.title.includes('2队') && !a.title.includes('3队') && !a.title.includes('二队') && !a.title.includes('三队')
-  ).length;
-  const finalAllNba2nd3rdCount = allNba2nd3rdCount + genericAllNbaCount;
+  const allNba1stCount = exclusiveTeamSelections.allNbaFirsts;
+  const finalAllNba2nd3rdCount = exclusiveTeamSelections.allNbaSeconds + exclusiveTeamSelections.allNbaThirds;
 
   const allDef1stCount = accoladesList.filter(
     (a) =>
