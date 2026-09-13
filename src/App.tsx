@@ -1,5 +1,5 @@
-import { lazy, Suspense, useState } from 'react';
-import { getSaveSlotMeta,loadGameFromStorage,SaveSlotId } from './utils/storage';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { loadGameFromStorage } from './utils/storage';
 import { DEFAULT_GAME_MODE, GameMode } from './gameMode';
 
 import { Header } from './components/Header';
@@ -33,16 +33,28 @@ import { useCareerGame } from './hooks/useCareerGame';
 export default function App() {
   const [gameMode, setGameMode] = useState<GameMode>(DEFAULT_GAME_MODE);
   const [resumeOnMount, setResumeOnMount] = useState(true);
+  const [launchAction, setLaunchAction] = useState<'home' | 'new' | 'continue'>('home');
 
-  const handleSelectGameMode = (nextMode: GameMode) => {
-    setResumeOnMount(false);
+  const handleSelectGameMode = (nextMode: GameMode, action: 'new' | 'continue') => {
+    setResumeOnMount(action === 'continue');
+    setLaunchAction(action);
     setGameMode(nextMode);
   };
 
-  return <div key={gameMode}><CareerApp gameMode={gameMode} resumeOnMount={resumeOnMount} onSelectGameMode={handleSelectGameMode} /></div>;
+  return <div key={gameMode}><CareerApp gameMode={gameMode} resumeOnMount={resumeOnMount} launchAction={launchAction} onSelectGameMode={handleSelectGameMode} /></div>;
 }
 
-function CareerApp({ gameMode, resumeOnMount, onSelectGameMode }: { gameMode: GameMode; resumeOnMount: boolean; onSelectGameMode: (mode: GameMode) => void }) {
+function CareerApp({
+  gameMode,
+  resumeOnMount,
+  launchAction,
+  onSelectGameMode,
+}: {
+  gameMode: GameMode;
+  resumeOnMount: boolean;
+  launchAction: 'home' | 'new' | 'continue';
+  onSelectGameMode: (mode: GameMode, action: 'new' | 'continue') => void;
+}) {
   const {
     handleOpenSaveSlots,
     phase,
@@ -143,6 +155,10 @@ function CareerApp({ gameMode, resumeOnMount, onSelectGameMode }: { gameMode: Ga
     oppTeam,
   } = useCareerGame(gameMode, resumeOnMount);
 
+  useEffect(() => {
+    if (launchAction === 'new') setPhase('creation');
+  }, [launchAction, setPhase]);
+
   return (
     <div className={`min-h-full bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 ${isRegularSeasonAutoSimulating ? 'app-auto-simulating' : ''}`}>
       {/* Draft Waiting Animation Modal */}
@@ -163,34 +179,23 @@ function CareerApp({ gameMode, resumeOnMount, onSelectGameMode }: { gameMode: Ga
       )}
 
       {/* Title / Home Screen Phase */}
-      {phase === 'home' && (() => {
-        const slots: SaveSlotId[] = ['slot_1', 'slot_2', 'slot_3', 'slot_4'];
-        const activeMetas = slots.map((s) => getSaveSlotMeta(s, gameMode)).filter((m) => !m.isEmpty);
-        const hasSave = !!player || (storageReady && activeMetas.length > 0);
-        const latestMeta = activeMetas.sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())[0] || getSaveSlotMeta('slot_1', gameMode);
-
-        return (
+      {phase === 'home' && (
           <HomeScreen
-            hasActiveSave={hasSave}
-            latestSaveMeta={latestMeta}
             gameMode={gameMode}
-            onSelectGameMode={onSelectGameMode}
-            onContinueGame={() => {
-              const latestSlot = activeMetas[0]?.slotId || 'slot_1';
-              const saved = loadGameFromStorage(latestSlot, gameMode) || loadGameFromStorage('slot_1', gameMode);
-              if (saved && saved.player) {
-                handleLoadSaveData(saved);
-              } else if (player) {
-                setPhase('regular_season');
+            onLaunchMode={(targetMode, hasSave) => {
+              if (targetMode !== gameMode) {
+                onSelectGameMode(targetMode, hasSave ? 'continue' : 'new');
+                return;
+              }
+              if (hasSave) {
+                const saved = loadGameFromStorage('slot_1', targetMode);
+                if (saved?.player) handleLoadSaveData(saved);
+                else if (player) setPhase('regular_season');
+                else setPhase('creation');
               } else {
                 setPhase('creation');
               }
             }}
-            onStartNewCareer={() => {
-              setPhase('creation');
-            }}
-            onOpenSaveManager={handleOpenSaveSlots}
-            onOpenSettings={() => setShowSettingsModal(true)}
             onOpenHallOfFame={() => {
               setLegendaryHofInitialMode('local');
               setPrevPhase(phase);
@@ -202,8 +207,7 @@ function CareerApp({ gameMode, resumeOnMount, onSelectGameMode }: { gameMode: Ga
               setPhase('legendary_hof');
             }}
           />
-        );
-      })()}
+      )}
 
       {/* Creation Phase */}
       <Suspense fallback={(

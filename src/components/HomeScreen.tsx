@@ -1,196 +1,253 @@
-import React, { useState, useEffect } from 'react';
-import { Play, PlusCircle, Trophy, Sparkles, UserCheck, Flame, ArrowRight, ArrowLeft, AlertTriangle, Bell, Globe, Loader2, MessageSquareText, Shuffle, LockKeyhole } from 'lucide-react';
-import { SaveSlotMeta, getAllSaveSlotsMeta } from '../utils/storage';
-import { TeamLogo } from './TeamLogo';
-import { loadGlobalHallOfFame, retryPendingGlobalHallOfFameUpload } from '../lib/globalLeaderboard';
-import { UserFeedbackModal } from './UserFeedbackModal';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowRight,
+  Bell,
+  Flame,
+  Globe,
+  Loader2,
+  MessageSquareText,
+  Play,
+  Shuffle,
+  Sparkles,
+  Trophy,
+  UserCheck,
+} from 'lucide-react';
 import { GameMode, GAME_MODE_CONFIG } from '../gameMode';
+import { loadGlobalHallOfFame, retryPendingGlobalHallOfFameUpload } from '../lib/globalLeaderboard';
+import { getSaveSlotMeta, hydrateGameStorage, SaveSlotMeta } from '../utils/storage';
+import { TeamLogo } from './TeamLogo';
 import { UpdateAnnouncementModal } from './UpdateAnnouncementModal';
+import { UserFeedbackModal } from './UserFeedbackModal';
 
 interface HomeScreenProps {
   gameMode: GameMode;
-  onSelectGameMode: (mode: GameMode) => void;
-  hasActiveSave: boolean;
-  latestSaveMeta: SaveSlotMeta | null;
-  onContinueGame: () => void;
-  onStartNewCareer: () => void;
-  onOpenSaveManager: () => void;
-  onOpenSettings: () => void;
+  onLaunchMode: (mode: GameMode, hasSave: boolean) => void;
   onOpenHallOfFame: () => void;
   onOpenGlobalHallOfFame?: () => void;
 }
 
+const MODES: GameMode[] = ['classic', 'random_trade'];
+
+function formatSavedAt(value?: string): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+}
+
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   gameMode,
-  onSelectGameMode,
-  hasActiveSave,
-  latestSaveMeta,
-  onContinueGame,
-  onStartNewCareer,
-  onOpenSaveManager,
-  onOpenSettings,
+  onLaunchMode,
   onOpenHallOfFame,
   onOpenGlobalHallOfFame,
 }) => {
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [topLegendName, setTopLegendName] = useState<string>('');
+  const [topLegendName, setTopLegendName] = useState('');
   const [topLegendScore, setTopLegendScore] = useState<number | null>(null);
-  const [isBannerLoading, setIsBannerLoading] = useState<boolean>(true);
-  const [isBannerTimeout, setIsBannerTimeout] = useState<boolean>(false);
+  const [isBannerLoading, setIsBannerLoading] = useState(true);
+  const [isBannerTimeout, setIsBannerTimeout] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
+  const [saveRevision, setSaveRevision] = useState(0);
+  const [modeSavesReady, setModeSavesReady] = useState(false);
 
   useEffect(() => {
-    if (gameMode !== 'classic') {
-      setTopLegendName('');
-      setTopLegendScore(null);
-      setIsBannerLoading(false);
-      setIsBannerTimeout(false);
-      return;
-    }
+    let active = true;
+    void Promise.all(MODES.map((mode) => hydrateGameStorage(mode))).finally(() => {
+      if (!active) return;
+      setSaveRevision((value) => value + 1);
+      setModeSavesReady(true);
+    });
+    return () => { active = false; };
+  }, []);
 
+  useEffect(() => {
     let isMounted = true;
-    let retryTimer: any = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
     const loadTopLegend = () => {
       if (!isMounted) return;
-      void retryPendingGlobalHallOfFameUpload().catch((error) => console.warn('全网传奇榜待上传记录暂未同步', error)).finally(() => loadGlobalHallOfFame()
-        .then((records) => {
-          if (isMounted) {
-            if (records && records.length > 0 && records[0]?.player?.name) {
-              setTopLegendName(records[0].player.name);
-              setTopLegendScore(records[0].goatScore || null);
-            } else { setTopLegendName(''); setTopLegendScore(null); }
+      void retryPendingGlobalHallOfFameUpload()
+        .catch((error) => console.warn('全网传奇榜待上传记录暂未同步', error))
+        .finally(() => loadGlobalHallOfFame()
+          .then((records) => {
+            if (!isMounted) return;
+            const first = records?.[0];
+            setTopLegendName(first?.player?.name || '');
+            setTopLegendScore(first?.goatScore || null);
             setIsBannerLoading(false);
             setIsBannerTimeout(false);
-          }
-        })
-        .catch((err: any) => {
-          if (isMounted) {
-            const isTimeout = err?.name === 'GlobalHofTimeoutError' || err?.message?.includes('timed out');
-            if (isTimeout) {
-              // As requested: if global hall of fame request times out, keep showing loading state!
+          })
+          .catch((error: Error) => {
+            if (!isMounted) return;
+            const timedOut = error?.name === 'GlobalHofTimeoutError' || error?.message?.includes('timed out');
+            if (timedOut) {
               setIsBannerLoading(true);
               setIsBannerTimeout(true);
               retryTimer = setTimeout(loadTopLegend, 3500);
-            } else { setTopLegendName(''); setTopLegendScore(null); setIsBannerLoading(false); setIsBannerTimeout(false); }
-          }
-        }));
+            } else {
+              setTopLegendName('');
+              setTopLegendScore(null);
+              setIsBannerLoading(false);
+              setIsBannerTimeout(false);
+            }
+          }));
     };
 
     loadTopLegend();
-
     return () => {
       isMounted = false;
       if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [gameMode]);
+  }, []);
 
-  const displayTopName = topLegendName;
-  const displayTopScore = topLegendScore;
+  const savesByMode = useMemo<Record<GameMode, SaveSlotMeta>>(() => ({
+    classic: getSaveSlotMeta('slot_1', 'classic'),
+    random_trade: getSaveSlotMeta('slot_1', 'random_trade'),
+  }), [saveRevision]);
 
-  const handleNewCareerClick = () => {
-    const hasAnySave = hasActiveSave || getAllSaveSlotsMeta(gameMode).some((s) => !s.isEmpty);
-    if (hasAnySave) {
-      setShowConfirmModal(true);
-    } else {
-      onStartNewCareer();
-    }
-  };
+  const renderModeCard = (mode: GameMode) => {
+    const isClassic = mode === 'classic';
+    const meta = savesByMode[mode];
+    const hasSave = modeSavesReady && !meta.isEmpty;
+    const accent = isClassic ? 'amber' : 'cyan';
 
-  const handleConfirmOverwrite = () => {
-    setShowConfirmModal(false);
-    onStartNewCareer();
+    return (
+      <article
+        key={mode}
+        className={`relative flex min-h-[224px] flex-col overflow-hidden rounded-2xl border p-3.5 text-left shadow-2xl sm:min-h-[250px] sm:p-5 ${
+          isClassic
+            ? 'border-amber-500/50 bg-gradient-to-br from-amber-500/15 via-[#151922] to-[#0d1118] shadow-amber-950/30'
+            : 'border-cyan-400/45 bg-gradient-to-br from-cyan-500/15 via-[#121925] to-violet-500/10 shadow-cyan-950/30'
+        }`}
+      >
+        <div className={`absolute -right-14 -top-14 h-40 w-40 rounded-full blur-3xl ${isClassic ? 'bg-amber-400/10' : 'bg-cyan-400/10'}`} />
+
+        <div className="relative flex items-start justify-between gap-2">
+          <div className={`flex h-10 w-10 items-center justify-center rounded-xl border sm:h-12 sm:w-12 ${
+            isClassic ? 'border-amber-400/40 bg-amber-500/15' : 'border-cyan-300/40 bg-cyan-400/10'
+          }`}>
+            {isClassic
+              ? <Trophy className="h-5 w-5 text-amber-300 sm:h-6 sm:w-6" />
+              : <Shuffle className="h-5 w-5 text-cyan-300 sm:h-6 sm:w-6" />}
+          </div>
+          <span className={`rounded border px-1.5 py-0.5 text-[8px] font-black sm:text-[9px] ${
+            gameMode === mode
+              ? isClassic ? 'border-amber-400/40 bg-amber-500/20 text-amber-300' : 'border-cyan-300/40 bg-cyan-400/15 text-cyan-200'
+              : 'border-slate-600/50 bg-slate-800/70 text-slate-500'
+          }`}>
+            {gameMode === mode ? '当前模式' : '独立存档'}
+          </span>
+        </div>
+
+        <div className="relative mt-3">
+          <h3 className="text-sm font-black italic text-white sm:text-lg">{GAME_MODE_CONFIG[mode].name}</h3>
+          <p className="mt-1 text-[10px] leading-relaxed text-slate-400 sm:text-xs">
+            {isClassic
+              ? '还原历史真实选秀与交易，沿真实联盟轨迹开启生涯。'
+              : '联盟交易独立生成，每次生涯都会形成不同的球队格局。'}
+          </p>
+        </div>
+
+        <div className="relative mt-auto pt-3">
+          {hasSave ? (
+            <div className={`mb-2.5 rounded-xl border p-2.5 ${isClassic ? 'border-amber-500/25 bg-black/20' : 'border-cyan-400/20 bg-black/20'}`}>
+              <div className="flex min-w-0 items-center gap-2">
+                <TeamLogo
+                  logo={meta.currentTeamLogo}
+                  abbrev={meta.currentTeamAbbrev}
+                  primaryColor={meta.currentTeamPrimaryColor}
+                  secondaryColor={meta.currentTeamSecondaryColor}
+                  className="h-7 w-7 shrink-0 object-contain sm:h-8 sm:w-8"
+                  alt={meta.currentTeamName || ''}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[11px] font-black text-white sm:text-sm">
+                    {meta.playerName} <span className={`font-mono text-[9px] sm:text-[10px] ${isClassic ? 'text-amber-300' : 'text-cyan-300'}`}>OVR {meta.playerOvr}</span>
+                  </div>
+                  <div className="truncate text-[9px] text-slate-400 sm:text-[10px]">
+                    {meta.currentYear}-{(meta.currentYear || 0) + 1} 赛季 · {formatSavedAt(meta.updatedAt)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-2.5 flex h-[50px] items-center text-[10px] text-slate-500 sm:text-xs">
+              {modeSavesReady ? '暂无生涯存档' : '正在读取独立存档…'}
+            </div>
+          )}
+
+          <button
+            type="button"
+            disabled={!modeSavesReady}
+            onClick={() => onLaunchMode(mode, hasSave)}
+            className={`flex w-full items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-[11px] font-black transition-transform active:scale-[0.98] disabled:cursor-wait disabled:opacity-50 sm:text-sm ${
+              isClassic
+                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black'
+                : 'bg-gradient-to-r from-cyan-400 to-cyan-500 text-slate-950'
+            }`}
+          >
+            {hasSave ? <Play className="h-3.5 w-3.5 fill-current sm:h-4 sm:w-4" /> : <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+            <span>{hasSave ? '继续生涯' : `开启${isClassic ? '经典' : '新'}模式`}</span>
+            <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          </button>
+        </div>
+      </article>
+    );
   };
 
   return (
-    <div className="relative min-h-screen bg-[#0a0d14] text-white flex flex-col items-center justify-between p-0 overflow-hidden select-none">
-      {/* Top Global Legend Scrolling Banner Ticker */}
-      <div 
-        onClick={gameMode === 'classic' ? (onOpenGlobalHallOfFame || onOpenHallOfFame) : undefined}
-        className={`safe-area-home-banner relative z-30 w-full bg-gradient-to-r from-amber-950/90 via-amber-900/95 to-amber-950/90 border-b border-amber-500/40 text-amber-200 text-xs py-2 overflow-hidden group shadow-lg select-none transition-colors ${gameMode === 'classic' ? 'cursor-pointer hover:bg-amber-900/95' : ''}`}
-        title={gameMode === 'classic' ? '点击查看全网传奇榜' : '平行联盟模式公告'}
+    <div className="relative flex min-h-screen select-none flex-col items-center justify-between overflow-hidden bg-[#0a0d14] p-0 text-white">
+      <button
+        type="button"
+        onClick={onOpenGlobalHallOfFame || onOpenHallOfFame}
+        className="safe-area-home-banner group relative z-30 w-full cursor-pointer overflow-hidden border-b border-amber-500/40 bg-gradient-to-r from-amber-950/90 via-amber-900/95 to-amber-950/90 py-2 text-xs text-amber-200 shadow-lg"
+        title="点击查看全网传奇榜"
       >
-        <div className="w-full max-w-7xl mx-auto px-4 flex items-center overflow-hidden">
-          <div className="shrink-0 flex items-center gap-1.5 pr-3 bg-gradient-to-r from-amber-950 via-amber-950 to-transparent z-10 font-black text-amber-400 text-xs tracking-wider uppercase border-r border-amber-500/30">
-            <Trophy className="w-4 h-4 text-amber-400 animate-bounce shrink-0" />
-            <span className="bg-gradient-to-r from-amber-300 via-amber-200 to-amber-400 bg-clip-text text-transparent font-extrabold">全网公告</span>
+        <div className="mx-auto flex w-full max-w-7xl items-center overflow-hidden px-4">
+          <div className="z-10 flex shrink-0 items-center gap-1.5 border-r border-amber-500/30 bg-gradient-to-r from-amber-950 via-amber-950 to-transparent pr-3 text-xs font-black uppercase tracking-wider text-amber-400">
+            <Trophy className="h-4 w-4 shrink-0 text-amber-400" />
+            <span>全网公告</span>
           </div>
-          
-          <div className="overflow-hidden whitespace-nowrap flex-1 relative pl-3">
+          <div className="relative flex-1 overflow-hidden whitespace-nowrap pl-3">
             <div className="animate-ticker flex items-center gap-12 font-medium">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="flex items-center gap-2">
-                  {gameMode === 'random_trade' ? (
-                    <>
-                      <Shuffle className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
-                      <span className="text-amber-100 font-bold">平行联盟独立开发中：存档与经典模式完全隔离</span>
-                      <span className="text-cyan-300/70 font-mono text-[10px]">RANDOM TRADE MODE</span>
-                    </>
-                  ) : isBannerLoading ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin shrink-0" />
-                      <span className="text-amber-200 font-bold">
-                        {isBannerTimeout
-                          ? '全网传奇榜接口响应超时，正在持续保持加载状态并自动重试中...'
-                          : '正在同步全网传奇榜首数据...'}
-                      </span>
-                      <span className="text-amber-400/60 font-mono text-[10px]">⚡ CONNECTING</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-amber-100 font-bold">{displayTopName ? <>恭喜【<span className="text-amber-300 font-black text-sm italic">{displayTopName}</span>】登顶传奇榜！</> : '全网传奇榜等待首位传奇球员入榜'}</span>
-                      {displayTopScore && (
-                        <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 font-mono text-[11px] font-bold">
-                          GOAT 积分: {displayTopScore} 分
-                        </span>
-                      )}
-                      <span className="text-amber-400/60 font-mono text-[10px]">👑 TOP 1 LEGEND</span>
-                    </>
-                  )}
-                </div>
+              {[1, 2, 3, 4].map((item) => (
+                <span key={item} className="flex items-center gap-2">
+                  {isBannerLoading ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" />{isBannerTimeout ? '排行榜连接超时，正在重试…' : '正在同步全网传奇榜…'}</>
+                  ) : topLegendName ? (
+                    <>恭喜【<b className="text-amber-300">{topLegendName}</b>】登顶传奇榜！ <em className="font-mono text-[10px] not-italic text-amber-300">GOAT {topLegendScore}</em></>
+                  ) : '全网传奇榜等待首位传奇球员入榜'}
+                </span>
               ))}
             </div>
           </div>
         </div>
-      </div>
+      </button>
 
-      {/* Dynamic Background Glows & Court Grid Overlay */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-900/30 via-[#0a0d14] to-[#05070a] pointer-events-none" />
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-transparent blur-3xl rounded-full pointer-events-none" />
-      <div className="absolute -bottom-32 -left-32 w-[500px] h-[500px] bg-blue-600/10 blur-3xl rounded-full pointer-events-none" />
-      
-      {/* Background Basketball Lines Pattern */}
-      <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-900/30 via-[#0a0d14] to-[#05070a]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#fff_1px,transparent_1px)] opacity-[0.03] [background-size:24px_24px]" />
 
-      {/* Main Page Layout Wrapper with Original Margins/Padding */}
-      <div className="w-full flex-1 flex flex-col items-center justify-between p-4 sm:p-8 relative z-10">
-        {/* Top Header Tag */}
-        <header className="relative z-10 w-full max-w-5xl flex items-center justify-between py-2 border-b border-amber-500/20 text-xs text-amber-300/80 uppercase font-mono tracking-widest">
-          <div className="flex items-center gap-2 font-bold">
-            <Flame className="w-4 h-4 text-amber-500 animate-pulse" />
-            <span>篮坛传奇：重返2008</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-[10px]">
-              {GAME_MODE_CONFIG[gameMode].shortName} · 独立存档
-            </span>
-            <span className="hidden sm:inline text-slate-500">v2.50</span>
-            <button
-              type="button"
-              onClick={() => setIsAnnouncementOpen(true)}
-              className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-amber-500/35 bg-amber-500/10 text-amber-300 transition-colors hover:border-amber-400 hover:bg-amber-500/20"
-              title="查看更新公告"
-              aria-label="查看更新公告"
-            >
-              <Bell className="h-4 w-4" />
-              <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-[#0a0d14] bg-red-500" />
-            </button>
-          </div>
+      <div className="relative z-10 flex w-full flex-1 flex-col items-center justify-between p-4 sm:p-8">
+        <header className="flex w-full max-w-5xl items-center justify-between border-b border-amber-500/20 py-2 font-mono text-xs uppercase tracking-widest text-amber-300/80">
+          <div className="flex items-center gap-2 font-bold"><Flame className="h-4 w-4 text-amber-500" />篮坛传奇：重返2008</div>
+          <button
+            type="button"
+            onClick={() => setIsAnnouncementOpen(true)}
+            className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/35 bg-amber-500/10 text-amber-300"
+            aria-label="查看更新公告"
+          >
+            <Bell className="h-4 w-4" />
+            <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-[#0a0d14] bg-red-500" />
+          </button>
         </header>
 
-        {/* Hero Title & Subtitle Area */}
-        <main className="relative z-10 w-full max-w-4xl flex flex-col items-center my-auto py-8 text-center">
+        <main className="my-auto flex w-full max-w-4xl flex-col items-center py-5 text-center sm:py-8">
           <img
             src="./game-logo.png"
             decoding="async"
@@ -199,234 +256,34 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             height={128}
             loading="eager"
             fetchPriority="high"
-            className="w-24 h-24 sm:w-32 sm:h-32 mb-4 rounded-2xl border border-amber-400/40 object-cover shadow-2xl"
+            className="mb-3 h-20 w-20 rounded-2xl border border-amber-400/40 object-cover shadow-2xl sm:h-28 sm:w-28"
           />
-          <div className="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/20 via-amber-400/10 to-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-black tracking-widest uppercase shadow-lg">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>{gameMode === 'classic' ? '黄金时代 · 2008-2025' : '平行时空 · 随机交易'}</span>
-          </div>
-
-          {/* Title Heading */}
-          <h1 className="px-4 text-3xl sm:text-5xl lg:text-6xl leading-tight font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-amber-100 to-amber-500 drop-shadow-[0_10px_20px_rgba(245,158,11,0.2)] mb-2">
-            篮坛传奇：<span className="inline-block">{gameMode === 'classic' ? '重返2008' : '平行联盟'}</span>
+          <h1 className="mb-1 bg-gradient-to-br from-white via-amber-100 to-amber-500 bg-clip-text px-4 text-3xl font-black leading-tight tracking-tight text-transparent sm:text-5xl">
+            篮坛传奇：重返2008
           </h1>
-          <h2 className="text-xl sm:text-3xl font-black uppercase italic tracking-widest text-slate-300 mb-6 drop-shadow">
-            {GAME_MODE_CONFIG[gameMode].name} · <span className="text-amber-400">MY CAREER</span>
-          </h2>
+          <p className="mb-5 text-xs font-black tracking-widest text-slate-400 sm:text-base">选择你的生涯轨迹 · MY CAREER</p>
 
-          {gameMode === 'random_trade' ? (
-            <div className="w-full max-w-md space-y-3 text-left">
-              <div className="relative overflow-hidden rounded-2xl border border-cyan-400/40 bg-gradient-to-br from-cyan-500/10 via-[#141b28] to-violet-500/10 p-5 shadow-2xl shadow-cyan-950/30">
-                <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-cyan-400/10 blur-3xl" />
-                <div className="relative flex items-start gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-cyan-400/40 bg-cyan-400/10">
-                    <Shuffle className="h-6 w-6 text-cyan-300" />
-                  </div>
-                  <div>
-                    <div className="mb-1 flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-black italic text-white">平行联盟 · 随机交易</h3>
-                      <span className="rounded border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-[9px] font-black tracking-wider text-cyan-300">独立模式</span>
-                    </div>
-                    <p className="text-xs leading-relaxed text-slate-300">
-                      每个赛季将拥有独立生成的联盟交易轨迹。该模式的四个存档槽位、个人传奇记录与经典模式完全隔离。
-                    </p>
-                  </div>
-                </div>
-                <div className="relative mt-4 flex items-center gap-2 rounded-xl border border-amber-500/25 bg-black/20 px-3 py-2.5 text-xs text-amber-200">
-                  <LockKeyhole className="h-4 w-4 shrink-0 text-amber-400" />
-                  <span>基础框架已完成，随机交易规则将在下一步接入后开放。</span>
-                </div>
-              </div>
+          <section className="grid w-full max-w-2xl grid-cols-2 gap-2.5 sm:gap-4" aria-label="选择游戏模式">
+            {MODES.map(renderModeCard)}
+          </section>
 
-              <button
-                type="button"
-                disabled
-                className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/70 px-5 py-3.5 text-sm font-black text-slate-500"
-              >
-                <LockKeyhole className="h-4 w-4" />
-                <span>新模式开发中</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onSelectGameMode('classic')}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/35 bg-[#141822] px-5 py-3.5 text-sm font-bold text-amber-300 transition-all hover:border-amber-400 hover:bg-[#1f2636] active:scale-[0.98]"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span>返回经典历史模式</span>
-              </button>
-            </div>
-          ) : <>
-          {/* Active Save Quick Card (If exists) */}
-          {hasActiveSave && latestSaveMeta && !latestSaveMeta.isEmpty && (
-            <div className="w-full max-w-md mb-8 p-4 rounded-xl bg-gradient-to-r from-[#141923] via-[#1a2232] to-[#141923] border border-amber-500/40 shadow-2xl relative group overflow-hidden">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 blur-xl rounded-full pointer-events-none" />
-              <div className="flex items-center justify-between gap-3 text-left">
-                <div>
-                  <div className="text-[10px] uppercase font-bold tracking-widest text-amber-400 mb-1 flex items-center gap-1">
-                    <UserCheck className="w-3 h-3" /> 最新生涯存档
-                  </div>
-                  <div className="text-lg font-black text-white italic">
-                    {latestSaveMeta.playerName} <span className="text-xs font-mono text-amber-400 font-bold">OVR {latestSaveMeta.playerOvr}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-slate-300 mt-0.5 font-medium">
-                    <TeamLogo
-                      logo={latestSaveMeta.currentTeamLogo}
-                      abbrev={latestSaveMeta.currentTeamAbbrev}
-                      primaryColor={latestSaveMeta.currentTeamPrimaryColor}
-                      secondaryColor={latestSaveMeta.currentTeamSecondaryColor}
-                      className="w-4 h-4 object-contain inline-block shrink-0"
-                      alt={latestSaveMeta.currentTeamName || ''}
-                    />
-                    <span>{latestSaveMeta.currentYear}-{latestSaveMeta.currentYear! + 1} 赛季</span>
-                  </div>
-                  <div className="text-[10px] text-slate-500 font-mono mt-1">
-                    最近保存: {latestSaveMeta.updatedAt}
-                  </div>
-                </div>
-                <button
-                  onClick={onContinueGame}
-                  className="shrink-0 flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black px-4 py-3 rounded-lg shadow-lg shadow-amber-500/20 transition-all active:scale-95 cursor-pointer text-sm uppercase italic"
-                >
-                  <Play className="w-4 h-4 fill-black" />
-                  <span>继续生涯</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Primary Menu Options Grid */}
-          <div className="w-full max-w-md flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={() => onSelectGameMode('random_trade')}
-              className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500/10 via-[#151c2b] to-violet-500/10 hover:from-cyan-500/20 hover:to-violet-500/20 border border-cyan-400/35 hover:border-cyan-300 text-white font-bold transition-all shadow-lg active:scale-[0.98] cursor-pointer text-sm group"
-            >
-              <div className="flex items-center gap-3">
-                <Shuffle className="w-4 h-4 text-cyan-300 group-hover:rotate-180 transition-transform duration-500" />
-                <div className="text-left">
-                  <div>平行联盟 · 随机交易</div>
-                  <div className="text-[9px] font-mono text-cyan-300/80">全新独立模式 · 开发中</div>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-cyan-300/70 group-hover:translate-x-1 transition-transform" />
+          <div className="mt-3 grid w-full max-w-2xl grid-cols-3 gap-2">
+            <button type="button" onClick={onOpenHallOfFame} className="flex items-center justify-center gap-1.5 rounded-xl border border-[#283148] bg-[#141822] px-2 py-2.5 text-[10px] font-bold text-white sm:text-xs">
+              <Trophy className="h-3.5 w-3.5 text-amber-400" />个人传奇榜
             </button>
-
-            {/* Start New Career (If no active save) */}
-            {!hasActiveSave && (
-              <button
-                onClick={handleNewCareerClick}
-                className="w-full flex items-center justify-between px-6 py-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black transition-all shadow-xl shadow-amber-500/20 active:scale-[0.98] cursor-pointer text-base uppercase tracking-wider group"
-              >
-                <div className="flex items-center gap-3">
-                  <PlusCircle className="w-5 h-5 text-black group-hover:scale-110 transition-transform" />
-                  <span>开始全新生涯</span>
-                </div>
-                <ArrowRight className="w-5 h-5 opacity-70 group-hover:translate-x-1 transition-transform" />
-              </button>
-            )}
-
-            {/* New Player (If save already exists) */}
-            {hasActiveSave && (
-              <button
-                onClick={handleNewCareerClick}
-                className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl bg-[#141822] hover:bg-[#1f2636] border border-[#232a3a] hover:border-amber-500/50 text-white font-bold transition-all shadow-lg active:scale-[0.98] cursor-pointer text-sm group"
-              >
-                <div className="flex items-center gap-3">
-                  <PlusCircle className="w-4 h-4 text-amber-400 group-hover:rotate-90 transition-transform" />
-                  <span>新建球员</span>
-                </div>
-              </button>
-            )}
-
-            {/* Personal Hall of Fame */}
-            <button
-              onClick={onOpenHallOfFame}
-              className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl bg-[#141822] hover:bg-[#1f2636] border border-[#232a3a] hover:border-amber-500/50 text-white font-bold transition-all shadow-lg active:scale-[0.98] cursor-pointer text-sm group"
-            >
-              <div className="flex items-center gap-3">
-                <Trophy className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
-                <span>个人传奇榜</span>
-              </div>
+            <button type="button" onClick={onOpenGlobalHallOfFame || onOpenHallOfFame} className="flex items-center justify-center gap-1.5 rounded-xl border border-amber-500/30 bg-[#141822] px-2 py-2.5 text-[10px] font-bold text-amber-300 sm:text-xs">
+              <Globe className="h-3.5 w-3.5" />全网传奇榜
             </button>
-
-            {/* Global Hall of Fame */}
-            <button
-              onClick={onOpenGlobalHallOfFame || onOpenHallOfFame}
-              className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl bg-gradient-to-r from-[#171e2e] to-[#121724] hover:from-[#1e273b] hover:to-[#171e2e] border border-amber-500/30 hover:border-amber-400 text-amber-300 font-bold transition-all shadow-lg active:scale-[0.98] cursor-pointer text-sm group"
-            >
-              <div className="flex items-center gap-3">
-                <Globe className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
-                <span>全网传奇榜</span>
-              </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold uppercase tracking-wider">
-                GOAT Leaderboard
-              </span>
-            </button>
-
-            {/* User Feedback */}
-            <button
-              onClick={() => setIsFeedbackOpen(true)}
-              className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl bg-[#141822] hover:bg-[#1f2636] border border-[#232a3a] hover:border-sky-400/60 text-white font-bold transition-all shadow-lg active:scale-[0.98] cursor-pointer text-sm group"
-            >
-              <div className="flex items-center gap-3">
-                <MessageSquareText className="w-4 h-4 text-sky-400 group-hover:scale-110 transition-transform" />
-                <span>用户反馈</span>
-              </div>
-              <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-sky-300 uppercase tracking-wider">
-                Feedback
-              </span>
+            <button type="button" onClick={() => setIsFeedbackOpen(true)} className="flex items-center justify-center gap-1.5 rounded-xl border border-sky-500/30 bg-[#141822] px-2 py-2.5 text-[10px] font-bold text-sky-300 sm:text-xs">
+              <MessageSquareText className="h-3.5 w-3.5" />用户反馈
             </button>
           </div>
-          </>}
         </main>
 
-        {/* Bottom Footer Info */}
-        <footer className="relative z-10 w-full max-w-4xl flex flex-col sm:flex-row items-center justify-between gap-2 py-3 border-t border-[#1e2535] text-[11px] text-slate-500">
-          <div>
-            篮坛传奇：重返2008 · 提示：全过程自动本地快照，支持无网离线运行
-          </div>
-          <div className="flex items-center gap-4">
-            <span>{gameMode === 'classic' ? '2008 - 2025 年真实赛季模拟' : '平行联盟 · 独立存档空间'}</span>
-          </div>
+        <footer className="w-full max-w-4xl border-t border-[#1e2535] py-3 text-center text-[10px] text-slate-500 sm:text-[11px]">
+          两种模式均为单一存档，生涯进度与个人传奇记录完全独立
         </footer>
       </div>
-
-      {/* Overwrite Save Confirmation Modal */}
-      {showConfirmModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in zoom-in-95 duration-150">
-          <div className="bg-[#121620] border border-red-500/40 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl p-6 text-slate-200 text-left space-y-4">
-            <div className="flex items-center gap-3 text-red-400">
-              <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-6 h-6 text-red-400" />
-              </div>
-              <div>
-                <h3 className="text-base font-black text-white italic uppercase">⚠️ 覆盖旧存档确认</h3>
-                <span className="text-[10px] font-mono text-red-400">OVERWRITE CAREER SAVE</span>
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-300 leading-relaxed bg-[#181e2b] p-3.5 rounded-xl border border-[#263147]">
-              检测到您本地已有 篮坛传奇：重返2008 的生涯存档数据。新建球员将<strong className="text-amber-400 font-bold">覆盖并清空旧的存档记录</strong>。是否确认继续新建？
-            </p>
-
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                onClick={() => setShowConfirmModal(false)}
-                className="px-4 py-2 rounded-xl bg-[#202838] hover:bg-[#2b364c] text-slate-300 font-bold text-xs transition-all cursor-pointer"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleConfirmOverwrite}
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs transition-all shadow-lg shadow-red-600/30 active:scale-95 cursor-pointer"
-              >
-                确认覆盖并新建
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <UserFeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
       <UpdateAnnouncementModal isOpen={isAnnouncementOpen} onClose={() => setIsAnnouncementOpen(false)} />
