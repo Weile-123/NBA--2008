@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  AlertTriangle,
   ArrowRight,
   Bell,
   Flame,
@@ -7,6 +8,7 @@ import {
   Loader2,
   MessageSquareText,
   Play,
+  PlusCircle,
   Shuffle,
   Sparkles,
   Trophy,
@@ -21,7 +23,7 @@ import { UserFeedbackModal } from './UserFeedbackModal';
 
 interface HomeScreenProps {
   gameMode: GameMode;
-  onLaunchMode: (mode: GameMode, hasSave: boolean) => void;
+  onLaunchMode: (mode: GameMode, action: 'new' | 'continue') => void;
   onOpenHallOfFame: () => void;
   onOpenGlobalHallOfFame?: () => void;
 }
@@ -55,6 +57,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
   const [saveRevision, setSaveRevision] = useState(0);
   const [modeSavesReady, setModeSavesReady] = useState(false);
+  const [pendingNewMode, setPendingNewMode] = useState<GameMode | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -182,20 +185,32 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </div>
           )}
 
-          <button
-            type="button"
-            disabled={!modeSavesReady}
-            onClick={() => onLaunchMode(mode, hasSave)}
-            className={`flex w-full items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-[11px] font-black transition-transform active:scale-[0.98] disabled:cursor-wait disabled:opacity-50 sm:text-sm ${
-              isClassic
-                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black'
-                : 'bg-gradient-to-r from-cyan-400 to-cyan-500 text-slate-950'
-            }`}
-          >
-            {hasSave ? <Play className="h-3.5 w-3.5 fill-current sm:h-4 sm:w-4" /> : <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
-            <span>{hasSave ? '继续生涯' : `开启${isClassic ? '经典' : '新'}模式`}</span>
-            <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-          </button>
+          <div className={hasSave ? 'grid grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] gap-2' : ''}>
+            {hasSave && (
+              <button
+                type="button"
+                onClick={() => setPendingNewMode(mode)}
+                className="flex min-w-0 items-center justify-center gap-1 rounded-xl border border-slate-600/70 bg-slate-800/80 px-1.5 py-2.5 text-[9px] font-black text-slate-200 transition-transform active:scale-[0.98] sm:text-xs"
+              >
+                <PlusCircle className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
+                <span>重新开档</span>
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={!modeSavesReady}
+              onClick={() => onLaunchMode(mode, hasSave ? 'continue' : 'new')}
+              className={`flex min-w-0 w-full items-center justify-center gap-1 rounded-xl px-1.5 py-2.5 text-[10px] font-black transition-transform active:scale-[0.98] disabled:cursor-wait disabled:opacity-50 sm:text-sm ${
+                isClassic
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black'
+                  : 'bg-gradient-to-r from-cyan-400 to-cyan-500 text-slate-950'
+              }`}
+            >
+              {hasSave ? <Play className="h-3.5 w-3.5 shrink-0 fill-current sm:h-4 sm:w-4" /> : <Sparkles className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />}
+              <span>{hasSave ? '继续生涯' : `开启${isClassic ? '经典' : '新'}模式`}</span>
+              <ArrowRight className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
+            </button>
+          </div>
         </div>
       </article>
     );
@@ -284,6 +299,45 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           两种模式均为单一存档，生涯进度与个人传奇记录完全独立
         </footer>
       </div>
+
+      {pendingNewMode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+          <div className="w-full max-w-sm space-y-4 rounded-2xl border border-red-500/40 bg-[#121620] p-5 text-left text-slate-200 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-red-500/30 bg-red-500/10">
+                <AlertTriangle className="h-6 w-6 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-black italic text-white">覆盖旧存档确认</h3>
+                <span className="text-[10px] font-mono text-red-400">NEW CAREER</span>
+              </div>
+            </div>
+            <p className="rounded-xl border border-[#263147] bg-[#181e2b] p-3.5 text-xs leading-relaxed text-slate-300">
+              重新开启“{GAME_MODE_CONFIG[pendingNewMode].name}”将覆盖该模式当前生涯存档，另一模式的存档不会受到影响。是否继续？
+            </p>
+            <div className="flex justify-end gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setPendingNewMode(null)}
+                className="rounded-xl bg-[#202838] px-4 py-2 text-xs font-bold text-slate-300"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const targetMode = pendingNewMode;
+                  setPendingNewMode(null);
+                  onLaunchMode(targetMode, 'new');
+                }}
+                className="rounded-xl bg-red-600 px-4 py-2 text-xs font-black text-white shadow-lg shadow-red-600/30 active:scale-95"
+              >
+                确认覆盖并新建
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <UserFeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
       <UpdateAnnouncementModal isOpen={isAnnouncementOpen} onClose={() => setIsAnnouncementOpen(false)} />

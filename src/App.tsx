@@ -182,12 +182,12 @@ function CareerApp({
       {phase === 'home' && (
           <HomeScreen
             gameMode={gameMode}
-            onLaunchMode={(targetMode, hasSave) => {
+            onLaunchMode={(targetMode, action) => {
               if (targetMode !== gameMode) {
-                onSelectGameMode(targetMode, hasSave ? 'continue' : 'new');
+                onSelectGameMode(targetMode, action);
                 return;
               }
-              if (hasSave) {
+              if (action === 'continue') {
                 const saved = loadGameFromStorage('slot_1', targetMode);
                 if (saved?.player) handleLoadSaveData(saved);
                 else if (player) setPhase('regular_season');
