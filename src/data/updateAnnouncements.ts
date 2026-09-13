@@ -13,6 +13,7 @@ export interface UpdateAnnouncement {
   publishedAt: string;
   title: string;
   introduction: string[];
+  notice?: string;
   versions: UpdateVersion[];
 }
 
@@ -20,23 +21,33 @@ export interface UpdateAnnouncement {
 // include completed features, optimizations and bug fixes in concise wording.
 export const UPDATE_ANNOUNCEMENTS: UpdateAnnouncement[] = [
   {
-    id: '20260913-1518',
-    publishedAt: '2026-09-13 15:18',
+    id: '20260913-1827',
+    publishedAt: '2026-09-13 18:27',
     title: '第六次更新说明',
     introduction: [
       '所有玩家的反馈都已收到并查看，当前仍在持续修复问题并优化游戏体验。',
       '关于可选加入年代、新模式、随机交易、新增荣誉、难度调整、季后赛数据、奥运会、场外关系及更多剧情等建议，均已纳入后续更新的规划与评估。',
       '现阶段将优先维护并完善原有模式，待基础体验更加稳定后，再逐步推进新模式开发。感谢所有玩家的支持与理解！',
     ],
+    notice: '针对多位玩家反馈的“闪屏”“白屏”问题，当前版本已完成初步优化。如后续仍有类似情况，请及时通过反馈入口反馈。',
     versions: [
       {
         version: 'v6',
         sections: [
           {
-            title: '季后赛信息优化',
+            title: '季后赛功能优化',
             items: [
+              '季后赛新增“亲自上场”，比赛数据与常规赛采用同一套模拟逻辑。',
+              '优化季后赛操作按钮在小屏设备上的布局与视觉样式。',
+              '增加季后赛比赛重复结算保护，避免连续点击造成系列赛比分异常。',
               '季后赛页面新增上一场比赛比分及玩家数据统计。',
               '修复系列赛晋级后错误显示“已止步”的问题。',
+            ],
+          },
+          {
+            title: '属性特训优化',
+            items: [
+              '为18项球员属性补充实际作用说明，明确其影响的比赛数据与能力表现。',
             ],
           },
         ],

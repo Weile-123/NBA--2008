@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Team, PlayerProfile } from '../types';
+import { Team, PlayerProfile, MatchBoxScore } from '../types';
 import { getPersistentValue, hydratePersistentValues, removePersistentValue, setPersistentValue } from '../lib/persistentStorage';
 import { TeamLogo } from './TeamLogo';
 import { calculateMatchScores, getCompleteTeamRoster, calculateTeamPowerRating, getShortTeamName, simulatePlayerMatchStats } from '../utils/leagueLogic';
-import { Play, Pause, Trophy, Flame, ShieldAlert, ChevronRight, Sparkles, Crown, Award, Star, CheckCircle2 } from 'lucide-react';
+import { Play, Pause, Trophy, Flame, ShieldAlert, ChevronRight, Sparkles, Crown, Award, Star, CheckCircle2, Gamepad2 } from 'lucide-react';
 import { gameConfetti as confetti } from '../utils/gameConfetti';
+import { getUserPlayoffStatus, settleInteractivePlayoffGame } from '../utils/playoffMatch';
+
+const MatchSimulator = React.lazy(() =>
+  import('./MatchSimulator').then((module) => ({ default: module.MatchSimulator }))
+);
 
 export interface PlayoffSeries {
   id: string;
@@ -56,7 +61,6 @@ interface PlayoffPanelProps {
   teams: Team[];
   player: PlayerProfile;
   currentYear: number;
-  onStartInteractiveMatch: () => void;
   onUpdatePlayer?: (player: PlayerProfile) => void;
   onFinishPlayoffs: (championTeam: Team, fmvpName?: string) => void;
 }
@@ -66,7 +70,6 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
   teams,
   player,
   currentYear,
-  onStartInteractiveMatch,
   onUpdatePlayer,
   onFinishPlayoffs,
 }) => {
@@ -84,9 +87,11 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
     return saved ? saved.champion : null;
   });
   const [showHonorsModal, setShowHonorsModal] = useState(false);
+  const [interactiveSeriesId, setInteractiveSeriesId] = useState<string | null>(null);
 
   const autoSimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const honorsFrameRef = useRef<number | null>(null);
+  const interactiveFinishHandledRef = useRef(false);
   const treeContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -180,16 +185,15 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
   const userSeriesList = seriesList.filter(
     (s) => s.teamA.id === userTeam.id || s.teamB.id === userTeam.id
   );
-  const userMadePlayoffs = userSeriesList.length > 0;
+  const userPlayoffStatus = getUserPlayoffStatus(seriesList, userTeam.id);
+  const userMadePlayoffs = userPlayoffStatus.madePlayoffs;
   const activeUserSeries = seriesList.find(
     (s) => s.round === currentRound && !s.winnerId && (s.teamA.id === userTeam.id || s.teamB.id === userTeam.id)
   );
   const latestUserSeries = [...userSeriesList].sort((a, b) => b.round - a.round)[0];
   const displayedUserSeries = activeUserSeries ?? latestUserSeries;
-  const userWasEliminated = userSeriesList.some(
-    (series) => !!series.winnerId && series.winnerId !== userTeam.id
-  );
-  const isUserAliveInPlayoffs = userMadePlayoffs && !userWasEliminated;
+  const userWasEliminated = userPlayoffStatus.wasEliminated;
+  const isUserAliveInPlayoffs = userPlayoffStatus.isAlive;
   const activeUserWins = displayedUserSeries
     ? displayedUserSeries.teamA.id === userTeam.id
       ? displayedUserSeries.winsA
@@ -504,6 +508,58 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
     setIsAutoSimulating((prev) => !prev);
   };
 
+  const startInteractivePlayoffGame = () => {
+    if (!activeUserSeries) return;
+    if (autoSimTimerRef.current) {
+      clearTimeout(autoSimTimerRef.current);
+      autoSimTimerRef.current = null;
+    }
+    setIsAutoSimulating(false);
+    interactiveFinishHandledRef.current = false;
+    setInteractiveSeriesId(activeUserSeries.id);
+  };
+
+  const finishInteractivePlayoffGame = (boxScore: MatchBoxScore) => {
+    const targetSeriesId = interactiveSeriesId;
+    if (!targetSeriesId || interactiveFinishHandledRef.current) return;
+    interactiveFinishHandledRef.current = true;
+
+    setSeriesList((prevList) => {
+      const targetSeries = prevList.find(
+        (series) => series.id === targetSeriesId && series.round === currentRound && !series.winnerId
+      );
+      if (!targetSeries) return prevList;
+
+      const nextList = [...prevList];
+      const activeCurrentRoundSeries = prevList.filter(
+        (series) => series.round === currentRound && !series.winnerId
+      );
+
+      for (const series of activeCurrentRoundSeries) {
+        const idx = nextList.findIndex((item) => item.id === series.id);
+        if (idx === -1) continue;
+
+        if (series.id !== targetSeriesId) {
+          const result = simulateNextSeriesGame(series);
+          nextList[idx] = {
+            ...nextList[idx],
+            winsA: result.winsA,
+            winsB: result.winsB,
+            winnerId: result.winnerId,
+            lastUserGame: result.lastUserGame ?? nextList[idx].lastUserGame,
+          };
+          continue;
+        }
+
+        nextList[idx] = settleInteractivePlayoffGame(series, userTeam.id, boxScore);
+      }
+
+      return nextList;
+    });
+
+    setInteractiveSeriesId(null);
+  };
+
   const getRoundLabel = (r: number) => {
     switch (r) {
       case 1:
@@ -721,14 +777,14 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
+          <div className={`items-stretch gap-2 sm:gap-3 w-full ${activeUserSeries && !champion ? 'grid grid-cols-2 sm:grid-cols-3' : 'flex justify-end'}`}>
             {!champion ? (
               <>
                 {/* Play/Pause Auto-Simulation Button */}
                 <button
                   type="button"
                   onClick={toggleAutoSim}
-                  className={`flex-1 sm:flex-none justify-center px-3.5 sm:px-5 py-2 sm:py-2.5 font-black italic rounded-xl transition-all flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs uppercase tracking-tight shadow-lg ${
+                  className={`order-1 min-w-0 flex-1 justify-center px-3.5 sm:px-5 py-2 sm:py-2.5 font-black italic rounded-xl transition-all flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs uppercase tracking-tight shadow-lg ${
                     isAutoSimulating
                       ? 'bg-rose-500 hover:bg-rose-400 text-white shadow-rose-500/20 animate-pulse'
                       : 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-emerald-500/20'
@@ -745,11 +801,22 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
                   )}
                 </button>
 
+                {activeUserSeries && (
+                  <button
+                    type="button"
+                    onClick={startInteractivePlayoffGame}
+                    className="order-3 col-span-2 sm:order-2 sm:col-span-1 min-w-0 justify-center px-3 sm:px-5 py-2 sm:py-2.5 bg-[#171b24] hover:bg-amber-500/10 text-amber-300 border border-amber-500/45 font-black italic rounded-xl transition-all flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs uppercase tracking-tight shadow-md cursor-pointer"
+                  >
+                    <Gamepad2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                    <span className="truncate">亲自上场</span>
+                  </button>
+                )}
+
                 {/* Simulate Entire Round Button */}
                 <button
                   type="button"
                   onClick={simulateWholeRound}
-                  className="flex-1 sm:flex-none justify-center px-3.5 sm:px-5 py-2 sm:py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black italic rounded-xl transition-all flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs uppercase tracking-tight shadow-lg shadow-amber-500/20 cursor-pointer"
+                  className="order-2 sm:order-3 min-w-0 flex-1 justify-center px-3.5 sm:px-5 py-2 sm:py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black italic rounded-xl transition-all flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs uppercase tracking-tight shadow-lg shadow-amber-500/20 cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-black fill-current shrink-0" />
                   模拟本轮
@@ -823,6 +890,29 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
           </div>
         )}
       </div>
+
+      {interactiveSeriesId && (() => {
+        const series = seriesList.find((item) => item.id === interactiveSeriesId && !item.winnerId);
+        if (!series) return null;
+        const opponent = series.teamA.id === userTeam.id ? series.teamB : series.teamA;
+        return (
+          <React.Suspense fallback={(
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#070913] text-sm font-black text-amber-300">
+              正在进入季后赛赛场…
+            </div>
+          )}>
+            <MatchSimulator
+              player={player}
+              userTeam={userTeam}
+              oppTeam={opponent}
+              isInteractive={true}
+              isPlayoffs={true}
+              currentYear={currentYear}
+              onFinishMatch={finishInteractivePlayoffGame}
+            />
+          </React.Suspense>
+        );
+      })()}
 
       {/* Champion Banner if crowned */}
       {champion && (

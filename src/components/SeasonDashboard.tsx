@@ -297,7 +297,6 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
         teams={teams}
         player={player}
         currentYear={currentYear}
-        onStartInteractiveMatch={() => onStartMatch(true)}
         onUpdatePlayer={onUpdatePlayer}
         onFinishPlayoffs={(championTeam, fmvpName) => {
           if (onEnterOffseason) {
