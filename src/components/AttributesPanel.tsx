@@ -39,24 +39,24 @@ interface AttrItem {
 }
 
 const attrList: AttrItem[] = [
-  { key: 'midRange', label: '中投', desc: '提升中距离跳投与急停投篮命中率', icon: '🎯', category: 'shooting' },
-  { key: 'threePoint', label: '三分', desc: '提升空位三分与后撤步远投命中率', icon: '🏹', category: 'shooting' },
-  { key: 'freeThrow', label: '罚球', desc: '关键时刻罚球稳定度', icon: '🏀', category: 'shooting' },
-  { key: 'layup', label: '上篮', desc: '突破抗对抗上篮与拉杆抛投', icon: '👟', category: 'finishing' },
-  { key: 'dunk', label: '扣篮', desc: '快攻反击与隔人暴扣震撼度', icon: '💥', category: 'finishing' },
-  { key: 'insideFinish', label: '终结', desc: '篮下禁区近距离得分与上篮巧劲', icon: '🧱', category: 'finishing' },
-  { key: 'postMove', label: '背身', desc: '低位背身勾手、后仰跳投与晃步脚步', icon: '🏛️', category: 'finishing' },
-  { key: 'ballHandle', label: '控球', desc: '减少被剥夺球，提升变向破防', icon: '💫', category: 'playmaking' },
-  { key: 'passing', label: '传球', desc: '提升传球视野与战术助攻精准度', icon: '🧠', category: 'playmaking' },
-  { key: 'perimeterDef', label: '外防', desc: '贴身死锁对位对手与干扰投篮', icon: '🛡️', category: 'defense' },
-  { key: 'interiorDef', label: '内防', desc: '禁区死锁顶防、干扰篮下强攻与护框', icon: '🏰', category: 'defense' },
-  { key: 'block', label: '盖帽', desc: '协防飞天排球大帽与护框起跳', icon: '🛑', category: 'defense' },
-  { key: 'steal', label: '抢断', desc: '拦截传球线路与预判剥球', icon: '⚡', category: 'defense' },
-  { key: 'rebounding', label: '篮板', desc: '拼抢进攻/防守篮板与卡位控制落点', icon: '🎯', category: 'defense' },
-  { key: 'speed', label: '速度', desc: '快攻冲刺与防守端回追爆发力', icon: '🏃', category: 'physicals' },
-  { key: 'vertical', label: '弹跳', desc: '垂直起跳高度、隔人暴扣与滞空争抢', icon: '🚀', category: 'physicals' },
-  { key: 'strength', label: '力量', desc: '卡位篮板、背身顶防与身体对抗', icon: '💪', category: 'physicals' },
-  { key: 'stamina', label: '耐力', desc: '降低每场比赛后的伤病概率', icon: '🫀', category: 'physicals' },
+  { key: 'midRange', label: '中投', desc: '影响得分能力、两分命中率和中投战术成功率', icon: '🎯', category: 'shooting' },
+  { key: 'threePoint', label: '三分', desc: '影响三分出手数、三分命中率和得分能力', icon: '🏹', category: 'shooting' },
+  { key: 'freeThrow', label: '罚球', desc: '影响罚球命中率、造罚球次数和总得分能力', icon: '🏀', category: 'shooting' },
+  { key: 'layup', label: '上篮', desc: '影响篮下命中率、得分、造罚球和突破战术', icon: '👟', category: 'finishing' },
+  { key: 'dunk', label: '扣篮', desc: '影响篮下命中率、得分能力和造罚球次数', icon: '💥', category: 'finishing' },
+  { key: 'insideFinish', label: '终结', desc: '影响篮下命中率、得分、造罚球和内线强攻', icon: '🧱', category: 'finishing' },
+  { key: 'postMove', label: '背身', desc: '影响两分命中率、得分、造罚球和背身战术', icon: '🏛️', category: 'finishing' },
+  { key: 'ballHandle', label: '控球', desc: '影响助攻能力、失误数和持球战术成功率', icon: '💫', category: 'playmaking' },
+  { key: 'passing', label: '传球', desc: '主要影响助攻数，同时降低传球与控球失误', icon: '🧠', category: 'playmaking' },
+  { key: 'perimeterDef', label: '外防', desc: '影响抢断能力、外线防守战术和DPOY评选', icon: '🛡️', category: 'defense' },
+  { key: 'interiorDef', label: '内防', desc: '影响盖帽能力、护筐战术和DPOY评选', icon: '🏰', category: 'defense' },
+  { key: 'block', label: '盖帽', desc: '主要影响盖帽数和护筐、防守战术成功率', icon: '🛑', category: 'defense' },
+  { key: 'steal', label: '抢断', desc: '主要影响抢断数和抢断战术成功率', icon: '⚡', category: 'defense' },
+  { key: 'rebounding', label: '篮板', desc: '主要影响篮板数和篮板争抢战术成功率', icon: '🎯', category: 'defense' },
+  { key: 'speed', label: '速度', desc: '影响抢断能力及突破、快攻和协防战术', icon: '🏃', category: 'physicals' },
+  { key: 'vertical', label: '弹跳', desc: '影响篮板、盖帽及扣篮、护筐等内线战术', icon: '🚀', category: 'physicals' },
+  { key: 'strength', label: '力量', desc: '影响篮板及强攻、背身、卡位战术成功率', icon: '💪', category: 'physicals' },
+  { key: 'stamina', label: '耐力', desc: '决定赛季伤病概率，并计入球员综合评分', icon: '🫀', category: 'physicals' },
 ];
 
 export const AttributesPanel: React.FC<AttributesPanelProps> = ({
@@ -275,7 +275,7 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
                     <span className="text-sm sm:text-base shrink-0">{icon}</span>
                     <span className="text-xs sm:text-xs font-bold text-white uppercase truncate">{label}</span>
                   </div>
-                  <p className="text-[10px] sm:text-[11px] text-slate-400 line-clamp-1 hidden sm:block">{desc}</p>
+                  <p className="text-[10px] sm:text-[11px] leading-snug text-slate-400 line-clamp-2">{desc}</p>
 
                   {/* Dual-color Progress bar (Base in amber, Boost in emerald) */}
                   <div className="w-full max-w-[200px] sm:max-w-xs bg-[#0d1017] h-1.5 sm:h-2 rounded-full overflow-hidden mt-1 border border-[#232834] relative flex">

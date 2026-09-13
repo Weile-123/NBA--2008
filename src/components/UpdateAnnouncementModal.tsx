@@ -1,4 +1,4 @@
-import { Bell, CalendarClock, X } from 'lucide-react';
+import { Bell, CalendarClock, MonitorCheck, X } from 'lucide-react';
 import React from 'react';
 import { UPDATE_ANNOUNCEMENTS } from '../data/updateAnnouncements';
 
@@ -65,6 +65,12 @@ export const UpdateAnnouncementModal: React.FC<UpdateAnnouncementModalProps> = (
                     {paragraph}
                   </p>
                 ))}
+                {announcement.notice && (
+                  <div className="flex gap-2 rounded-lg border border-amber-400/45 bg-amber-500/10 px-3 py-2.5 text-xs font-bold leading-relaxed text-amber-100 shadow-[0_0_18px_rgba(245,158,11,0.08)] sm:text-sm">
+                    <MonitorCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                    <p>{announcement.notice}</p>
+                  </div>
+                )}
               </div>
 
               <div className="mt-4 space-y-4">
