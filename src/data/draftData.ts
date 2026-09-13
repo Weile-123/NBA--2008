@@ -2,6 +2,7 @@ import { Position } from '../types';
 import { DRAFTS_2011_TO_2015 } from './drafts/draft2011_2015';
 import { DRAFTS_2016_TO_2020 } from './drafts/draft2016_2020';
 import { DRAFTS_2021_TO_2025 } from './drafts/draft2021_2025';
+import { DRAFTS_2026 } from './drafts/draft2026';
 
 export interface DraftPickItem {
   pick: number;
@@ -193,6 +194,7 @@ export const HISTORICAL_DRAFTS: Record<number, YearDraftData> = {
   ...DRAFTS_2011_TO_2015,
   ...DRAFTS_2016_TO_2020,
   ...DRAFTS_2021_TO_2025,
+  ...DRAFTS_2026,
 };
 
 /**

@@ -21,9 +21,9 @@ export interface UpdateAnnouncement {
 // include completed features, optimizations and bug fixes in concise wording.
 export const UPDATE_ANNOUNCEMENTS: UpdateAnnouncement[] = [
   {
-    id: '20260913-1827',
-    publishedAt: '2026-09-13 18:27',
-    title: '第六次更新说明',
+    id: '20260913-2240',
+    publishedAt: '2026-09-13 22:40',
+    title: '第七次更新说明',
     introduction: [
       '所有玩家的反馈都已收到并查看，当前仍在持续修复问题并优化游戏体验。',
       '关于可选加入年代、新模式、随机交易、新增荣誉、难度调整、季后赛数据、奥运会、场外关系及更多剧情等建议，均已纳入后续更新的规划与评估。',
@@ -31,6 +31,30 @@ export const UPDATE_ANNOUNCEMENTS: UpdateAnnouncement[] = [
     ],
     notice: '针对多位玩家反馈的“闪屏”“白屏”问题，当前版本已完成初步优化。如后续仍有类似情况，请及时通过反馈入口反馈。',
     versions: [
+      {
+        version: 'v7',
+        sections: [
+          {
+            title: '新秀与属性修复',
+            items: [
+              '补充2026年新秀名单，并为后续赛季生成更丰富的本地新秀名单。',
+              '修复后期最佳新秀错误重复显示现役球员的问题。',
+              '修复老将达到综评上限后，重置属性无法重新分配的问题。',
+              '移动端属性页补充老将综评上限提示。',
+            ],
+          },
+          {
+            title: '稳定性与退役流程',
+            items: [
+              '优化页面切换与赛季交接的加载流程，降低部分设备闪屏风险。',
+              '修复休赛期年龄提示重复弹出及正式退役后提示框未关闭的问题。',
+              '修复43岁进入下赛季时跳过强制退役提示及荣誉弹窗重叠的问题。',
+              '修复不同生涯可能误读旧季后赛冠军结果的问题。',
+              '修复移动端点击“更多”可能误触返回主页的问题。',
+            ],
+          },
+        ],
+      },
       {
         version: 'v6',
         sections: [

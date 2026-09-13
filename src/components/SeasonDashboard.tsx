@@ -9,6 +9,7 @@ import { PlayoffPanel } from './PlayoffPanel';
 import { SeasonSummaryModal } from './SeasonSummaryModal';
 import { OffseasonDashboard } from './OffseasonDashboard';
 import { STOP_AUTO_SIM_EVENT } from '../utils/gameEvents';
+import { mustRetireAtAge } from '../utils/calc2k';
 import type { SeasonAwards } from '../utils/awardsLogic';
 
 // The heavy 82-card ticker is replaced by a compact progress view while this
@@ -190,6 +191,14 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
       return;
     }
 
+    // When a player reaches the mandatory retirement age, the regular-season
+    // screen is only used as the backdrop for the retirement notice. The
+    // previous season's completed schedule must not reopen its awards modal.
+    if (mustRetireAtAge(player.age)) {
+      setShowSeasonSummaryModal(false);
+      return;
+    }
+
     const playedCount = schedule.filter((s) => s.isPlayed).length;
     const isSeasonFinished = playedCount >= 82;
     if (isSeasonFinished && !isPlayoffs) {
@@ -213,7 +222,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
         seasonSummaryFrameRef.current = null;
       }
     };
-  }, [schedule, isPlayoffs, phase]);
+  }, [schedule, isPlayoffs, phase, player.age]);
 
   const toggleAutoSim = () => {
     setIsAutoSimulating((prev) => {

@@ -311,7 +311,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* 5. 更多 (抽屉入口) */}
           <button
-            onPointerDown={() => setIsMoreMenuOpen(true)}
+            type="button"
             onClick={() => setIsMoreMenuOpen(true)}
             className={`relative flex min-h-12 flex-col items-center justify-center py-2 px-1 rounded-lg transition-all cursor-pointer ${
               isMoreMenuOpen || ['timeline', 'milestones', 'hof', 'attributes'].includes(activeTab)

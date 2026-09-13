@@ -89,6 +89,8 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
   const baseOvr = getPlayerBaseOvr(player);
   const maxOvr = 99 - agePenalty;
   const isOvrAtCap = baseOvr >= maxOvr;
+  const redistributionPoints = Math.max(0, player.attributeRedistributionPoints || 0);
+  const canRedistributeAtOvrCap = redistributionPoints > 0;
 
   // Filter attributes list
   const filteredAttrs = attrList.filter((item) => {
@@ -102,7 +104,7 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
     // 2. Upgradable / Capped filter
     const baseVal = attributes[item.key] || 50;
     const cap = attributeCaps && attributeCaps[item.key] ? attributeCaps[item.key] : 99;
-    const isAtCap = baseVal >= cap || isOvrAtCap;
+    const isAtCap = baseVal >= cap || (isOvrAtCap && !canRedistributeAtOvrCap);
 
     if (filterType === 'upgradable' && isAtCap) return false;
     if (filterType === 'capped' && !isAtCap) return false;
@@ -113,9 +115,9 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
   const handleAddFive = (key: keyof Attributes) => {
     const currentVal = attributes[key] || 50;
     const cap = attributeCaps && attributeCaps[key] ? attributeCaps[key] : 99;
-    if (currentVal >= cap || skillPoints <= 0 || isOvrAtCap) return;
+    if (currentVal >= cap || skillPoints <= 0 || (isOvrAtCap && !canRedistributeAtOvrCap)) return;
 
-    const pointsToAdd = Math.min(5, cap - currentVal, skillPoints);
+    const pointsToAdd = Math.min(5, cap - currentVal, skillPoints, isOvrAtCap ? redistributionPoints : Number.POSITIVE_INFINITY);
     onUpgradeAttribute(key, pointsToAdd);
   };
 
@@ -128,6 +130,7 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
           <div className="bg-[#11141b] border border-[#232834] px-3 py-1 rounded-xl select-none shadow-inner flex flex-col justify-center shrink-0">
             <span className="text-[9px] text-slate-400 font-bold leading-tight">可分配属性点</span>
             <span className="text-base font-black text-amber-400 font-mono italic leading-tight">{skillPoints}</span>
+            {redistributionPoints > 0 && <span className="text-[8px] text-cyan-300">含 {redistributionPoints} 点可重分配</span>}
           </div>
 
         </div>
@@ -150,6 +153,12 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
       <p className="sm:hidden text-[10px] text-slate-500 px-1">
         未使用的属性点将计入 GOAT 分数统计
       </p>
+      {agePenalty > 0 && (
+        <div className="sm:hidden flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-2 text-[10px] font-bold text-rose-300">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <span>老将效应：当前总评封顶上限 {maxOvr}</span>
+        </div>
+      )}
 
       {/* Overview Banner Header */}
       <div className="bg-[#11141b] border border-[#232834] rounded-2xl p-3 sm:p-5 shadow-xl space-y-3 sm:space-y-4 hidden sm:flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -196,6 +205,7 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
             <div className="bg-[#0d1017] border border-[#232834] px-4 py-1.5 sm:py-2 rounded-xl text-center select-none shadow-inner min-w-[120px]">
               <span className="text-[9px] text-slate-500 uppercase tracking-wider block font-bold">可分配属性点</span>
               <span className="text-xl sm:text-2xl font-black text-amber-400 font-mono italic">{skillPoints}</span>
+              {redistributionPoints > 0 && <span className="text-[9px] text-cyan-300 block">其中 {redistributionPoints} 点可重新分配</span>}
               <span className="text-[9px] text-slate-500 block mt-0.5 whitespace-nowrap">未使用的属性点将计入 GOAT 分数统计</span>
             </div>
 
@@ -227,7 +237,7 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
           {filteredAttrs.map(({ key, label, desc, icon }) => {
             const baseVal = attributes[key] || 50;
             const cap = attributeCaps && attributeCaps[key] ? attributeCaps[key] : 99;
-            const isAtCap = baseVal >= cap || isOvrAtCap;
+            const isAtCap = baseVal >= cap || (isOvrAtCap && !canRedistributeAtOvrCap);
 
             // Build local list of boosts for this attribute
             const boostList: { source: string; val: number; type: 'endorsement' | 'asset' | 'shoe' }[] = [];

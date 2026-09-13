@@ -5,6 +5,7 @@ import { Award, CheckCircle2, ChevronRight, Sparkles } from 'lucide-react';
 import { TeamLogo } from './TeamLogo';
 import { getHistoricalDraftData, YearDraftData } from '../data/draftData';
 import { applyDraftRookiesToTeams } from '../utils/draftLogic';
+import { generateParallelDraftData } from '../utils/randomDraftLogic';
 
 interface DraftNightModalProps {
   player: PlayerProfile;
@@ -14,6 +15,17 @@ interface DraftNightModalProps {
   onComplete: (updatedTeams?: Team[], teamId?: string, pick?: number, selectedJerseyNum?: number) => void;
 }
 
+function createStableDraftRandom(year: number): () => number {
+  let value = (year * 2654435761) >>> 0;
+  return () => {
+    value = (value + 0x6d2b79f5) >>> 0;
+    let mixed = value;
+    mixed = Math.imul(mixed ^ (mixed >>> 15), mixed | 1);
+    mixed ^= mixed + Math.imul(mixed ^ (mixed >>> 7), mixed | 61);
+    return ((mixed ^ (mixed >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 export const DraftNightModal: React.FC<DraftNightModalProps> = ({
   player,
   teams,
@@ -21,7 +33,11 @@ export const DraftNightModal: React.FC<DraftNightModalProps> = ({
   onComplete,
 }) => {
   // Fetch real historical draft data for current year
-  const draftData: YearDraftData | null = getHistoricalDraftData(currentYear);
+  const draftData: YearDraftData | null = React.useMemo(
+    () => getHistoricalDraftData(currentYear)
+      || (currentYear > 2026 ? generateParallelDraftData(teams, currentYear, createStableDraftRandom(currentYear)) : null),
+    [currentYear, teams],
+  );
 
   // Target team
   const targetTeamId = player.favoriteTeamId || player.currentTeamId || 'lal';
@@ -40,7 +56,7 @@ export const DraftNightModal: React.FC<DraftNightModalProps> = ({
   // Handler to finalize draft night and apply rookies to all 30 teams
   const handleFinalizeDraft = () => {
     // Apply rookies to teams and satisfy 15-man roster constraint
-    const updatedTeams = applyDraftRookiesToTeams(teams, currentYear, player);
+    const updatedTeams = applyDraftRookiesToTeams(teams, currentYear, player, draftData);
 
     try {
       confetti({ particleCount: 100, spread: 90, origin: { y: 0.5 } });

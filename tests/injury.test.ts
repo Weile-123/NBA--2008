@@ -6,6 +6,7 @@ import {
   evaluatePostGameHealth,
   MAX_CAREER_AGE,
   mustRetireAtAge,
+  shouldShowAgeDeclinePrompt,
 } from '../src/utils/calc2k';
 
 function sequenceRandom(values: number[]) {
@@ -87,4 +88,11 @@ test('career retirement becomes mandatory at age 43', () => {
   assert.equal(mustRetireAtAge(42), false);
   assert.equal(mustRetireAtAge(43), true);
   assert.equal(mustRetireAtAge(62), true);
+});
+
+test('age decline prompt stays out of offseason and pending season transitions', () => {
+  assert.equal(shouldShowAgeDeclinePrompt(false, 42, 2028, 2027), false);
+  assert.equal(shouldShowAgeDeclinePrompt(true, 42, 2028, 2027, true), false);
+  assert.equal(shouldShowAgeDeclinePrompt(true, 42, 2028, 2027), true);
+  assert.equal(shouldShowAgeDeclinePrompt(true, 43, 2028, 2028), true);
 });

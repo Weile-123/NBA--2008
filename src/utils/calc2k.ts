@@ -38,6 +38,17 @@ export function mustRetireAtAge(age: number | null | undefined): boolean {
   return Number(age) >= MAX_CAREER_AGE;
 }
 
+export function shouldShowAgeDeclinePrompt(
+  isRegularSeason: boolean,
+  age: number | null | undefined,
+  currentYear: number,
+  declinePromptYear: number | null,
+  isLeavingSeason = false,
+): boolean {
+  if (!isRegularSeason || isLeavingSeason || Number(age) < 38) return false;
+  return mustRetireAtAge(age) || declinePromptYear !== currentYear;
+}
+
 const PHYSICAL_ATTRS: (keyof Attributes)[] = ['speed', 'vertical', 'stamina', 'layup', 'dunk', 'insideFinish'];
 const DEFENSIVE_ATTRS: (keyof Attributes)[] = ['perimeterDef', 'interiorDef', 'steal', 'block', 'strength', 'rebounding'];
 const SKILL_ATTRS: (keyof Attributes)[] = ['ballHandle', 'passing', 'threePoint', 'midRange', 'freeThrow', 'postMove'];

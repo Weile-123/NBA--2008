@@ -127,7 +127,8 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
 
   // Check if current year has draft data
   const currentYearDraftData = getHistoricalDraftData(currentYear);
-  const hasDraftForCurrentYear = !!(currentYearDraftData && currentYearDraftData.draftPicks && currentYearDraftData.draftPicks.length > 0);
+  const hasDraftForCurrentYear = currentYear > 2026
+    || !!(currentYearDraftData && currentYearDraftData.draftPicks && currentYearDraftData.draftPicks.length > 0);
 
   // Use state setter wrappers to update parent persistent state
   const setOffseasonPhase = (p: 'draft' | 'contract' | 'training') => onSetOffseasonPhase?.(p);

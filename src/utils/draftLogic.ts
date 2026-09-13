@@ -58,9 +58,11 @@ export function calculateUserDraftPick(ovr: number): number {
 export function applyDraftRookiesToTeams(
   teams: Team[],
   year: number,
-  userPlayer: PlayerProfile | null
+  userPlayer: PlayerProfile | null,
+  providedDraftData?: ReturnType<typeof getHistoricalDraftData>,
 ): Team[] {
-  const draftData = getHistoricalDraftData(year);
+  const draftData = providedDraftData || getHistoricalDraftData(year);
+  if (!draftData?.draftPicks?.length) return teams;
   const picks: DraftPickItem[] = draftData.draftPicks;
 
   // Clone teams array
