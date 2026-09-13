@@ -1,5 +1,6 @@
 import { Team, RosterPlayer, PlayerProfile } from '../types';
 import { syncPlayerAgeDecay } from './calc2k';
+import { calculateTeamPowerRating } from './leagueLogic';
 
 export interface SuperstarAgingConfig {
   slowDeclineRate: number; // Annual OVR decline rate past peak
@@ -214,16 +215,11 @@ export function progressLeagueForNewSeason(
       else p.role = '饮水机守门员';
     });
 
-    // Calculate team average OVR
-    const top10Avg = Math.round(
-      newRoster.slice(0, 10).reduce((sum, p) => sum + p.ovr, 0) / 10
-    );
-
-    return {
+    const updatedTeam = {
       ...team,
-      rating: top10Avg,
       roster: newRoster,
     };
+    return { ...updatedTeam, rating: calculateTeamPowerRating(updatedTeam) };
   });
 
   return {

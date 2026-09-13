@@ -1,5 +1,6 @@
 import { Team, RosterPlayer, PlayerProfile, Position } from '../types';
 import { getHistoricalDraftData, DraftPickItem, YearDraftData } from '../data/draftData';
+import { calculateTeamPowerRating } from './leagueLogic';
 
 /**
  * Dynamically calculates realistic user draft pick based on player overall rating (OVR).
@@ -81,8 +82,8 @@ export function applyDraftRookiesToTeams(
     const isUserPlayer = userPlayer && (userPlayer.name === p.name || p.id === userPlayer.id);
     if (isUserPlayer) continue; // User player managed separately
 
-    const alreadyInRoster = team.roster.some((m) => m.name === p.name);
-    if (alreadyInRoster) continue;
+    const alreadyInLeague = updatedTeams.some((candidate) => candidate.roster.some((m) => m.name === p.name || m.id === `rookie_${year}_${p.name}`));
+    if (alreadyInLeague) continue;
 
     // Create rookie player object
     const rookieRosterPlayer: RosterPlayer = {
@@ -135,11 +136,7 @@ export function applyDraftRookiesToTeams(
       else m.role = '饮水机守门员';
     });
 
-    // Recalculate top 10 team average rating
-    const top10Avg = Math.round(
-      team.roster.slice(0, 10).reduce((sum, m) => sum + m.ovr, 0) / Math.min(10, team.roster.length)
-    );
-    team.rating = top10Avg;
+    team.rating = calculateTeamPowerRating(team);
   }
 
   return updatedTeams;

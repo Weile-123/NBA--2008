@@ -8,6 +8,7 @@ const STRATEGY_LABELS: Record<TeamStrategy, string> = {
 };
 
 const STRATEGY_ORDER: TeamStrategy[] = ['rebuilding', 'retooling', 'playoff', 'contender'];
+const MIN_STRATEGY_TENURE = 3;
 
 function strategyForRank(index: number, total: number): TeamStrategy {
   const percentile = index / Math.max(1, total);
@@ -25,10 +26,10 @@ function stepToward(previous: TeamStrategy | undefined, target: TeamStrategy): T
   return STRATEGY_ORDER[from + Math.sign(to - from)];
 }
 
-function withGuaranteedExtremes(teams: Team[]): Team[] {
+function withGuaranteedExtremes(teams: Team[], year: number): Team[] {
   const result = teams.map((team) => ({ ...team }));
-  if (!result.some((team) => team.strategy === 'contender')) result[0].strategy = 'contender';
-  if (!result.some((team) => team.strategy === 'rebuilding')) result[result.length - 1].strategy = 'rebuilding';
+  if (!result.some((team) => team.strategy === 'contender')) result[0] = { ...result[0], strategy: 'contender', strategySinceYear: year };
+  if (!result.some((team) => team.strategy === 'rebuilding')) result[result.length - 1] = { ...result[result.length - 1], strategy: 'rebuilding', strategySinceYear: year };
   return result;
 }
 
@@ -63,10 +64,13 @@ export function evaluateTeamStrategies(teams: Team[], nextSeasonYear: number): T
   const sorted = [...scored].sort((a, b) => b.score - a.score);
   const targetById = new Map(sorted.map((item, index) => [item.team.id, strategyForRank(index, sorted.length)]));
   const updated = sorted.map(({ team, score }) => {
-    const strategy = stepToward(team.strategy, targetById.get(team.id) || 'retooling');
+    const tenure = nextSeasonYear - (team.strategySinceYear ?? (nextSeasonYear - MIN_STRATEGY_TENURE));
+    const strategy = team.strategy && tenure < MIN_STRATEGY_TENURE
+      ? team.strategy
+      : stepToward(team.strategy, targetById.get(team.id) || 'retooling');
     return { ...team, strategy, strategyScore: score, strategySinceYear: team.strategy === strategy ? (team.strategySinceYear || nextSeasonYear) : nextSeasonYear, strategyUpdatedYear: nextSeasonYear, strategyModelVersion: 2, previousSeasonWins: team.wins, previousSeasonRating: team.rating };
   });
-  const guaranteed = withGuaranteedExtremes(updated);
+  const guaranteed = withGuaranteedExtremes(updated, nextSeasonYear);
   const byId = new Map(guaranteed.map((team) => [team.id, team]));
   return teams.map((team) => byId.get(team.id) || team);
 }

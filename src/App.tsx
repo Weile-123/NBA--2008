@@ -185,7 +185,6 @@ function CareerApp({
       {/* Title / Home Screen Phase */}
       {phase === 'home' && (
           <HomeScreen
-            gameMode={gameMode}
             onLaunchMode={(targetMode, action) => {
               if (targetMode !== gameMode) {
                 onSelectGameMode(targetMode, action);
@@ -463,7 +462,7 @@ function CareerApp({
       )}
 
       {/* Age 38+ Physical Decline Choice Modal */}
-      {showAgeDeclineModal && player && (
+      {phase === 'regular_season' && showAgeDeclineModal && player && (
         <AgeDeclineModal
           player={player}
           userTeamName={currentTeam?.name || '球队'}
@@ -528,7 +527,6 @@ function CareerApp({
       )}>
         {(phase === 'legendary_hof' || isLegendaryHofOpen) && (
           <LegendaryHallOfFameModal
-            gameMode={gameMode}
             isOpen={true}
             initialMode={legendaryHofInitialMode}
             onClose={() => {

@@ -120,7 +120,7 @@ export const DRAFTS_2011_TO_2015: Record<number, YearDraftData> = {
       { pick: 11, teamId: 'okc', teamName: '俄克拉荷马雷霆', odds: '0.8%', projectName: '史蒂文·亚当斯', projectPosition: 'C' },
       { pick: 12, teamId: 'okc', teamName: '俄克拉荷马雷霆', odds: '0.7%', projectName: '凯利·奥利尼克', projectPosition: 'C' },
       { pick: 13, teamId: 'dal', teamName: '达拉斯小牛', odds: '0.6%', projectName: '沙巴兹·默罕默德', projectPosition: 'SF' },
-      { pick: 14, teamId: 'uta', teamName: '犹他爵士', odds: '0.5%', projectName: '沙巴兹·内皮尔', projectPosition: 'PG' },
+      { pick: 14, teamId: 'uta', teamName: '犹他爵士', odds: '0.5%', projectName: 'C.J. 麦科勒姆', projectPosition: 'SG' },
     ],
     draftPicks: [
       { pick: 1, teamId: 'cle', teamName: '克利夫兰骑士', player: { id: 'a_bennett_13', name: '安东尼·本内特', position: 'PF', ovr: 71, age: 20, college: 'UNLV', highlights: '状元秀，身体粗壮但职业生涯坎坷的大前锋', peakAge: 23, peakOvr: 76, peakDuration: 2 } },
@@ -136,7 +136,7 @@ export const DRAFTS_2011_TO_2015: Record<number, YearDraftData> = {
       { pick: 11, teamId: 'okc', teamName: '俄克拉荷马雷霆', player: { id: 's_adams_13', name: '史蒂文·亚当斯', position: 'C', ovr: 77, age: 19, college: '匹兹堡大学', highlights: '第11顺位，海王亚当斯！联盟最强卡位怪与怪力卡位中锋', peakAge: 26, peakOvr: 87, peakDuration: 6 } },
       { pick: 12, teamId: 'bos', teamName: '波士顿凯尔特人', player: { id: 'k_olynyk_13', name: '凯利·奥利尼克', position: 'C', ovr: 74, age: 22, college: '冈萨加大学', highlights: '第12顺位，空间型三分手与硬核高位策应大个', peakAge: 28, peakOvr: 83, peakDuration: 5 } },
       { pick: 13, teamId: 'min', teamName: '明尼苏达森林狼', player: { id: 's_muhammad_13', name: '沙巴兹·默罕默德', position: 'SF', ovr: 72, age: 20, college: 'UCLA', highlights: '第13顺位，左手背打狂魔', peakAge: 24, peakOvr: 79, peakDuration: 3 } },
-      { pick: 14, teamId: 'min', teamName: '明尼苏达森林狼', player: { id: 's_shabazz_13', name: '沙巴兹·内皮尔', position: 'PG', ovr: 72, age: 21, college: '康涅狄格', highlights: '第14顺位，詹姆斯最喜欢的MOP控卫', peakAge: 26, peakOvr: 80, peakDuration: 4 } },
+      { pick: 14, teamId: 'por', teamName: '波特兰开拓者', player: { id: 'cj_mccollum_13', name: 'C.J. 麦科勒姆', position: 'SG', ovr: 77, age: 21, college: '利哈伊大学', highlights: '成熟的持球得分手，兼具中远距离火力', peakAge: 28, peakOvr: 91, peakDuration: 6 } },
       { pick: 15, teamId: 'mil', teamName: '密尔沃基雄鹿', player: { id: 'g_antetokounmpo_13', name: '扬尼斯·阿德托昆博', position: 'PF', ovr: 82, age: 18, college: '希腊', highlights: '第15顺位！字母哥！希腊怪兽，两届MVP与总冠军FMVP！', peakAge: 27, peakOvr: 98, peakDuration: 7 } },
       { pick: 16, teamId: 'atl', teamName: '亚特兰大老鹰', player: { id: 'd_schroder_13', name: '丹尼斯·施罗德', position: 'PG', ovr: 75, age: 19, college: '德国', highlights: '第17顺位，小黑！世界波世界杯MVP与闪电突破控卫', peakAge: 26, peakOvr: 85, peakDuration: 6 } },
       { pick: 17, teamId: 'chi', teamName: '芝加哥公牛', player: { id: 't_snell_13', name: '托尼·斯内尔', position: 'SF', ovr: 71, age: 21, college: '新墨西哥', highlights: '第20顺位，极致专注防守3D侧翼', peakAge: 27, peakOvr: 79, peakDuration: 4 } },

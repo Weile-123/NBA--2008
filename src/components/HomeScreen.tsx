@@ -5,6 +5,7 @@ import {
   Bell,
   Flame,
   Globe,
+  Info,
   Loader2,
   MessageSquareText,
   Play,
@@ -13,6 +14,7 @@ import {
   Sparkles,
   Trophy,
   UserCheck,
+  X,
 } from 'lucide-react';
 import { GameMode, GAME_MODE_CONFIG } from '../gameMode';
 import { loadGlobalHallOfFame, retryPendingGlobalHallOfFameUpload } from '../lib/globalLeaderboard';
@@ -22,7 +24,6 @@ import { UpdateAnnouncementModal } from './UpdateAnnouncementModal';
 import { UserFeedbackModal } from './UserFeedbackModal';
 
 interface HomeScreenProps {
-  gameMode: GameMode;
   onLaunchMode: (mode: GameMode, action: 'new' | 'continue') => void;
   onOpenHallOfFame: () => void;
   onOpenGlobalHallOfFame?: () => void;
@@ -44,7 +45,6 @@ function formatSavedAt(value?: string): string {
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
-  gameMode,
   onLaunchMode,
   onOpenHallOfFame,
   onOpenGlobalHallOfFame,
@@ -58,6 +58,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [saveRevision, setSaveRevision] = useState(0);
   const [modeSavesReady, setModeSavesReady] = useState(false);
   const [pendingNewMode, setPendingNewMode] = useState<GameMode | null>(null);
+  const [isParallelInfoOpen, setIsParallelInfoOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -139,13 +140,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               ? <Trophy className="h-5 w-5 text-amber-300 sm:h-6 sm:w-6" />
               : <Shuffle className="h-5 w-5 text-cyan-300 sm:h-6 sm:w-6" />}
           </div>
-          <span className={`rounded border px-1.5 py-0.5 text-[8px] font-black sm:text-[9px] ${
-            gameMode === mode
-              ? isClassic ? 'border-amber-400/40 bg-amber-500/20 text-amber-300' : 'border-cyan-300/40 bg-cyan-400/15 text-cyan-200'
-              : 'border-slate-600/50 bg-slate-800/70 text-slate-500'
-          }`}>
-            {gameMode === mode ? '当前模式' : '独立存档'}
-          </span>
+          {!isClassic && (
+            <button
+              type="button"
+              onClick={() => setIsParallelInfoOpen(true)}
+              className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded border border-cyan-300/40 bg-cyan-400/15 px-1.5 py-0.5 text-[8px] font-black text-cyan-200 transition-colors hover:bg-cyan-400/25 sm:text-[9px]"
+              aria-label="查看平行联盟模式介绍"
+            >
+              <Info className="h-2.5 w-2.5 shrink-0" />
+              新模式：点击查看
+            </button>
+          )}
         </div>
 
         <div className="relative mt-3">
@@ -336,6 +341,86 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {isParallelInfoOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
+          role="presentation"
+          onClick={() => setIsParallelInfoOpen(false)}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="parallel-mode-title"
+            onClick={(event) => event.stopPropagation()}
+            className="w-full max-w-md overflow-hidden rounded-2xl border border-cyan-400/40 bg-[#101621] text-left shadow-2xl shadow-cyan-950/40"
+          >
+            <header className="flex items-center justify-between border-b border-cyan-400/20 bg-gradient-to-r from-cyan-500/15 to-violet-500/10 px-4 py-3.5">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-300/35 bg-cyan-400/10">
+                  <Shuffle className="h-5 w-5 text-cyan-300" />
+                </div>
+                <div>
+                  <div className="text-[9px] font-black tracking-widest text-cyan-300">NEW GAME MODE</div>
+                  <h2 id="parallel-mode-title" className="text-base font-black italic text-white">平行联盟玩法说明</h2>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsParallelInfoOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-900/70 text-slate-400 active:scale-95"
+                aria-label="关闭玩法说明"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </header>
+
+            <div className="space-y-3 p-4 text-xs leading-relaxed text-slate-300 sm:p-5">
+              <p className="text-slate-400">两种模式共享相同的生涯核心玩法，但联盟发展轨迹不同，存档与个人传奇记录完全独立。</p>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-3">
+                  <div className="mb-2 flex items-center gap-1.5 font-black text-amber-300">
+                    <Trophy className="h-3.5 w-3.5" />经典模式
+                  </div>
+                  <ul className="space-y-1.5 text-[10px] text-slate-400 sm:text-[11px]">
+                    <li>• 还原历史真实交易</li>
+                    <li>• 沿用历史选秀归属</li>
+                    <li>• 联盟轨迹更贴近现实</li>
+                  </ul>
+                </div>
+                <div className="rounded-xl border border-cyan-400/30 bg-cyan-400/[0.07] p-3">
+                  <div className="mb-2 flex items-center gap-1.5 font-black text-cyan-300">
+                    <Shuffle className="h-3.5 w-3.5" />平行时空
+                  </div>
+                  <ul className="space-y-1.5 text-[10px] text-slate-400 sm:text-[11px]">
+                    <li>• 后续赛季动态生成交易</li>
+                    <li>• 选秀归属随战绩变化</li>
+                    <li>• 球队方向会动态调整</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-cyan-400/20 bg-[#151d2a] px-3 py-2.5 text-[10px] text-slate-400 sm:text-[11px]">
+                首个赛季保持原有历史时间线；从后续赛季开始，交易、选秀与球队格局将逐步产生变化。
+              </div>
+              <div className="rounded-xl border border-amber-400/30 bg-amber-500/[0.08] px-3 py-2.5 text-[10px] font-bold text-amber-200 sm:text-[11px]">
+                新模式仍在测试，退役记录暂不计入全网排行榜；平行联盟全网榜将在后续开放。
+              </div>
+            </div>
+
+            <footer className="border-t border-slate-800 bg-[#0d121b] p-3">
+              <button
+                type="button"
+                onClick={() => setIsParallelInfoOpen(false)}
+                className="w-full rounded-xl bg-gradient-to-r from-cyan-400 to-cyan-500 py-2.5 text-xs font-black text-slate-950 active:scale-[0.99]"
+              >
+                了解了
+              </button>
+            </footer>
+          </section>
         </div>
       )}
 

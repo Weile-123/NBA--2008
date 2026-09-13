@@ -4,6 +4,9 @@ import type { Position, Team } from '../src/types';
 import { executeRandomTradesForSeason, inviteStarToTeam } from '../src/utils/randomTradeLogic';
 import { generateParallelDraftData } from '../src/utils/randomDraftLogic';
 import { evaluateTeamStrategies, initializeTeamStrategies } from '../src/utils/teamStrategyLogic';
+import { calculateTeamPowerRating } from '../src/utils/leagueLogic';
+import { applyDraftRookiesToTeams } from '../src/utils/draftLogic';
+import { progressLeagueForNewSeason } from '../src/utils/progressionLogic';
 
 const positions: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
 
@@ -48,7 +51,8 @@ test('parallel league generates a restrained and valid trade window', () => {
   });
 
   assert.equal(result.modalData?.tradeSource, 'random');
-  assert.equal(result.modalData?.executedTrades.length, 5);
+  assert.equal(result.modalData?.totalTransactions, 5);
+  assert.ok((result.modalData?.executedTrades.length || 0) <= 5);
   for (const team of result.updatedTeams) {
     assert.equal(team.roster.length, originalRosterSizes.get(team.id));
     assert.equal(team.starPlayer, team.roster[0]?.name);
@@ -167,4 +171,79 @@ test('invited star replaces an end-of-roster player and stays protected next sea
     ),
     false,
   );
+});
+
+test('all roster mutation paths use the canonical team power rating', () => {
+  const teams = makeLeague(30);
+  const progressed = progressLeagueForNewSeason(teams, null).updatedTeams;
+  assert.ok(progressed.every((team) => team.rating === calculateTeamPowerRating(team)));
+
+  const draft = generateParallelDraftData(progressed, 2026, seededRandom(26));
+  const drafted = applyDraftRookiesToTeams(progressed, 2026, null, draft);
+  assert.ok(drafted.every((team) => team.rating === calculateTeamPowerRating(team)));
+
+  const traded = executeRandomTradesForSeason(drafted, 2026, { random: seededRandom(260), minTrades: 14, maxTrades: 14 }).updatedTeams;
+  assert.ok(traded.every((team) => team.rating === calculateTeamPowerRating(team)));
+});
+
+test('future local draft classes are stable, complete and unique', () => {
+  const teams = makeLeague(30);
+  const first = generateParallelDraftData(teams, 2031, seededRandom(77));
+  const second = generateParallelDraftData(teams, 2031, seededRandom(77));
+  assert.equal(first?.draftPicks.length, 30);
+  assert.deepEqual(first, second);
+  assert.equal(new Set(first?.draftPicks.map((pick) => pick.player.id)).size, 30);
+  assert.equal(new Set(first?.draftPicks.map((pick) => pick.player.name)).size, 30);
+  assert.equal(new Set(first?.draftPicks.map((pick) => pick.player.name.split('·').at(-1))).size, 30);
+  assert.ok((first?.draftPicks.filter((pick) => (pick.player.peakOvr || 0) >= 90).length || 0) <= 10);
+
+  const careerNames = new Set<string>();
+  for (let year = 2027; year <= 2051; year += 1) {
+    const yearlyDraft = generateParallelDraftData(teams, year, seededRandom(year));
+    for (const pick of yearlyDraft?.draftPicks || []) {
+      assert.equal(careerNames.has(pick.player.name), false, `${pick.player.name} repeated in ${year}`);
+      careerNames.add(pick.player.name);
+    }
+  }
+  assert.equal(careerNames.size, 750);
+});
+
+test('parallel retirements reuse famous schedules, enforce age 43 and hide role-player exits', () => {
+  const teams = makeLeague();
+  const rosterSize = teams[0].roster.length;
+  teams[0].roster[0] = { ...teams[0].roster[0], name: '迪肯贝·穆托姆博', peakOvr: 95, age: 42 };
+  teams[0].roster[1] = { ...teams[0].roster[1], name: '普通老将', peakOvr: 78, age: 43 };
+  const result = executeRandomTradesForSeason(teams, 2009, { random: seededRandom(9), minTrades: 1, maxTrades: 1 });
+  const team = result.updatedTeams.find((candidate) => candidate.id === teams[0].id)!;
+  assert.equal(team.roster.some((player) => player.name === '迪肯贝·穆托姆博'), false);
+  assert.equal(team.roster.some((player) => player.name === '普通老将'), false);
+  assert.equal(team.roster.length, rosterSize);
+  assert.equal(new Set(result.updatedTeams.flatMap((candidate) => candidate.roster.map((player) => player.name))).size, result.updatedTeams.flatMap((candidate) => candidate.roster).length);
+  assert.equal(result.modalData?.executedTrades.some((trade) => trade.retireDetail?.playerName === '迪肯贝·穆托姆博'), true);
+  assert.equal(result.modalData?.executedTrades.some((trade) => trade.retireDetail?.playerName === '普通老将'), false);
+});
+
+test('team direction remains stable for at least three seasons', () => {
+  const teams = initializeTeamStrategies(makeLeague(30), 2009);
+  const original = teams[0].strategy;
+  teams[0] = { ...teams[0], wins: 0, losses: 82, rating: 65 };
+  const yearOne = evaluateTeamStrategies(teams, 2010);
+  const yearTwo = evaluateTeamStrategies(yearOne.map((team) => team.id === teams[0].id ? { ...team, wins: 0, losses: 82, rating: 65 } : team), 2011);
+  assert.equal(yearOne[0].strategy, original);
+  assert.equal(yearTwo[0].strategy, original);
+});
+
+test('long parallel simulation keeps producing rookies and removes over-age NPC players', () => {
+  let teams: Team[] = makeLeague(30).map((team) => ({ ...team, roster: team.roster.map((player, index) => ({ ...player, age: 22 + index, peakAge: 27, peakOvr: Math.max(player.ovr, 82), peakDuration: 4 })) }));
+  for (let year = 2026; year <= 2045; year += 1) {
+    teams = progressLeagueForNewSeason(teams, null).updatedTeams;
+    teams = executeRandomTradesForSeason(teams, year, { random: seededRandom(year), minTrades: 14, maxTrades: 14 }).updatedTeams;
+    const draft = generateParallelDraftData(teams, year, seededRandom(year + 1));
+    assert.equal(draft?.draftPicks.length, 30);
+    teams = applyDraftRookiesToTeams(teams, year, null, draft);
+  }
+  const players = teams.flatMap((team) => team.roster);
+  assert.ok(players.every((player) => (player.age || 0) < 43));
+  assert.equal(new Set(players.map((player) => player.id)).size, players.length);
+  assert.ok(teams.every((team) => team.rating === calculateTeamPowerRating(team)));
 });

@@ -4,7 +4,7 @@ import type { Dispatch,SetStateAction } from 'react';
 import { HISTORICAL_SEASONS,NBA_TEAMS_2008 } from '../data/nbaData2008';
 import { GameState,MatchBoxScore,PlayerProfile,RosterPlayer,Team } from '../types';
 import { calculateSeasonAwards, type SeasonAwards } from '../utils/awardsLogic';
-import { mustRetireAtAge,syncPlayerAgeDecay } from '../utils/calc2k';
+import { mustRetireAtAge,shouldShowAgeDeclinePrompt,syncPlayerAgeDecay } from '../utils/calc2k';
 import { ContractOffer } from '../utils/contractLogic';
 import { calculateUserDraftPick } from '../utils/draftLogic';
 import { progressLeagueForNewSeason } from '../utils/progressionLogic';
@@ -52,6 +52,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   const [legendaryHofInitialMode, setLegendaryHofInitialMode] = useState<'local' | 'global'>('local');
   const [declinePromptYear, setDeclinePromptYear] = useState<number | null>(null);
   const [showAgeDeclineModal, setShowAgeDeclineModal] = useState<boolean>(false);
+  const isLeavingRegularSeasonRef = useRef(false);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isRegularSeasonAutoSimulating, setIsRegularSeasonAutoSimulating] = useState(false);
 
@@ -172,6 +173,11 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   };
 
   const handleEnterOffseason = (championTeam?: Team, passedFmvpName?: string, settledSeasonAwards?: SeasonAwards) => {
+    // currentYear updates synchronously while phase uses a React transition.
+    // Suppress the old regular-season effect during that short handoff so it
+    // cannot open a stale age prompt on top of the offseason screen.
+    isLeavingRegularSeasonRef.current = true;
+    setShowAgeDeclineModal(false);
     setIsPlayoffs(false);
     setShowDraftWaitingAnimation(true);
 
@@ -440,10 +446,13 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   // Age 38+ Physical Decline Modal trigger when entering regular season.
   // Mandatory retirement must never be suppressed by saved yearly UI state.
   useEffect(() => {
-    if (phase === 'regular_season' && player && (player.age || 19) >= 38) {
-      if (mustRetireAtAge(player.age) || declinePromptYear !== currentYear) {
-        setShowAgeDeclineModal(true);
-      }
+    if (phase !== 'regular_season') {
+      setShowAgeDeclineModal(false);
+      isLeavingRegularSeasonRef.current = false;
+      return;
+    }
+    if (player && shouldShowAgeDeclinePrompt(true, player.age, currentYear, declinePromptYear, isLeavingRegularSeasonRef.current)) {
+      setShowAgeDeclineModal(true);
     }
   }, [phase, player?.age, currentYear, declinePromptYear]);
 
@@ -899,6 +908,18 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     if (!player) return;
     if (mustRetireAtAge(player.age)) {
       handleAgeDeclineRetire();
+      return;
+    }
+    // A 42-year-old may finish the current season, but cannot enter another
+    // regular season at 43. Advance the displayed retirement age once and go
+    // directly to the retirement flow without briefly mounting a new season.
+    if (mustRetireAtAge((player.age || 19) + 1)) {
+      setPlayer(syncPlayerAgeDecay({ ...player, age: (player.age || 19) + 1, isRookie: false }));
+      setDeclinePromptYear(currentYear);
+      setShowAgeDeclineModal(false);
+      setPrevPhase(phase);
+      setActiveTab('hof');
+      setPhase('hall_of_fame');
       return;
     }
 

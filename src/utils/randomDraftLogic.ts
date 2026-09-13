@@ -36,9 +36,70 @@ function maxFall(pick: DraftPickItem): number {
   return 30;
 }
 
+const FIRST_NAMES = ['杰伦', '卡梅隆', '马库斯', '德文', '泰勒', '以赛亚', '特雷', '乔丹', '凯登', '诺亚', '埃利斯', '安德烈', '迈尔斯', '达里厄斯', '贾登', '科尔', '马利克', '布兰登', '泽维尔', '昆西', '奥斯汀', '德里克', '贾马尔', '特伦斯', '凯文', '朱利安', '纳坦', '科迪', '兰登', '克里斯', '卡特', '米卡', '罗恩', '朱万', '埃文', '赛斯', '基扬', '尼克', '卢克', '凯尔', '罗伊', '马科', '乔纳森', '达伦', '肖恩', '以利亚', '扎伊尔', '阿隆', '托拜厄斯', '安东尼', '本杰明', '加布里埃尔', '特洛伊', '贾伦', '克里斯托弗', '乔治', '达米安', '德章泰', '斯潘塞', '马尔科姆'];
+const LAST_NAMES = ['安德森', '威廉姆斯', '约翰逊', '罗宾逊', '汤普森', '刘易斯', '沃克', '哈里斯', '米切尔', '杨', '格林', '杰克逊', '库珀', '戴维斯', '摩尔', '克拉克', '马丁', '怀特', '布朗', '金', '史密斯', '贝克', '里德', '斯科特', '特纳', '格兰特', '霍尔', '亚当斯', '埃文斯', '沃德', '威尔逊', '米勒', '托马斯', '泰勒', '华盛顿', '卡特', '柯林斯', '斯图尔特', '莫里斯', '拉塞尔', '爱德华兹', '巴恩斯', '布莱恩特', '巴特勒', '西蒙斯', '福斯特', '鲍威尔', '理查德森', '布鲁克斯', '亨德森', '汉密尔顿', '霍华德', '詹金斯', '劳森', '马歇尔', '穆雷', '纽曼', '欧文斯', '帕特森', '波特'];
+const COLLEGES = ['杜克大学', '肯塔基大学', '堪萨斯大学', '北卡罗来纳大学', '康涅狄格大学', 'UCLA', '冈萨加大学', '亚利桑那大学', '密歇根大学', '海外联赛'];
+const POSITIONS: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
+
+function yearRandom(year: number): () => number {
+  let value = (year * 2654435761) >>> 0;
+  return () => {
+    value = (value + 0x6d2b79f5) >>> 0;
+    let mixed = value;
+    mixed = Math.imul(mixed ^ (mixed >>> 15), mixed | 1);
+    mixed ^= mixed + Math.imul(mixed ^ (mixed >>> 7), mixed | 61);
+    return ((mixed ^ (mixed >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Creates a stable local rookie class for seasons beyond the maintained real data. */
+export function generateSyntheticDraftClass(year: number): YearDraftData {
+  const random = yearRandom(year);
+  const draftPicks: DraftPickItem[] = Array.from({ length: 30 }, (_, index) => {
+    const serial = Math.max(0, year - 2027) * 30 + index;
+    // 61 is coprime with the 3,600 available combinations, so every class mixes
+    // first and last names while a full career window never repeats a pair.
+    const nameCode = (serial * 61) % (FIRST_NAMES.length * LAST_NAMES.length);
+    const first = FIRST_NAMES[nameCode % FIRST_NAMES.length];
+    const last = LAST_NAMES[Math.floor(nameCode / FIRST_NAMES.length) % LAST_NAMES.length];
+    const position = POSITIONS[(index * 2 + Math.floor(random() * POSITIONS.length)) % POSITIONS.length];
+    const [ovrMin, ovrMax, peakMin, peakMax] = index === 0
+      ? [80, 82, 94, 97]
+      : index < 3 ? [78, 81, 91, 95]
+        : index < 10 ? [75, 79, 87, 92]
+          : index < 20 ? [72, 76, 82, 88]
+            : [68, 73, 77, 84];
+    const ovr = ovrMin + Math.floor(random() * (ovrMax - ovrMin + 1));
+    const peakOvr = Math.max(ovr + 5, peakMin + Math.floor(random() * (peakMax - peakMin + 1)));
+    const teamId = `future_pick_${index + 1}`;
+    return {
+      pick: index + 1,
+      teamId,
+      teamName: `第${index + 1}顺位球队`,
+      player: {
+        id: `generated_${year}_${index + 1}`,
+        name: `${first}·${last}`,
+        position,
+        ovr,
+        age: 19 + Math.floor(random() * 4),
+        college: COLLEGES[Math.floor(random() * COLLEGES.length)],
+        highlights: index < 3 ? '本届最受关注的高潜力新秀' : index < 14 ? '具备稳定首轮前景' : '拥有值得培养的专项能力',
+        peakAge: 25 + Math.floor(random() * 4),
+        peakOvr: Math.min(99, peakOvr),
+        peakDuration: 3 + Math.floor(random() * 4),
+      },
+    };
+  });
+  return {
+    year,
+    lotteryResults: draftPicks.slice(0, 14).map((pick) => ({ pick: pick.pick, teamId: pick.teamId, teamName: pick.teamName, odds: '平行联盟预测', projectName: pick.player.name, projectPosition: pick.player.position })),
+    draftPicks,
+  };
+}
+
 /** Builds a draft owned by this save: order follows simulated records while the real rookie class and elite talent hierarchy remain intact. */
 export function generateParallelDraftData(teams: Team[], year: number, random: () => number = Math.random): YearDraftData | null {
-  const historical = getHistoricalDraftData(year);
+  const historical = getHistoricalDraftData(year) || (year > 2026 ? generateSyntheticDraftClass(year) : null);
   if (year <= 2008 || !historical?.draftPicks?.length) return historical || null;
 
   const standings = [...teams].sort((a, b) => a.wins - b.wins || b.losses - a.losses || a.rating - b.rating);

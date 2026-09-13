@@ -1,4 +1,4 @@
-import type { ExecutedTradeDetail, TradeModalData } from '../data/realTradesData';
+import { HISTORICAL_REAL_TRADES, type ExecutedTradeDetail, type TradeModalData } from '../data/realTradesData';
 import type { Position, RosterPlayer, Team, TeamStrategy } from '../types';
 import { calculateTeamPowerRating } from './leagueLogic';
 
@@ -48,7 +48,7 @@ function eligible(team: Team, year: number, moved: Set<string>, options: RandomT
   return team.roster.filter((p) => p.ovr >= 66 && (p.tradeProtectionUntilYear || 0) < year && !isUser(p, options) && !moved.has(keyOf(p)));
 }
 
-function findPair(teamA: Team, teamB: Team, year: number, moved: Set<string>, options: RandomTradeOptions, random: () => number, allowBlockbuster: boolean): Pair | null {
+function findPair(teamA: Team, teamB: Team, year: number, moved: Set<string>, options: RandomTradeOptions, random: () => number, allowBlockbuster: boolean, requireBlockbuster = false): Pair | null {
   let best: Pair | null = null;
   const strategyA = strategyOf(teamA);
   const strategyB = strategyOf(teamB);
@@ -58,6 +58,7 @@ function findPair(teamA: Team, teamB: Team, year: number, moved: Set<string>, op
       const bValue = valueOf(playerB);
       const valueGap = Math.abs(aValue - bValue);
       const isBlockbuster = Math.max(playerA.ovr, playerB.ovr) >= 89;
+      if (requireBlockbuster && !isBlockbuster) continue;
       if (isBlockbuster ? (!allowBlockbuster || valueGap > 11) : valueGap > 5.5) continue;
 
       // Rebuilding teams prefer youth/upside; contenders prefer immediate OVR and positional need.
@@ -75,6 +76,71 @@ function findPair(teamA: Team, teamB: Team, year: number, moved: Set<string>, op
   return best;
 }
 
+const DEPTH_FIRST_NAMES = ['安托万', '拉蒙', '达奎恩', '德肖恩', '马奎斯', '泰里克', '贾维恩', '肯德里克', '德安吉洛', '泰伦', '马肖恩', '阿米尔', '杰迈克尔', '拉沙德', '戴蒙', '凯文特', '蒙特雷兹', '安芬尼', '贾希尔', '德隆', '马库尔', '奎因', '泰肖恩', '雷吉', '达柳斯', '马库尔斯', '德米特里', '贾维斯', '罗德尼', '考特尼', '拉沃伊', '阿朗佐', '达米尔', '杰梅因', '梅尔文', '泰厄斯', '温德尔', '德安德烈', '贾斯蒂斯', '朗尼'];
+const DEPTH_LAST_NAMES = ['普莱斯', '沃特金斯', '桑德斯', '伍兹', '贝尔', '科尔曼', '弗洛伊德', '休斯', '佩里', '鲍威尔', '霍顿', '麦克莱恩', '布里奇斯', '麦基', '福斯特', '班克斯', '桑顿', '亨特', '惠特克', '帕克斯', '考德威尔', '钱德勒', '丹尼尔斯', '菲尔兹', '盖恩斯', '哈迪', '英格拉姆', '杰弗里斯', '奈特', '兰姆', '梅森', '诺埃尔', '奥尼尔', '普林斯', '雷诺兹', '谢泼德', '塔克', '沃恩', '韦尔', '齐格勒'];
+const DEPTH_POSITIONS: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
+
+function createDepthPlayer(team: Team, year: number, index: number, usedNames: Set<string>): RosterPlayer {
+  const seed = year * 31 + team.id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) + index * 17;
+  const nameSpace = DEPTH_FIRST_NAMES.length * DEPTH_LAST_NAMES.length;
+  let name = '';
+  for (let offset = 0; offset < nameSpace; offset += 1) {
+    const nameCode = (Math.abs(seed) * 41 + offset * 43) % nameSpace;
+    const first = DEPTH_FIRST_NAMES[nameCode % DEPTH_FIRST_NAMES.length];
+    const last = DEPTH_LAST_NAMES[Math.floor(nameCode / DEPTH_FIRST_NAMES.length) % DEPTH_LAST_NAMES.length];
+    const candidate = `${first}·${last}`;
+    if (!usedNames.has(candidate)) {
+      name = candidate;
+      usedNames.add(candidate);
+      break;
+    }
+  }
+  if (!name) name = `训练营球员·${year}-${team.abbrev}-${index + 1}`;
+  const ovr = 66 + (Math.abs(seed) % 6);
+  return {
+    id: `parallel_depth_${year}_${team.id}_${index}`,
+    name,
+    position: DEPTH_POSITIONS[Math.abs(seed) % DEPTH_POSITIONS.length],
+    ovr,
+    age: 22 + (Math.abs(seed) % 6),
+    peakAge: 26,
+    peakOvr: Math.min(80, ovr + 7),
+    peakDuration: 3,
+    isStar: false,
+    role: '饮水机守门员',
+  };
+}
+
+function retirePlayers(teams: Team[], year: number, options: RandomTradeOptions): { all: ExecutedTradeDetail[]; visible: ExecutedTradeDetail[] } {
+  const scheduled = new Set(
+    (HISTORICAL_REAL_TRADES[year]?.trades || [])
+      .filter((trade) => trade.type === 'retire' && trade.retiredPlayerName)
+      .map((trade) => trade.retiredPlayerName as string),
+  );
+  const all: ExecutedTradeDetail[] = [];
+  const visible: ExecutedTradeDetail[] = [];
+  for (const team of teams) {
+    const retained: RosterPlayer[] = [];
+    for (const player of team.roster) {
+      const shouldRetire = !isUser(player, options) && (scheduled.has(player.name) || (player.age || 0) >= 43);
+      if (!shouldRetire) {
+        retained.push(player);
+        continue;
+      }
+      const detail: ExecutedTradeDetail = {
+        id: `parallel_retire_${year}_${player.id || player.name}`,
+        type: 'retire',
+        importanceScore: (player.peakOvr || player.ovr) * 2,
+        retireDetail: { playerName: player.name, position: player.position, ovr: player.ovr, fromTeamId: team.id, fromTeamName: team.name },
+      };
+      all.push(detail);
+      if ((player.peakOvr || player.ovr) >= 88) visible.push(detail);
+    }
+    team.roster = retained;
+  }
+  return { all, visible };
+}
+
 /** First season remains historical. From 2009 onward, generates 14–20 real roster moves and only stores headline deals. */
 export function executeRandomTradesForSeason(currentTeams: Team[], year: number, options: RandomTradeOptions = {}): { updatedTeams: Team[]; modalData: TradeModalData | null } {
   if (year <= 2008 || currentTeams.length < 2) return { updatedTeams: currentTeams, modalData: null };
@@ -83,10 +149,14 @@ export function executeRandomTradesForSeason(currentTeams: Team[], year: number,
   const maxTrades = Math.max(minTrades, options.maxTrades ?? 20);
   const target = minTrades + Math.floor(random() * (maxTrades - minTrades + 1));
   const teams = currentTeams.map((team) => ({ ...team, roster: team.roster.map((p) => ({ ...p })) }));
+  const rosterTargets = new Map(teams.map((team) => [team.id, team.roster.length]));
+  const retirements = retirePlayers(teams, year, options);
   const moved = new Set<string>();
   const counts = new Map<string, number>();
   const trades: ExecutedTradeDetail[] = [];
   let blockbusterCount = 0;
+  const blockbusterRoll = random();
+  const blockbusterTarget = blockbusterRoll < 0.15 ? 2 : blockbusterRoll < 0.65 ? 1 : 0;
 
   for (let attempt = 0; attempt < 1600 && trades.length < target; attempt += 1) {
     const available = teams.filter((t) => (counts.get(t.id) || 0) < 3);
@@ -97,8 +167,9 @@ export function executeRandomTradesForSeason(currentTeams: Team[], year: number,
     const opponents = available.filter((t) => t.id !== teamA.id);
     const teamB = opponents[Math.floor(random() * opponents.length)];
     if (!teamB) continue;
-    const allowBlockbuster = blockbusterCount < 2 && random() < 0.3;
-    const pair = findPair(teamA, teamB, year, moved, options, random, allowBlockbuster);
+    const seekBlockbuster = blockbusterCount < blockbusterTarget && attempt < 600;
+    const allowBlockbuster = seekBlockbuster || (blockbusterCount < 2 && random() < 0.12);
+    const pair = findPair(teamA, teamB, year, moved, options, random, allowBlockbuster, seekBlockbuster);
     if (!pair) continue;
     const indexA = teamA.roster.indexOf(pair.playerA);
     const indexB = teamB.roster.indexOf(pair.playerB);
@@ -121,13 +192,21 @@ export function executeRandomTradesForSeason(currentTeams: Team[], year: number,
       teamAOldRating: oldA, teamANewRating: teamA.rating, teamBOldRating: oldB, teamBNewRating: teamB.rating,
     });
   }
-  if (!trades.length) return { updatedTeams: currentTeams, modalData: null };
+  const usedNames = new Set(teams.flatMap((team) => team.roster.map((player) => player.name)));
+  for (const team of teams) {
+    const targetSize = rosterTargets.get(team.id) || 15;
+    while (team.roster.length < targetSize) team.roster.push(createDepthPlayer(team, year, team.roster.length, usedNames));
+    refreshTeam(team);
+  }
+  if (!trades.length && !retirements.all.length) return { updatedTeams: currentTeams, modalData: null };
   const userDeals = trades.filter((t) => t.playerA?.fromTeamId === options.userTeamId || t.playerB?.fromTeamId === options.userTeamId);
-  const headlineTarget = Math.min(trades.length, Math.max(6, Math.min(10, Math.round(trades.length * 0.5))));
-  const headlines = [...userDeals, ...trades.filter((t) => !userDeals.includes(t)).sort((a, b) => (b.importanceScore || 0) - (a.importanceScore || 0))]
+  const importantDeals = trades.filter((trade) => trade.tradeCategory !== 'rotation');
+  const headlines = [...userDeals, ...importantDeals, ...retirements.visible]
     .filter((trade, index, array) => array.findIndex((candidate) => candidate.id === trade.id) === index)
-    .slice(0, headlineTarget);
-  return { updatedTeams: teams, modalData: { year, seasonName: `${year}-${year + 1} 赛季 · 平行联盟`, tradeSource: 'random', totalTransactions: trades.length, hiddenTransactions: trades.length - headlines.length, executedTrades: headlines } };
+    .sort((a, b) => (b.importanceScore || 0) - (a.importanceScore || 0))
+    .slice(0, 10);
+  const totalTransactions = trades.length + retirements.all.length;
+  return { updatedTeams: teams, modalData: { year, seasonName: `${year}-${year + 1} 赛季 · 平行联盟`, tradeSource: 'random', totalTransactions, hiddenTransactions: totalTransactions - headlines.length, executedTrades: headlines } };
 }
 
 export interface StarInvitationResult { updatedTeams: Team[]; invitedPlayer?: RosterPlayer; outgoingPlayer?: RosterPlayer; error?: string }
