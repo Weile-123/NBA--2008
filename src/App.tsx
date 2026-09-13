@@ -32,7 +32,9 @@ import { useCareerGame } from './hooks/useCareerGame';
 
 export default function App() {
   const [gameMode, setGameMode] = useState<GameMode>(DEFAULT_GAME_MODE);
-  const [resumeOnMount, setResumeOnMount] = useState(true);
+  // A browser refresh always opens the mode lobby. Saves are only resumed after
+  // the player explicitly chooses the matching mode's "continue" action.
+  const [resumeOnMount, setResumeOnMount] = useState(false);
   const [launchAction, setLaunchAction] = useState<'home' | 'new' | 'continue'>('home');
 
   const handleSelectGameMode = (nextMode: GameMode, action: 'new' | 'continue') => {
@@ -116,6 +118,7 @@ function CareerApp({
     setFreeAgencyOffers,
     tradeModalData,
     setTradeModalData,
+    parallelDraftHistory,
     activeInSeasonTradeOffers,
     setActiveInSeasonTradeOffers,
     activeMilestoneModal,
@@ -151,6 +154,7 @@ function CareerApp({
     handleRequestTrade,
     handleNextSeason,
     handleViewSeasonTrades,
+    handleInviteStar,
     currentTeam,
     oppTeam,
   } = useCareerGame(gameMode, resumeOnMount);
@@ -274,6 +278,8 @@ function CareerApp({
           <main className="max-w-7xl mx-auto px-2 sm:px-4 py-3 sm:py-6 pb-24 md:pb-6">
             {activeTab === 'season' && (
               <SeasonDashboard
+                gameMode={gameMode}
+                parallelDraftData={parallelDraftHistory[currentYear] || null}
                 gameState={{
                   currentYear,
                   currentGame: currentSeasonWeek,
@@ -332,6 +338,7 @@ function CareerApp({
 
             {activeTab === 'standings' && (
               <LeagueStandings
+                gameMode={gameMode}
                 teams={teams}
                 userTeamId={player.currentTeamId}
                 player={player}
@@ -364,6 +371,7 @@ function CareerApp({
 
             {activeTab === 'roster' && (
               <RosterAndTransfers
+                gameMode={gameMode}
                 player={player}
                 currentTeam={currentTeam}
                 allTeams={teams}
@@ -375,6 +383,7 @@ function CareerApp({
                 onSetActiveInSeasonTradeOffers={setActiveInSeasonTradeOffers}
                 currentGame={currentSeasonWeek}
                 isPlayoffs={isPlayoffs}
+                onInviteStar={handleInviteStar}
               />
             )}
 

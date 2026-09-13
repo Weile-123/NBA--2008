@@ -10,6 +10,7 @@ interface DraftNightModalProps {
   player: PlayerProfile;
   teams: Team[];
   currentYear?: number;
+  suppliedDraftData?: YearDraftData | null;
   isOffseasonFlow?: boolean;
   onComplete: (updatedTeams?: Team[], teamId?: string, pick?: number, selectedJerseyNum?: number) => void;
 }
@@ -18,10 +19,10 @@ export const DraftNightModal: React.FC<DraftNightModalProps> = ({
   player,
   teams,
   currentYear = 2009,
+  suppliedDraftData,
   onComplete,
 }) => {
-  // Fetch real historical draft data for current year
-  const draftData: YearDraftData | null = getHistoricalDraftData(currentYear);
+  const draftData: YearDraftData | null = suppliedDraftData || getHistoricalDraftData(currentYear);
 
   // Target team
   const targetTeamId = player.favoriteTeamId || player.currentTeamId || 'lal';
@@ -40,7 +41,7 @@ export const DraftNightModal: React.FC<DraftNightModalProps> = ({
   // Handler to finalize draft night and apply rookies to all 30 teams
   const handleFinalizeDraft = () => {
     // Apply rookies to teams and satisfy 15-man roster constraint
-    const updatedTeams = applyDraftRookiesToTeams(teams, currentYear, player);
+    const updatedTeams = applyDraftRookiesToTeams(teams, currentYear, player, draftData);
 
     try {
       confetti({ particleCount: 100, spread: 90, origin: { y: 0.5 } });

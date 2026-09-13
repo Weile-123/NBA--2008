@@ -1,13 +1,16 @@
 import React from 'react';
 import { PlayerProfile, Team } from '../types';
-import { Users, Lock, Sparkles, ShieldAlert, HeartHandshake, Clock, X, Building2, HelpCircle } from 'lucide-react';
+import { Users, Lock, Sparkles, ShieldAlert, HeartHandshake, Clock, X, Building2, HelpCircle, UserPlus, MonitorPlay } from 'lucide-react';
 import { getCompleteTeamRoster, getPlayerCategoryRatings, getUserPlayerCategoryRatings } from '../utils/leagueLogic';
 import { TeamLogo } from './TeamLogo';
 import { ContractOffer, generateFreeAgencyOffers, regenerateFreeAgencyOffers } from '../utils/contractLogic';
 import { completeRewardedAd } from '../lib/rewardedAd';
 import { RewardedRefreshButton } from './RewardedRefreshButton';
+import { DEFAULT_GAME_MODE, GameMode } from '../gameMode';
+import { getEffectiveTeamStrategy, getTeamStrategyDescription, getTeamStrategyLabel } from '../utils/teamStrategyLogic';
 
 interface RosterAndTransfersProps {
+  gameMode?: GameMode;
   player: PlayerProfile;
   currentTeam: Team;
   allTeams: Team[];
@@ -19,11 +22,19 @@ interface RosterAndTransfersProps {
   onSetActiveInSeasonTradeOffers: (offers: ContractOffer[]) => void;
   currentGame?: number;
   isPlayoffs?: boolean;
+  onInviteStar?: (sourceTeamId: string, starPlayerId: string) => { success: boolean; message: string };
 }
 
 const TRADE_DEADLINE_GAME = 55;
 
+function invitationOrder(key: string, year: number): number {
+  let hash = year * 2654435761;
+  for (let index = 0; index < key.length; index += 1) hash = Math.imul(hash ^ key.charCodeAt(index), 16777619);
+  return hash >>> 0;
+}
+
 export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
+  gameMode = DEFAULT_GAME_MODE,
   player,
   currentTeam,
   allTeams = [],
@@ -34,10 +45,15 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
   onSetActiveInSeasonTradeOffers,
   currentGame = 1,
   isPlayoffs = false,
+  onInviteStar,
 }) => {
   const [isRequesting, setIsRequesting] = React.useState(false);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [isRefreshingOffers, setIsRefreshingOffers] = React.useState(false);
+  const [isStarInviteOpen, setIsStarInviteOpen] = React.useState(false);
+  const [selectedStarKey, setSelectedStarKey] = React.useState('');
+  const [isInvitingStar, setIsInvitingStar] = React.useState(false);
+  const [starInviteMessage, setStarInviteMessage] = React.useState('');
   const requestTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => () => {
@@ -66,6 +82,58 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
 
   // Trade deadline: locked after Game 55 of regular season, or during playoffs
   const isTradeDeadlinePassed = Boolean(isPlayoffs || currentGame > TRADE_DEADLINE_GAME);
+  const teamStrategy = getEffectiveTeamStrategy(currentTeam, allTeams);
+  const teamStrategyColor = teamStrategy === 'contender'
+    ? 'border-amber-400/40 bg-amber-500/15 text-amber-300'
+    : teamStrategy === 'playoff'
+      ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-300'
+      : teamStrategy === 'rebuilding'
+        ? 'border-violet-400/40 bg-violet-500/15 text-violet-300'
+        : 'border-cyan-400/40 bg-cyan-500/15 text-cyan-300';
+  const invitationYears = player.starInvitationYears || (player.starInvitationUsedYear ? [player.starInvitationUsedYear] : []);
+  const invitationCount = player.starInvitationCount ?? invitationYears.length;
+  const remainingInvitations = Math.max(0, 3 - invitationCount);
+  const lastInvitationYear = invitationYears.length ? Math.max(...invitationYears) : null;
+  const isInvitationCoolingDown = lastInvitationYear !== null && currentYear - lastInvitationYear < 3;
+  const hasTooManyStars = currentTeam.roster.filter((candidate) => candidate.ovr >= 90).length >= 3;
+  const isInvitationUnavailable = remainingInvitations === 0 || isInvitationCoolingDown || hasTooManyStars;
+  const invitationStatus = remainingInvitations === 0
+    ? '生涯机会已用完'
+    : hasTooManyStars
+      ? '球队已有3名90+球星'
+      : isInvitationCoolingDown
+        ? `${lastInvitationYear! + 3}赛季可再次邀请`
+        : `生涯剩余${remainingInvitations}次`;
+  const starInvitationCandidates = React.useMemo(() => allTeams
+    .filter((team) => team.id !== currentTeam.id)
+    .flatMap((team) => team.roster
+      .filter((candidate) => candidate.ovr >= 86 && candidate.id !== player.id && candidate.name !== player.name && !(player.invitedStarPlayerIds || []).includes(candidate.id))
+      .map((candidate) => ({ team, player: candidate })))
+    .sort((a, b) => invitationOrder(`${a.team.id}:${a.player.id}`, currentYear) - invitationOrder(`${b.team.id}:${b.player.id}`, currentYear))
+    .slice(0, 6), [allTeams, currentTeam.id, currentYear, player.id, player.name, player.invitedStarPlayerIds]);
+
+  const handleConfirmStarInvitation = async () => {
+    if (!selectedStarKey || !onInviteStar || isInvitingStar || isInvitationUnavailable || isTradeDeadlinePassed) return;
+    const selected = starInvitationCandidates.find(({ team, player: candidate }) => `${team.id}:${candidate.id}` === selectedStarKey);
+    if (!selected) return;
+
+    setIsInvitingStar(true);
+    setStarInviteMessage('');
+    try {
+      if (!await completeRewardedAd()) {
+        setStarInviteMessage('广告未完整播放，暂未消耗本赛季邀请机会');
+        return;
+      }
+      const result = onInviteStar(selected.team.id, selected.player.id);
+      setStarInviteMessage(result.message);
+      if (result.success) {
+        setSelectedStarKey('');
+        setIsStarInviteOpen(false);
+      }
+    } finally {
+      setIsInvitingStar(false);
+    }
+  };
 
   const handleRequestTrade = () => {
     if (isTradeDeadlinePassed) return;
@@ -164,6 +232,14 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
               <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5 font-mono">
                 球队评级 OVR <span className="text-amber-400 font-bold">{currentTeam.rating}</span>
               </p>
+              {gameMode === 'random_trade' && (
+                <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                  <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-black ${teamStrategyColor}`}>
+                    <Building2 className="h-3 w-3" /> 球队方向：{getTeamStrategyLabel(teamStrategy)}
+                  </span>
+                  <span className="hidden text-[10px] text-slate-500 sm:inline">{getTeamStrategyDescription(teamStrategy)}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -217,6 +293,34 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
           </div>
         </div>
       </div>
+
+      {gameMode === 'random_trade' && (
+        <div className="rounded-2xl border border-cyan-400/30 bg-gradient-to-r from-cyan-500/10 via-[#111722] to-violet-500/10 p-3.5 shadow-xl sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h4 className="flex items-center gap-1.5 text-xs font-black italic text-cyan-200 sm:text-sm">
+                <UserPlus className="h-4 w-4 shrink-0 text-cyan-300" /> 球星邀请计划
+              </h4>
+              <p className="mt-1 text-[10px] leading-relaxed text-slate-400 sm:text-[11px]">
+                每段生涯最多邀请3次，每次间隔3个赛季；受邀球星享有交易保护。
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={isInvitationUnavailable || isTradeDeadlinePassed || starInvitationCandidates.length === 0}
+              onClick={() => {
+                setStarInviteMessage('');
+                setIsStarInviteOpen(true);
+              }}
+              className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl bg-cyan-400 px-3 py-2 text-[10px] font-black text-slate-950 shadow-lg shadow-cyan-950/30 active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500 sm:text-xs"
+            >
+              <MonitorPlay className="h-3.5 w-3.5" />
+              {isTradeDeadlinePassed ? '窗口已关闭' : isInvitationUnavailable ? invitationStatus : `选择球星 · 剩${remainingInvitations}次`}
+            </button>
+          </div>
+          {starInviteMessage && <p className="mt-2 text-[10px] font-bold text-amber-300">{starInviteMessage}</p>}
+        </div>
+      )}
 
       {/* 🔄 Trade Request Hub */}
       {isTradeLocked ? (
@@ -434,6 +538,60 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg transition-colors cursor-pointer"
               >
                 关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isStarInviteOpen && gameMode === 'random_trade' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80 p-3 backdrop-blur-md">
+          <div className="flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-cyan-400/35 bg-[#111722] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#263047] p-4">
+              <div>
+                <h3 className="flex items-center gap-2 text-base font-black italic text-white">
+                  <UserPlus className="h-5 w-5 text-cyan-300" /> 选择邀请球星
+                </h3>
+                <p className="mt-0.5 text-[10px] text-slate-400">生涯剩余 {remainingInvitations} 次 · 邀请成功后不可更换</p>
+              </div>
+              <button type="button" onClick={() => setIsStarInviteOpen(false)} className="rounded-lg bg-slate-800 p-1.5 text-slate-400 hover:text-white">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="grid min-h-0 flex-1 grid-cols-2 gap-2 overflow-y-auto p-3">
+              {starInvitationCandidates.map(({ team, player: candidate }) => {
+                const key = `${team.id}:${candidate.id}`;
+                const selected = selectedStarKey === key;
+                return (
+                  <button
+                    type="button"
+                    key={key}
+                    onClick={() => setSelectedStarKey(key)}
+                    className={`rounded-xl border p-2.5 text-left transition-colors ${selected ? 'border-cyan-300 bg-cyan-400/15' : 'border-[#283249] bg-[#0b1019] hover:border-cyan-500/40'}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <TeamLogo team={team} className="h-8 w-8 shrink-0 object-contain" />
+                      <div className="min-w-0">
+                        <div className="truncate text-[11px] font-black text-white sm:text-xs">{candidate.name}</div>
+                        <div className="mt-0.5 text-[9px] font-mono text-cyan-300">{candidate.position} · OVR {candidate.ovr}</div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="border-t border-[#263047] p-3">
+              {starInviteMessage && <p className="mb-2 text-center text-[10px] font-bold text-amber-300">{starInviteMessage}</p>}
+              <button
+                type="button"
+                disabled={!selectedStarKey || isInvitingStar}
+                onClick={handleConfirmStarInvitation}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-cyan-400 py-2.5 text-xs font-black text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
+              >
+                <MonitorPlay className="h-4 w-4" />
+                {isInvitingStar ? '广告加载中…' : '观看广告并确认邀请'}
               </button>
             </div>
           </div>

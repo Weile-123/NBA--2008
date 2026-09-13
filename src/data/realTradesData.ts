@@ -48,6 +48,8 @@ export interface SeasonTradesConfig {
 export interface ExecutedTradeDetail {
   id: string;
   type: RealTradeType;
+  tradeCategory?: 'blockbuster' | 'starter' | 'rotation';
+  importanceScore?: number;
 
   // For 'swap'
   playerA?: {
@@ -114,6 +116,9 @@ export interface ExecutedTradeDetail {
 export interface TradeModalData {
   year: number;
   seasonName: string;
+  tradeSource?: 'historical' | 'random';
+  totalTransactions?: number;
+  hiddenTransactions?: number;
   executedTrades: ExecutedTradeDetail[];
 }
 

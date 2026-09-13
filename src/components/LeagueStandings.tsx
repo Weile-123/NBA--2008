@@ -4,8 +4,11 @@ import { Team, PlayerProfile, GameState, MatchRosterStats, SingleGamePlayerStats
 import { Trophy, Award, BarChart3, Sparkles, Target, Activity, Users, Crown, Zap, Eye, X, Star, Calendar, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { enrichRosterPlayer, getCompleteTeamRoster, generateFullMatchRosterStats, calculateMatchScores, calculateTeamPowerRating, getPlayerCategoryRatings, getUserPlayerCategoryRatings, calculateTeamUsageContext } from '../utils/leagueLogic';
 import { TeamLogo } from './TeamLogo';
+import type { GameMode } from '../gameMode';
+import { getEffectiveTeamStrategy, getTeamStrategyDescription, getTeamStrategyLabel } from '../utils/teamStrategyLogic';
 
 interface LeagueStandingsProps {
+  gameMode?: GameMode;
   teams: Team[];
   userTeamId: string;
   player?: PlayerProfile;
@@ -327,6 +330,7 @@ const RecentMatchBoxScoreModal: React.FC<RecentMatchBoxScoreModalProps> = ({
 };
 
 export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
+  gameMode = 'classic',
   teams,
   userTeamId,
   player,
@@ -346,6 +350,7 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
   const [showPowerRating, setShowPowerRating] = useState<boolean>(false);
   const [isAccoladesExpanded, setIsAccoladesExpanded] = useState<boolean>(false);
   const [teamModalViewMode, setTeamModalViewMode] = useState<'stats' | 'ratings'>('stats');
+  const selectedTeamStrategy = selectedTeamForModal ? getEffectiveTeamStrategy(selectedTeamForModal, teams) : null;
 
   // Calculates team power rating incorporating user player if on user's team
   const getTeamPowerRatingScore = (team: Team) => {
@@ -1045,6 +1050,14 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
                   <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">
                     球队评级 OVR {selectedTeamForModal.rating}
                   </p>
+                  {gameMode === 'random_trade' && selectedTeamStrategy && (
+                    <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                      <span className={`rounded-md border px-2 py-0.5 text-[10px] font-black ${selectedTeamStrategy === 'contender' ? 'border-amber-400/40 bg-amber-500/15 text-amber-300' : selectedTeamStrategy === 'playoff' ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-300' : selectedTeamStrategy === 'rebuilding' ? 'border-violet-400/40 bg-violet-500/15 text-violet-300' : 'border-cyan-400/40 bg-cyan-500/15 text-cyan-300'}`}>
+                        球队方向：{getTeamStrategyLabel(selectedTeamStrategy)}
+                      </span>
+                      <span className="text-[10px] leading-relaxed text-slate-500">{getTeamStrategyDescription(selectedTeamStrategy)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

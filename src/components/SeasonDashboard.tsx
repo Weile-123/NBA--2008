@@ -10,12 +10,16 @@ import { SeasonSummaryModal } from './SeasonSummaryModal';
 import { OffseasonDashboard } from './OffseasonDashboard';
 import { STOP_AUTO_SIM_EVENT } from '../utils/gameEvents';
 import type { SeasonAwards } from '../utils/awardsLogic';
+import type { GameMode } from '../gameMode';
+import type { YearDraftData } from '../data/draftData';
 
 // The heavy 82-card ticker is replaced by a compact progress view while this
 // loop runs, so we can simulate faster and still yield between games for taps.
 const AUTO_SIM_GAME_DELAY_MS = 100;
 
 interface SeasonDashboardProps {
+  gameMode?: GameMode;
+  parallelDraftData?: YearDraftData | null;
   gameState: GameState;
   currentTeam: Team;
   oppTeam: Team;
@@ -56,6 +60,8 @@ interface SeasonDashboardProps {
 }
 
 export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
+  gameMode = 'classic',
+  parallelDraftData,
   gameState,
   currentTeam,
   oppTeam,
@@ -248,6 +254,8 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
   if (phase === 'offseason') {
     return (
       <OffseasonDashboard
+        gameMode={gameMode}
+        parallelDraftData={parallelDraftData}
         player={player}
         currentTeam={currentTeam}
         teams={teams}

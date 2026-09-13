@@ -16,9 +16,13 @@ import { useSeasonSimulation } from './useSeasonSimulation';
 
 import { detectNewMilestones,MilestoneTrigger } from '../data/milestonesData';
 import { executeHistoricalTradesForSeason,TradeModalData } from '../data/realTradesData';
+import { executeRandomTradesForSeason, inviteStarToTeam } from '../utils/randomTradeLogic';
 import { Accolade } from '../types';
 import { scheduleRootScrollToTop } from '../utils/scroll';
 import { GameMode } from '../gameMode';
+import type { YearDraftData } from '../data/draftData';
+import { generateParallelDraftData } from '../utils/randomDraftLogic';
+import { evaluateTeamStrategies, initializeTeamStrategies } from '../utils/teamStrategyLogic';
 
 export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   const [phase, setPhaseState] = useState<GameState['phase']>('home');
@@ -97,8 +101,21 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   const [freeAgencyOffers, setFreeAgencyOffers] = useState<ContractOffer[]>([]);
   const [tradeModalData, setTradeModalData] = useState<TradeModalData | null>(null);
   const [executedTradeYears, setExecutedTradeYears] = useState<number[]>([]);
+  const [seasonTradeHistory, setSeasonTradeHistory] = useState<Record<number, TradeModalData>>({});
+  const [parallelDraftHistory, setParallelDraftHistory] = useState<Record<number, YearDraftData>>({});
   const [activeInSeasonTradeOffers, setActiveInSeasonTradeOffers] = useState<ContractOffer[]>([]);
   const [activeMilestoneModal, setActiveMilestoneModal] = useState<MilestoneTrigger | null>(null);
+
+  useEffect(() => {
+    if (gameMode !== 'random_trade' || phase !== 'offseason' || currentYear <= 2008 || parallelDraftHistory[currentYear]) return;
+    const generated = generateParallelDraftData(teams, currentYear);
+    if (generated) setParallelDraftHistory((previous) => ({ ...previous, [currentYear]: generated }));
+  }, [gameMode, phase, currentYear, parallelDraftHistory, teams]);
+
+  useEffect(() => {
+    if (gameMode !== 'random_trade' || teams.length === 0 || teams.every((team) => team.strategyModelVersion === 2)) return;
+    setTeams(initializeTeamStrategies(teams, currentYear));
+  }, [gameMode, currentYear, teams]);
 
   const checkAndApplyMilestones = (
     oldCareerStats: PlayerProfile['careerStats'],
@@ -266,7 +283,15 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     }
     // -------------------------------------------------------------
 
-    setCurrentYear((prev) => prev + 1); // Advance to next season year immediately when playoffs end
+    const upcomingYear = currentYear + 1;
+    if (gameMode === 'random_trade' && upcomingYear > 2008) {
+      setParallelDraftHistory((previous) => {
+        if (previous[upcomingYear]) return previous;
+        const generated = generateParallelDraftData(teams, upcomingYear);
+        return generated ? { ...previous, [upcomingYear]: generated } : previous;
+      });
+    }
+    setCurrentYear(upcomingYear); // Advance to next season year immediately when playoffs end
     setPhase('offseason');
     setOffseasonMonth(1);
     setOffseasonCompletedPlans({});
@@ -370,16 +395,24 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   // Auto-execute real trades for current season when entering regular season if not yet executed
   useEffect(() => {
     if (phase === 'regular_season' && player) {
+      if (gameMode === 'random_trade' && currentYear <= 2008) return;
       if (!executedTradeYears.includes(currentYear)) {
-        const { updatedTeams, modalData } = executeHistoricalTradesForSeason(teams, currentYear);
+        const { updatedTeams, modalData } = gameMode === 'random_trade'
+          ? executeRandomTradesForSeason(teams, currentYear, {
+              userPlayerId: player.id,
+              userPlayerName: player.name,
+              userTeamId: player.currentTeamId,
+            })
+          : executeHistoricalTradesForSeason(teams, currentYear);
         if (modalData && modalData.executedTrades.length > 0) {
           setTeams(updatedTeams);
           setTradeModalData(modalData);
+          setSeasonTradeHistory((prev) => ({ ...prev, [currentYear]: modalData }));
           setExecutedTradeYears((prev) => [...prev, currentYear]);
         }
       }
     }
-  }, [phase, currentYear, executedTradeYears, player, teams]);
+  }, [phase, currentYear, executedTradeYears, player, teams, gameMode]);
 
   const lastGamePhaseRef = useRef<GameState['phase']>('regular_season');
 
@@ -474,6 +507,8 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
       leagueHistory,
       activeTab,
       executedTradeYears,
+      seasonTradeHistory,
+      parallelDraftHistory,
       activeInSeasonTradeOffers,
       declinePromptYear,
       uiState: {
@@ -490,7 +525,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
         freeAgencyOffers,
       },
     };
-  }, [player, phase, gameMode, currentSaveSlot, currentYear, currentSeasonWeek, isPlayoffs, teams, schedule, tweets, careerHistory, leagueHistory, activeTab, executedTradeYears, activeInSeasonTradeOffers, declinePromptYear, isInteractiveMatch, usedOffseasonEventIds, offseasonMonth, offseasonCompletedPlans, offseasonEventMonths, offseasonPhase, isDraftCompleted, isContractCompleted, contractStep, renewalOffer, freeAgencyOffers]);
+  }, [player, phase, gameMode, currentSaveSlot, currentYear, currentSeasonWeek, isPlayoffs, teams, schedule, tweets, careerHistory, leagueHistory, activeTab, executedTradeYears, seasonTradeHistory, parallelDraftHistory, activeInSeasonTradeOffers, declinePromptYear, isInteractiveMatch, usedOffseasonEventIds, offseasonMonth, offseasonCompletedPlans, offseasonEventMonths, offseasonPhase, isDraftCompleted, isContractCompleted, contractStep, renewalOffer, freeAgencyOffers]);
 
   const autoSave = useAutoSave(
     saveSnapshot,
@@ -548,6 +583,8 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     setCareerHistory(data.careerHistory || []);
     setLeagueHistory(data.leagueHistory || []);
     setExecutedTradeYears(data.executedTradeYears || []);
+    setSeasonTradeHistory(data.seasonTradeHistory || {});
+    setParallelDraftHistory(data.parallelDraftHistory || {});
     setActiveInSeasonTradeOffers((data.activeInSeasonTradeOffers || []).slice(0, 3));
     setDeclinePromptYear(data.declinePromptYear ?? null);
     setIsInteractiveMatch(data.uiState?.isInteractiveMatch ?? true);
@@ -614,6 +651,8 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     setCareerHistory([]);
     setLeagueHistory([]);
     setExecutedTradeYears([]);
+    setSeasonTradeHistory({});
+    setParallelDraftHistory({});
     setTradeModalData(null);
     setActiveInSeasonTradeOffers([]);
     setTeams(NBA_TEAMS_2008.map((t) => ({ ...t, wins: 0, losses: 0 })));
@@ -647,6 +686,8 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     setCareerHistory([]);
     setLeagueHistory([]);
     setExecutedTradeYears([]);
+    setSeasonTradeHistory({});
+    setParallelDraftHistory({});
     setTradeModalData(null);
     setActiveInSeasonTradeOffers([]);
     setDeclinePromptYear(null);
@@ -871,15 +912,26 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     setOffseasonEventMonths([]);
     setActiveInSeasonTradeOffers([]);
 
-    // Reset wins and losses for all 30 teams for the new season with updated rosters
-    let resetTeams = updatedTeams.map((t) => ({ ...t, wins: 0, losses: 0 }));
+    // Record the completed season before clearing standings. Strategy labels are
+    // re-evaluated annually but use inertia to avoid implausible oscillation.
+    const strategicallyUpdatedTeams = gameMode === 'random_trade'
+      ? evaluateTeamStrategies(updatedTeams, currentYear)
+      : updatedTeams;
+    let resetTeams = strategicallyUpdatedTeams.map((t) => ({ ...t, wins: 0, losses: 0 }));
 
     // Execute historical real trades for the new season year (e.g. 2009 for 2009-2010 season)
     if (!executedTradeYears.includes(currentYear)) {
-      const { updatedTeams: teamsAfterTrades, modalData } = executeHistoricalTradesForSeason(resetTeams, currentYear);
+      const { updatedTeams: teamsAfterTrades, modalData } = gameMode === 'random_trade'
+        ? executeRandomTradesForSeason(resetTeams, currentYear, {
+            userPlayerId: player.id,
+            userPlayerName: player.name,
+            userTeamId: player.currentTeamId,
+          })
+        : executeHistoricalTradesForSeason(resetTeams, currentYear);
       if (modalData && modalData.executedTrades.length > 0) {
         resetTeams = teamsAfterTrades;
         setTradeModalData(modalData);
+        setSeasonTradeHistory((prev) => ({ ...prev, [currentYear]: modalData }));
         setExecutedTradeYears((prev) => [...prev, currentYear]);
       }
     }
@@ -925,6 +977,12 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   };
 
   const handleViewSeasonTrades = () => {
+    if (gameMode === 'random_trade') {
+      const generated = seasonTradeHistory[currentYear];
+      if (generated) setTradeModalData(generated);
+      else showToast('本赛季平行联盟交易尚未生成');
+      return;
+    }
     let { modalData } = executeHistoricalTradesForSeason(teams, currentYear);
     if (!modalData && currentYear === 2008) {
       modalData = {
@@ -945,6 +1003,55 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     if (modalData) {
       setTradeModalData(modalData);
     }
+  };
+
+  const handleInviteStar = (sourceTeamId: string, starPlayerId: string) => {
+    if (!player || gameMode !== 'random_trade') {
+      return { success: false, message: '该功能仅在平行联盟模式开放' };
+    }
+    const invitationYears = player.starInvitationYears || (player.starInvitationUsedYear ? [player.starInvitationUsedYear] : []);
+    const invitationCount = player.starInvitationCount ?? invitationYears.length;
+    if (invitationCount >= 3) return { success: false, message: '本段生涯的3次球星邀请机会已全部使用' };
+    const lastInvitationYear = invitationYears.length ? Math.max(...invitationYears) : null;
+    if (lastInvitationYear !== null && currentYear - lastInvitationYear < 3) {
+      return { success: false, message: `球星邀请处于冷却期，${lastInvitationYear + 3}赛季可再次使用` };
+    }
+    const userTeam = teams.find((team) => team.id === player.currentTeamId);
+    if ((userTeam?.roster.filter((candidate) => candidate.ovr >= 90).length || 0) >= 3) {
+      return { success: false, message: '当前球队已有3名90+球星，暂不可继续邀请' };
+    }
+    if ((player.invitedStarPlayerIds || []).includes(starPlayerId)) {
+      return { success: false, message: '该球星已经在本段生涯中受邀过' };
+    }
+
+    const result = inviteStarToTeam(
+      teams,
+      player.currentTeamId,
+      sourceTeamId,
+      starPlayerId,
+      currentYear,
+      player.id,
+      player.name,
+    );
+    if (result.error || !result.invitedPlayer) {
+      return { success: false, message: result.error || '球星邀请失败' };
+    }
+
+    setTeams(result.updatedTeams);
+    setPlayer((prev) => {
+      if (!prev) return prev;
+      const existingYears = prev.starInvitationYears || (prev.starInvitationUsedYear ? [prev.starInvitationUsedYear] : []);
+      return {
+        ...prev,
+        starInvitationUsedYear: currentYear,
+        starInvitationCount: (prev.starInvitationCount ?? existingYears.length) + 1,
+        starInvitationYears: [...existingYears, currentYear],
+        invitedStarPlayerIds: [...(prev.invitedStarPlayerIds || []), starPlayerId],
+      };
+    });
+    const message = `${result.invitedPlayer.name}已接受邀请并加入球队`;
+    showToast(`⭐ ${message}`);
+    return { success: true, message };
   };
 
   const currentTeam = teams.find((t) => t.id === player?.currentTeamId) || teams[0];
@@ -1015,6 +1122,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     setFreeAgencyOffers,
     tradeModalData,
     setTradeModalData,
+    parallelDraftHistory,
     activeInSeasonTradeOffers,
     setActiveInSeasonTradeOffers,
     activeMilestoneModal,
@@ -1050,6 +1158,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     handleRequestTrade,
     handleNextSeason,
     handleViewSeasonTrades,
+    handleInviteStar,
     currentTeam,
     oppTeam,
   };

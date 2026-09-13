@@ -35,6 +35,8 @@ import {
 import { gameConfetti as confetti } from '../utils/gameConfetti';
 import { completeRewardedAd } from '../lib/rewardedAd';
 import { RewardedRefreshButton } from './RewardedRefreshButton';
+import type { YearDraftData } from '../data/draftData';
+import type { GameMode } from '../gameMode';
 
 const REMAKE_ATTR_OPTIONS: { key: keyof Attributes; label: string; cat: string; icon: string }[] = [
   { key: 'midRange', label: '中投', cat: '投篮', icon: '🎯' },
@@ -68,6 +70,8 @@ interface OffseasonDashboardProps {
   currentTeam: Team;
   teams: Team[];
   currentYear: number;
+  gameMode?: GameMode;
+  parallelDraftData?: YearDraftData | null;
   offseasonMonth: number;
   offseasonCompletedPlans: Record<number, { id: string; title: string; desc: string }>;
   offseasonEventMonths: number[];
@@ -98,6 +102,8 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
   currentTeam,
   teams,
   currentYear,
+  gameMode = 'classic',
+  parallelDraftData,
   offseasonMonth,
   offseasonCompletedPlans,
   offseasonEventMonths,
@@ -126,8 +132,10 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
   const isContractExpired = (player.contract?.yearsLeft || 0) <= 0;
 
   // Check if current year has draft data
-  const currentYearDraftData = getHistoricalDraftData(currentYear);
+  const historicalDraftData = getHistoricalDraftData(currentYear);
+  const currentYearDraftData = gameMode === 'random_trade' ? parallelDraftData : historicalDraftData;
   const hasDraftForCurrentYear = !!(currentYearDraftData && currentYearDraftData.draftPicks && currentYearDraftData.draftPicks.length > 0);
+  const isWaitingForParallelDraft = gameMode === 'random_trade' && !!historicalDraftData && !parallelDraftData;
 
   // Use state setter wrappers to update parent persistent state
   const setOffseasonPhase = (p: 'draft' | 'contract' | 'training') => onSetOffseasonPhase?.(p);
@@ -144,11 +152,11 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
   }, [freeAgencyOffers]);
 
   useEffect(() => {
-    if (!hasDraftForCurrentYear && !isDraftCompleted) {
+    if (!hasDraftForCurrentYear && !isDraftCompleted && !isWaitingForParallelDraft) {
       setIsDraftCompleted(true);
       setOffseasonPhase(isContractExpired && !isContractCompleted ? 'contract' : 'training');
     }
-  }, [hasDraftForCurrentYear, isDraftCompleted, isContractExpired, isContractCompleted]);
+  }, [hasDraftForCurrentYear, isDraftCompleted, isContractExpired, isContractCompleted, isWaitingForParallelDraft]);
 
   // Modals for Contract view
   const [viewingRosterTeam, setViewingRosterTeam] = useState<Team | null>(null);
@@ -596,6 +604,7 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
           player={player}
           teams={teams}
           currentYear={currentYear}
+          suppliedDraftData={currentYearDraftData}
           isOffseasonFlow={true}
           onComplete={(updatedTeams) => {
             if (updatedTeams && onUpdateTeams) {

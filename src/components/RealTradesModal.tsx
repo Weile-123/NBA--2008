@@ -16,20 +16,28 @@ export const RealTradesModal: React.FC<RealTradesModalProps> = ({
   onConfirm,
 }) => {
   const findTeam = (id: string) => teams.find((t) => t.id === id);
+  const isRandomTradeMode = modalData.tradeSource === 'random';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-5 bg-black/90 backdrop-blur-md overflow-y-auto">
       <div className="bg-[#11151e] rounded-2xl max-w-3xl w-full p-3 sm:p-6 shadow-2xl space-y-3 sm:space-y-5 my-auto relative animate-scaleUp">
         {/* Header section */}
         <div className="text-center space-y-1 border-b border-[#232834] pb-2.5 sm:pb-4">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] sm:text-xs font-black uppercase">
-            <Sparkles className="w-3 h-3 text-amber-400" />
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] sm:text-xs font-black uppercase ${isRandomTradeMode ? 'border-cyan-400/40 bg-cyan-500/15 text-cyan-200' : 'border-amber-500/40 bg-amber-500/20 text-amber-300'}`}>
+            <Sparkles className={`w-3 h-3 ${isRandomTradeMode ? 'text-cyan-300' : 'text-amber-400'}`} />
             <span>{modalData.seasonName}</span>
           </div>
           <h2 className="text-base sm:text-2xl font-black italic uppercase text-white tracking-tight">
-            重磅交易与人员变动
+            {isRandomTradeMode ? '平行联盟交易动态' : '重磅交易与人员变动'}
           </h2>
         </div>
+
+        {isRandomTradeMode && modalData.totalTransactions !== undefined && (
+          <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/10 px-3 py-2 text-[10px] leading-relaxed text-cyan-100 sm:text-xs">
+            本赛季联盟共完成 <strong>{modalData.totalTransactions}</strong> 笔人员变动，以下展示 {modalData.executedTrades.length} 笔主要交易
+            {(modalData.hiddenTransactions || 0) > 0 ? `；另有 ${modalData.hiddenTransactions} 笔轮换调整未展开。` : '。'}
+          </div>
+        )}
 
         {/* Trade cards list */}
         <div className="max-h-[65vh] overflow-y-auto space-y-2.5 sm:space-y-3 pr-1 custom-scrollbar">
@@ -275,7 +283,7 @@ export const RealTradesModal: React.FC<RealTradesModalProps> = ({
         <div className="pt-2 border-t border-[#232834]">
           <button
             onClick={onConfirm}
-            className="w-full py-2.5 sm:py-3 bg-amber-500 hover:bg-amber-400 text-black font-black italic rounded-xl text-xs sm:text-sm uppercase tracking-tight shadow-xl transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-1.5"
+            className={`w-full py-2.5 sm:py-3 text-slate-950 font-black italic rounded-xl text-xs sm:text-sm uppercase tracking-tight shadow-xl transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-1.5 ${isRandomTradeMode ? 'bg-cyan-400 hover:bg-cyan-300' : 'bg-amber-500 hover:bg-amber-400'}`}
           >
             <Check className="w-4 h-4 stroke-[3]" />
             <span>确认变动</span>

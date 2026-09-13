@@ -185,22 +185,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </div>
           )}
 
-          <div className={hasSave ? 'grid grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] gap-2' : ''}>
-            {hasSave && (
-              <button
-                type="button"
-                onClick={() => setPendingNewMode(mode)}
-                className="flex min-w-0 items-center justify-center gap-1 rounded-xl border border-slate-600/70 bg-slate-800/80 px-1.5 py-2.5 text-[9px] font-black text-slate-200 transition-transform active:scale-[0.98] sm:text-xs"
-              >
-                <PlusCircle className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
-                <span>重新开档</span>
-              </button>
-            )}
+          <div className="flex flex-col gap-1.5">
             <button
               type="button"
               disabled={!modeSavesReady}
               onClick={() => onLaunchMode(mode, hasSave ? 'continue' : 'new')}
-              className={`flex min-w-0 w-full items-center justify-center gap-1 rounded-xl px-1.5 py-2.5 text-[10px] font-black transition-transform active:scale-[0.98] disabled:cursor-wait disabled:opacity-50 sm:text-sm ${
+              className={`flex min-w-0 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-1.5 py-2.5 text-[10px] font-black transition-transform active:scale-[0.98] disabled:cursor-wait disabled:opacity-50 sm:text-sm ${
                 isClassic
                   ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black'
                   : 'bg-gradient-to-r from-cyan-400 to-cyan-500 text-slate-950'
@@ -210,6 +200,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <span>{hasSave ? '继续生涯' : `开启${isClassic ? '经典' : '新'}模式`}</span>
               <ArrowRight className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
             </button>
+            {hasSave && (
+              <button
+                type="button"
+                onClick={() => setPendingNewMode(mode)}
+                className="flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-transparent py-1 text-[9px] font-bold text-slate-400 transition-colors hover:border-slate-700 hover:bg-slate-800/60 hover:text-slate-200 active:bg-slate-800 sm:text-[11px]"
+              >
+                <PlusCircle className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" />
+                <span>重新开档</span>
+              </button>
+            )}
           </div>
         </div>
       </article>

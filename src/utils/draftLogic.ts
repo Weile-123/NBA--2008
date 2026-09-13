@@ -1,5 +1,5 @@
 import { Team, RosterPlayer, PlayerProfile, Position } from '../types';
-import { getHistoricalDraftData, DraftPickItem } from '../data/draftData';
+import { getHistoricalDraftData, DraftPickItem, YearDraftData } from '../data/draftData';
 
 /**
  * Dynamically calculates realistic user draft pick based on player overall rating (OVR).
@@ -58,9 +58,10 @@ export function calculateUserDraftPick(ovr: number): number {
 export function applyDraftRookiesToTeams(
   teams: Team[],
   year: number,
-  userPlayer: PlayerProfile | null
+  userPlayer: PlayerProfile | null,
+  suppliedDraftData?: YearDraftData | null,
 ): Team[] {
-  const draftData = getHistoricalDraftData(year);
+  const draftData = suppliedDraftData || getHistoricalDraftData(year);
   const picks: DraftPickItem[] = draftData.draftPicks;
 
   // Clone teams array

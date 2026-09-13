@@ -198,6 +198,10 @@ export interface PlayerProfile {
   adRewardUses?: number;
   freeAgencyOfferRefreshUsed?: boolean;
   tradeOfferRefreshUsed?: boolean;
+  starInvitationUsedYear?: number;
+  starInvitationCount?: number;
+  starInvitationYears?: number[];
+  invitedStarPlayerIds?: string[];
   isRookie?: boolean;
 }
 
@@ -231,6 +235,8 @@ export interface RosterPlayer {
   isRookie?: boolean;
   role?: '战术核心' | '绝对首发' | '第六人' | '轮换替补' | '饮水机守门员' | string;
   minutes?: number;
+  tradeProtectionUntilYear?: number;
+  acquisitionSource?: 'star_invitation';
   stats?: {
     ppg: number;
     rpg: number;
@@ -241,6 +247,8 @@ export interface RosterPlayer {
     mpg?: number;
   };
 }
+
+export type TeamStrategy = 'contender' | 'playoff' | 'retooling' | 'rebuilding';
 
 export interface Team {
   id: string;
@@ -256,6 +264,14 @@ export interface Team {
   wins: number;
   losses: number;
   roster: RosterPlayer[];
+  strategy?: TeamStrategy;
+  strategyScore?: number;
+  strategySinceYear?: number;
+  strategyUpdatedYear?: number;
+  strategyModelVersion?: number;
+  previousSeasonWins?: number;
+  previousSeasonRating?: number;
+  lastTradeYear?: number;
 }
 
 export interface MatchLog {
