@@ -9,6 +9,7 @@ import { PlayoffPanel } from './PlayoffPanel';
 import { SeasonSummaryModal } from './SeasonSummaryModal';
 import { OffseasonDashboard } from './OffseasonDashboard';
 import { STOP_AUTO_SIM_EVENT } from '../utils/gameEvents';
+import type { SeasonAwards } from '../utils/awardsLogic';
 
 // The heavy 82-card ticker is replaced by a compact progress view while this
 // loop runs, so we can simulate faster and still yield between games for taps.
@@ -40,7 +41,7 @@ interface SeasonDashboardProps {
   onRest: () => void;
   onAdvanceWeek: () => void;
   onEnterPlayoffs?: () => void;
-  onEnterOffseason?: (championTeam?: Team, fmvpName?: string) => void;
+  onEnterOffseason?: (championTeam?: Team, fmvpName?: string, seasonAwards?: SeasonAwards) => void;
   onNextSeason?: () => void;
   onUpdatePlayer?: (player: PlayerProfile) => void;
   onUpdateTeams?: (teams: Team[]) => void;
@@ -51,6 +52,7 @@ interface SeasonDashboardProps {
   onViewSeasonTrades?: () => void;
   hasActiveMilestoneModal?: boolean;
   isSettingsOpen?: boolean;
+  onAutoSimulationChange?: (active: boolean) => void;
 }
 
 export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
@@ -87,6 +89,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
   onViewSeasonTrades,
   hasActiveMilestoneModal,
   isSettingsOpen = false,
+  onAutoSimulationChange,
 }) => {
   const { player, currentGame = 1, isPlayoffs, schedule = [], currentYear = 2008, teams = [], phase } = gameState;
   const currentMatchInfo = schedule.find((s) => (s as any).gameNumber === currentGame || s.week === currentGame) || schedule[0];
@@ -100,8 +103,30 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
 
   const autoSimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isAutoSimulatingRef = useRef(false);
+  const seasonSummaryFrameRef = useRef<number | null>(null);
+  const settledSeasonAwardsRef = useRef<SeasonAwards | null>(null);
   const lastInjuryKeyRef = useRef<string | null>(null);
   const isInjured = player.health.status === 'injured';
+
+  const handleAwardsSettled = React.useCallback((settledAwards: SeasonAwards) => {
+    settledSeasonAwardsRef.current = settledAwards;
+  }, []);
+
+  useEffect(() => {
+    settledSeasonAwardsRef.current = null;
+  }, [currentYear]);
+
+  useEffect(() => {
+    // Keep heavyweight persistence suspended until an auto-sim interruption
+    // (season awards, milestone or retirement prompt) has also left the screen.
+    // Otherwise the first 82-game snapshot is serialized exactly while the
+    // award overlay is mounting, which can blank an embedded WebView.
+    onAutoSimulationChange?.(
+      isAutoSimulating || showSeasonSummaryModal || !!hasActiveMilestoneModal,
+    );
+  }, [hasActiveMilestoneModal, isAutoSimulating, onAutoSimulationChange, showSeasonSummaryModal]);
+
+  useEffect(() => () => onAutoSimulationChange?.(false), [onAutoSimulationChange]);
 
   useEffect(() => {
     if (!isInjured) {
@@ -155,6 +180,11 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
 
   // Regular season finished -> Pause auto-sim & show Season Summary Modal
   useEffect(() => {
+    if (seasonSummaryFrameRef.current !== null) {
+      cancelAnimationFrame(seasonSummaryFrameRef.current);
+      seasonSummaryFrameRef.current = null;
+    }
+
     if (phase !== 'regular_season') {
       setShowSeasonSummaryModal(false);
       return;
@@ -163,11 +193,26 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
     const playedCount = schedule.filter((s) => s.isPlayed).length;
     const isSeasonFinished = playedCount >= 82;
     if (isSeasonFinished && !isPlayoffs) {
+      isAutoSimulatingRef.current = false;
       setIsAutoSimulating(false);
-      setShowSeasonSummaryModal(true);
+      // Let the final game state commit before mounting the comparatively
+      // heavy awards view. This avoids one frame containing simulation,
+      // standings reconciliation and modal composition at the same time.
+      seasonSummaryFrameRef.current = requestAnimationFrame(() => {
+        seasonSummaryFrameRef.current = null;
+        setShowSeasonSummaryModal(true);
+      });
     } else {
       setShowSeasonSummaryModal(false);
     }
+
+
+    return () => {
+      if (seasonSummaryFrameRef.current !== null) {
+        cancelAnimationFrame(seasonSummaryFrameRef.current);
+        seasonSummaryFrameRef.current = null;
+      }
+    };
   }, [schedule, isPlayoffs, phase]);
 
   const toggleAutoSim = () => {
@@ -245,9 +290,10 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
         player={player}
         currentYear={currentYear}
         onStartInteractiveMatch={() => onStartMatch(true)}
+        onUpdatePlayer={onUpdatePlayer}
         onFinishPlayoffs={(championTeam, fmvpName) => {
           if (onEnterOffseason) {
-            onEnterOffseason(championTeam, fmvpName);
+            onEnterOffseason(championTeam, fmvpName, settledSeasonAwardsRef.current || undefined);
           } else if (onNextSeason) {
             onNextSeason();
           }
@@ -1029,6 +1075,8 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
           player={player}
           teams={teams}
           currentYear={currentYear}
+          onUpdatePlayer={onUpdatePlayer}
+          onAwardsSettled={handleAwardsSettled}
           onProceedToPlayoffs={() => {
             setShowSeasonSummaryModal(false);
             setIsAutoSimulating(false);

@@ -3,7 +3,7 @@ import { startTransition,useCallback,useEffect,useLayoutEffect,useMemo,useRef,us
 import type { Dispatch,SetStateAction } from 'react';
 import { HISTORICAL_SEASONS,NBA_TEAMS_2008 } from '../data/nbaData2008';
 import { GameState,MatchBoxScore,PlayerProfile,RosterPlayer,Team } from '../types';
-import { calculateSeasonAwards } from '../utils/awardsLogic';
+import { calculateSeasonAwards, type SeasonAwards } from '../utils/awardsLogic';
 import { mustRetireAtAge,syncPlayerAgeDecay } from '../utils/calc2k';
 import { ContractOffer } from '../utils/contractLogic';
 import { calculateUserDraftPick } from '../utils/draftLogic';
@@ -48,6 +48,8 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   const [legendaryHofInitialMode, setLegendaryHofInitialMode] = useState<'local' | 'global'>('local');
   const [declinePromptYear, setDeclinePromptYear] = useState<number | null>(null);
   const [showAgeDeclineModal, setShowAgeDeclineModal] = useState<boolean>(false);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isRegularSeasonAutoSimulating, setIsRegularSeasonAutoSimulating] = useState(false);
 
   // Automatically scroll to the top of the page when changing tabs or phases
   useEffect(() => {
@@ -56,11 +58,17 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   }, [activeTab, phase]);
 
   const showToast = (msg: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToastMsg(msg);
-    setTimeout(() => {
+    toastTimerRef.current = setTimeout(() => {
       setToastMsg((curr) => (curr === msg ? null : curr));
+      toastTimerRef.current = null;
     }, 3000);
   };
+
+  useEffect(() => () => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+  }, []);
 
   const [teams, setTeams] = useState<Team[]>(() =>
     NBA_TEAMS_2008.map((t) => ({ ...t, wins: 0, losses: 0 }))
@@ -146,7 +154,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     setUsedOffseasonEventIds((prev) => new Set([...prev, eventId]));
   };
 
-  const handleEnterOffseason = (championTeam?: Team, passedFmvpName?: string) => {
+  const handleEnterOffseason = (championTeam?: Team, passedFmvpName?: string, settledSeasonAwards?: SeasonAwards) => {
     setIsPlayoffs(false);
     setShowDraftWaitingAnimation(true);
 
@@ -156,12 +164,35 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
       const seasonStr = `${currentYear}-${(currentYear + 1).toString().slice(-2)} 赛季`;
       
       // Calculate user accolades for this year from computedAwards
-      const computedAwards = calculateSeasonAwards(teams, player, currentYear);
+      // Reuse the exact regular-season result shown to the player. Recomputing
+      // here can make the history page disagree with the settlement screen if
+      // any roster or team object changed during the playoffs.
+      const computedAwards = settledSeasonAwards ?? calculateSeasonAwards(teams, player, currentYear);
       const accoladesEarned: string[] = [];
       if (computedAwards.mvp.isUser) accoladesEarned.push('常规赛 MVP');
+      if (computedAwards.scoringLeader.isUser) accoladesEarned.push('常规赛得分王');
       if (computedAwards.dpoy.isUser) accoladesEarned.push('最佳防守球员');
       if (computedAwards.sixthMan.isUser) accoladesEarned.push('最佳第六人');
       if (computedAwards.roy.isUser) accoladesEarned.push('最佳新秀');
+
+      const allNbaSelection = computedAwards.allNbaTeams.find((team) =>
+        team.players.some((awardPlayer) => awardPlayer.isUser),
+      );
+      if (allNbaSelection) accoladesEarned.push(allNbaSelection.label);
+
+      const allDefenseSelection = computedAwards.allDefensiveTeams.find((team) =>
+        team.players.some((awardPlayer) => awardPlayer.isUser),
+      );
+      if (allDefenseSelection) accoladesEarned.push(allDefenseSelection.label);
+
+      const isUserAllStar =
+        computedAwards.mvp.isUser ||
+        computedAwards.dpoy.isUser ||
+        computedAwards.sixthMan.isUser ||
+        !!allNbaSelection ||
+        (player.careerStats.games > 0 && player.careerStats.pts / player.careerStats.games >= 16) ||
+        player.ovr >= 82;
+      if (isUserAllStar) accoladesEarned.push('联盟 全明星');
       
       // Check if user's team won championship and if player won FMVP
       const isChamp = championTeam && championTeam.id === player.currentTeamId;
@@ -252,13 +283,16 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
 
     // Update contract remaining years (decrement by 1)
     if (player) {
-      const updatedYearsLeft = Math.max(0, (player.contract?.yearsLeft || 1) - 1);
-      setPlayer({
-        ...player,
-        contract: {
-          ...player.contract,
-          yearsLeft: updatedYearsLeft,
-        },
+      setPlayer((latestPlayer) => {
+        if (!latestPlayer) return latestPlayer;
+        const updatedYearsLeft = Math.max(0, (latestPlayer.contract?.yearsLeft || 1) - 1);
+        return {
+          ...latestPlayer,
+          contract: {
+            ...latestPlayer.contract,
+            yearsLeft: updatedYearsLeft,
+          },
+        };
       });
     }
   };
@@ -458,7 +492,11 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     };
   }, [player, phase, gameMode, currentSaveSlot, currentYear, currentSeasonWeek, isPlayoffs, teams, schedule, tweets, careerHistory, leagueHistory, activeTab, executedTradeYears, activeInSeasonTradeOffers, declinePromptYear, isInteractiveMatch, usedOffseasonEventIds, offseasonMonth, offseasonCompletedPlans, offseasonEventMonths, offseasonPhase, isDraftCompleted, isContractCompleted, contractStep, renewalOffer, freeAgencyOffers]);
 
-  const autoSave = useAutoSave(saveSnapshot, (time) => setLastSavedAt(new Date(time).toLocaleTimeString('zh-CN')));
+  const autoSave = useAutoSave(
+    saveSnapshot,
+    (time) => setLastSavedAt(new Date(time).toLocaleTimeString('zh-CN')),
+    isRegularSeasonAutoSimulating,
+  );
   const getCurrentSavedData = () => saveSnapshot ? { ...saveSnapshot, updatedAt: new Date().toISOString() } : null;
   const handleOpenSaveSlots = () => {
     autoSave.flush();
@@ -935,6 +973,8 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     setActiveTab,
     lastSavedAt,
     storageReady,
+    isRegularSeasonAutoSimulating,
+    setIsRegularSeasonAutoSimulating,
     showSettingsModal,
     setShowSettingsModal,
     isLegendaryHofOpen,

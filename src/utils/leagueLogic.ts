@@ -746,6 +746,18 @@ export function calculateExpectedBpg36(effectiveBlockRating: number, position: P
 }
 
 /**
+ * Convert a fractional per-game expectation into an integer box-score value
+ * without permanently erasing low-frequency stats. For example, an expected
+ * 0.18 blocks produces one block in roughly 18% of games instead of always
+ * becoming zero through Math.round().
+ */
+function sampleDiscreteStat(expected: number): number {
+  const safeExpected = Math.max(0, expected);
+  const whole = Math.floor(safeExpected);
+  return whole + (Math.random() < safeExpected - whole ? 1 : 0);
+}
+
+/**
  * Calculates complete 12-man roster for a team (including user player if assigned to this team)
  * based on positional ranking and player performance comparison.
  */
@@ -833,8 +845,10 @@ export function getCompleteTeamRoster(
     // Expected stat score for player's current OVR rating
     const expectedStatScore = (userPlayer.ovr - 50) * 0.5;
     const diff = userStatScore - expectedStatScore;
-    // Performance modifier bounded between -8 and +10
-    const performanceMod = Math.max(-8, Math.min(10, diff * 0.5));
+    // Do not let one or two early-season games overturn a player's established
+    // rotation status. Performance influence ramps up until the 10th game.
+    const sampleWeight = Math.min(1, userGames / 10);
+    const performanceMod = Math.max(-8, Math.min(10, diff * 0.5)) * sampleWeight;
     userScore = userPlayer.ovr + performanceMod;
   }
 
@@ -882,55 +896,61 @@ export function getCompleteTeamRoster(
     userMinutes = 12.0;
   } else {
     // userPlayer.ovr >= 74
-    // Must qualify for Sixth Man benchmark first
+    // Compare with the starter at the user's own position first. Requiring the
+    // user to beat an unrelated high-rated bench player before this comparison
+    // could incorrectly demote a clear positional starter to the rotation.
+    const qualifiesForStarter = posStarter ? (userScore >= posStarter.score && userPlayer.ovr >= 78) : true;
     const qualifiesForSixthMan = teammateSixthMan ? (userScore >= teammateSixthMan.score) : true;
 
-    if (!qualifiesForSixthMan) {
+    if (qualifiesForStarter) {
+      // Check 成为战术核心条件: 1.位于绝对首发, 2.场均数据队内前3, 3.球员总评到达90
+      const effectiveUserPpg = userGames > 0 ? userPpg : calculateExpectedPpg36(userPlayer.ovr) * (30 / 36);
+      const teamPpgs = teammates.map((t) => t.stats?.ppg || 0);
+      const sortedTeamPpgs = [...teamPpgs, effectiveUserPpg].sort((a, b) => b - a);
+      const isTop3InStats = effectiveUserPpg >= (sortedTeamPpgs[2] || 0);
+
+      const qualifiesForTacticalCore = userPlayer.ovr >= 90 && isTop3InStats;
+
+      if (qualifiesForTacticalCore) {
+        userRole = '战术核心';
+        userMinutes = userTeamUsageContext.starCongestionTier === 'solo_carry' ? 37.5 : (userTeamUsageContext.starCongestionTier === 'solo_95_pure' ? 36.0 : 35.5);
+      } else {
+        userRole = '绝对首发';
+        userMinutes = 30.0;
+      }
+    } else if (qualifiesForSixthMan) {
+      userRole = '第六人';
+      userMinutes = 24.0;
+    } else {
       userRole = '轮换替补';
       userMinutes = 16.0;
-    } else {
-      // Qualified for Sixth Man! Check if player ALSO qualifies for Starter
-      const qualifiesForStarter = posStarter ? (userScore >= posStarter.score && userPlayer.ovr >= 78) : true;
-
-      if (!qualifiesForStarter) {
-        userRole = '第六人';
-        userMinutes = 24.0;
-      } else {
-        // Promoted to Starter!
-        // Check 成为战术核心条件: 1.位于绝对首发, 2.场均数据队内前3, 3.球员总评到达90
-        const effectiveUserPpg = userGames > 0 ? userPpg : calculateExpectedPpg36(userPlayer.ovr) * (30 / 36);
-        const teamPpgs = teammates.map((t) => t.stats?.ppg || 0);
-        const sortedTeamPpgs = [...teamPpgs, effectiveUserPpg].sort((a, b) => b - a);
-        const isTop3InStats = effectiveUserPpg >= (sortedTeamPpgs[2] || 0);
-
-        const qualifiesForTacticalCore = userPlayer.ovr >= 90 && isTop3InStats;
-
-        if (qualifiesForTacticalCore) {
-          userRole = '战术核心';
-          userMinutes = userTeamUsageContext.starCongestionTier === 'solo_carry' ? 37.5 : (userTeamUsageContext.starCongestionTier === 'solo_95_pure' ? 36.0 : 35.5);
-        } else {
-          userRole = '绝对首发';
-          userMinutes = 30.0;
-        }
-      }
     }
   }
 
-  // Adjust teammate demotions based on user role
-  const demotedToSixthManId = (userRole === '绝对首发' || userRole === '战术核心') && posStarter ? posStarter.id : null;
-  const demotedToRotationId = (userRole === '第六人' || demotedToSixthManId) && teammateSixthMan ? teammateSixthMan.id : null;
+  // Rebuild the teammate depth chart after inserting the user. A displaced
+  // starter must compete with all other reserves for the sixth-man role.
+  const userIsStarter = userRole === '绝对首发' || userRole === '战术核心';
+  const activeStarterIds = new Set(starterIds);
+  if (userIsStarter && posStarter) activeStarterIds.delete(posStarter.id);
+  const adjustedBench = teammates
+    .filter((t) => !activeStarterIds.has(t.id))
+    .sort((a, b) => b.score - a.score);
+  const teammateSixthManAfterUser = userRole === '第六人' ? null : (adjustedBench[0] || null);
+  const rotationTeammateIds = new Set(
+    adjustedBench
+      .filter((t) => t.id !== teammateSixthManAfterUser?.id)
+      .slice(0, userRole === '轮换替补' ? 3 : 4)
+      .map((t) => t.id),
+  );
 
   const rosterMapped = teammates.map((t) => {
     let roleTag: '战术核心' | '绝对首发' | '第六人' | '轮换替补' | '饮水机守门员' = '饮水机守门员';
     let assignedMins = 8.0;
 
-    if (t.id === demotedToSixthManId) {
+    if (t.id === teammateSixthManAfterUser?.id) {
       roleTag = '第六人';
       assignedMins = 24.0;
-    } else if (t.id === demotedToRotationId) {
-      roleTag = '轮换替补';
-      assignedMins = 16.0;
-    } else if (starterIds.has(t.id)) {
+    } else if (activeStarterIds.has(t.id)) {
       if (t.isStar && t.ovr >= 82) {
         roleTag = '战术核心';
         assignedMins = 35.0;
@@ -938,10 +958,7 @@ export function getCompleteTeamRoster(
         roleTag = '绝对首发';
         assignedMins = 30.0;
       }
-    } else if (t.id === teammateSixthMan?.id) {
-      roleTag = '第六人';
-      assignedMins = 24.0;
-    } else if (benchTeammates.slice(1, 4).some((b) => b.id === t.id)) {
+    } else if (rotationTeammateIds.has(t.id)) {
       roleTag = '轮换替补';
       assignedMins = 16.0;
     } else {
@@ -1220,7 +1237,7 @@ export function simulatePlayerMatchStats(
   const stlPer36 = calculateExpectedSpg36(effectiveStealRating, player.position);
   // 单场事件离散波动计算
   const stlVariance = 0.75 + Math.random() * 0.50;
-  const stl = Math.max(0, Math.round(stlPer36 * timeFactor * stlVariance));
+  const stl = sampleDiscreteStat(stlPer36 * timeFactor * stlVariance);
 
   // 7. Blocks Logic (以盖帽、内线防守、弹跳、力量属性为核心基准)
   const blockAttr = attrs.block || 60;
@@ -1229,7 +1246,7 @@ export function simulatePlayerMatchStats(
   const effectiveBlockRating = blockAttr * 0.70 + intDefAttr * 0.15 + vertAttr * 0.15;
   const blkPer36 = calculateExpectedBpg36(effectiveBlockRating, player.position);
   const blkVariance = 0.75 + Math.random() * 0.50;
-  const blk = Math.max(0, Math.round(blkPer36 * timeFactor * blkVariance));
+  const blk = sampleDiscreteStat(blkPer36 * timeFactor * blkVariance);
 
   // 8. Turnovers Logic (控球与传球越高，失误控制越出色)
   const safeHandleRating = (handleAttr * 0.65 + passAttr * 0.35);
@@ -1453,6 +1470,17 @@ export function calculateMatchScores(
   // 5. Weak team final score
   let weakFinalScore = strongFinalScore - selectedMargin;
   weakFinalScore = Math.max(75, Math.min(125, weakFinalScore));
+
+  // NBA games cannot finish level. Resolve the rare generated tie as a short
+  // overtime margin, weighted by the two teams' power ratings.
+  if (weakFinalScore === strongFinalScore) {
+    const overtimeMargin = 1 + Math.floor(Math.random() * 6);
+    const strongerWinsOvertime = Math.random() < calcWinProbability(strongRating, weakRating);
+    weakFinalScore = strongerWinsOvertime
+      ? Math.max(75, strongFinalScore - overtimeMargin)
+      : strongFinalScore + overtimeMargin;
+    selectedMargin = strongFinalScore - weakFinalScore;
+  }
 
   const teamAScore = isAStronger ? strongFinalScore : weakFinalScore;
   const teamBScore = isAStronger ? weakFinalScore : strongFinalScore;

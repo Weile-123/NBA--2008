@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Play, PlusCircle, Trophy, Sparkles, UserCheck, Flame, ArrowRight, ArrowLeft, AlertTriangle, Globe, Loader2, MessageSquareText, Shuffle, LockKeyhole } from 'lucide-react';
+import { Play, PlusCircle, Trophy, Sparkles, UserCheck, Flame, ArrowRight, ArrowLeft, AlertTriangle, Bell, Globe, Loader2, MessageSquareText, Shuffle, LockKeyhole } from 'lucide-react';
 import { SaveSlotMeta, getAllSaveSlotsMeta } from '../utils/storage';
 import { TeamLogo } from './TeamLogo';
 import { loadGlobalHallOfFame, retryPendingGlobalHallOfFameUpload } from '../lib/globalLeaderboard';
 import { UserFeedbackModal } from './UserFeedbackModal';
 import { GameMode, GAME_MODE_CONFIG } from '../gameMode';
+import { UpdateAnnouncementModal } from './UpdateAnnouncementModal';
 
 interface HomeScreenProps {
   gameMode: GameMode;
@@ -37,6 +38,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [isBannerLoading, setIsBannerLoading] = useState<boolean>(true);
   const [isBannerTimeout, setIsBannerTimeout] = useState<boolean>(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
 
   useEffect(() => {
     if (gameMode !== 'classic') {
@@ -174,6 +176,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               {GAME_MODE_CONFIG[gameMode].shortName} · 独立存档
             </span>
             <span className="hidden sm:inline text-slate-500">v2.50</span>
+            <button
+              type="button"
+              onClick={() => setIsAnnouncementOpen(true)}
+              className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-amber-500/35 bg-amber-500/10 text-amber-300 transition-colors hover:border-amber-400 hover:bg-amber-500/20"
+              title="查看更新公告"
+              aria-label="查看更新公告"
+            >
+              <Bell className="h-4 w-4" />
+              <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-[#0a0d14] bg-red-500" />
+            </button>
           </div>
         </header>
 
@@ -417,6 +429,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       )}
 
       <UserFeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
+      <UpdateAnnouncementModal isOpen={isAnnouncementOpen} onClose={() => setIsAnnouncementOpen(false)} />
     </div>
   );
 };

@@ -62,6 +62,8 @@ function CareerApp({ gameMode, resumeOnMount, onSelectGameMode }: { gameMode: Ga
     setActiveTab,
     lastSavedAt,
     storageReady,
+    isRegularSeasonAutoSimulating,
+    setIsRegularSeasonAutoSimulating,
     showSettingsModal,
     setShowSettingsModal,
     isLegendaryHofOpen,
@@ -141,9 +143,8 @@ function CareerApp({ gameMode, resumeOnMount, onSelectGameMode }: { gameMode: Ga
     oppTeam,
   } = useCareerGame(gameMode, resumeOnMount);
 
-
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950">
+    <div className={`min-h-full bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 ${isRegularSeasonAutoSimulating ? 'app-auto-simulating' : ''}`}>
       {/* Draft Waiting Animation Modal */}
       <Suspense fallback={null}>
         {showDraftWaitingAnimation && (
@@ -321,6 +322,7 @@ function CareerApp({ gameMode, resumeOnMount, onSelectGameMode }: { gameMode: Ga
                 onViewSeasonTrades={handleViewSeasonTrades}
                 hasActiveMilestoneModal={!!activeMilestoneModal || showAgeDeclineModal}
                 isSettingsOpen={showSettingsModal}
+                onAutoSimulationChange={setIsRegularSeasonAutoSimulating}
               />
             )}
 
@@ -331,7 +333,6 @@ function CareerApp({ gameMode, resumeOnMount, onSelectGameMode }: { gameMode: Ga
                 player={player}
                 currentYear={currentYear}
                 careerHistory={careerHistory}
-                schedule={schedule}
               />
             )}
 

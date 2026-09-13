@@ -151,6 +151,9 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
   // Helper to ensure float values are strictly rounded to 1 decimal place and fix legacy accolade counts
   const sanitizeLegend = (l: RetiredPlayerRecord): RetiredPlayerRecord => {
     let dpoys = l.careerAccolades?.dpoys || 0;
+    let allNbaFirsts = l.careerAccolades?.allNbaFirsts || 0;
+    let allNbaSeconds = l.careerAccolades?.allNbaSeconds || 0;
+    let allNbaThirds = l.careerAccolades?.allNbaThirds || 0;
     // Recalculate dpoys from season timeline if available to correct legacy records where All-Defensive teams inflated DPOY count
     if (l.timeline && l.timeline.length > 0) {
       dpoys = l.timeline.reduce((count, season) => {
@@ -162,6 +165,16 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
         );
         return hasDpoy ? count + 1 : count;
       }, 0);
+      const seasonTiers = l.timeline.map((season) => {
+        const accolades = season.accolades || [];
+        if (accolades.some((acc) => acc.includes('最佳阵容一阵') && !acc.includes('防守'))) return 1;
+        if (accolades.some((acc) => acc.includes('最佳阵容二阵') && !acc.includes('防守'))) return 2;
+        if (accolades.some((acc) => acc.includes('最佳阵容三阵') && !acc.includes('防守'))) return 3;
+        return 0;
+      });
+      allNbaFirsts = seasonTiers.filter((tier) => tier === 1).length;
+      allNbaSeconds = seasonTiers.filter((tier) => tier === 2).length;
+      allNbaThirds = seasonTiers.filter((tier) => tier === 3).length;
     }
 
     return {
@@ -172,6 +185,9 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
       careerAccolades: {
         ...l.careerAccolades,
         dpoys,
+        allNbaFirsts,
+        allNbaSeconds,
+        allNbaThirds,
       },
       timeline: (l.timeline || []).map((t) => ({
         ...t,

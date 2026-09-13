@@ -88,11 +88,29 @@ async function submit(puid, displayName, score, record) {
   return Array.isArray(result) ? result[0] : result;
 }
 
+async function getLeaderboardRank(puid) {
+  const serviceToken = await getRdbServiceToken();
+  const envId = process.env.CLOUDBASE_ENV_ID || process.env.TCB_ENV;
+  const response = await fetch(`https://${envId}.api.tcloudbasegateway.com/v1/rdb/rest/rpc/get_legendary_leaderboard_rank`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: serviceToken.startsWith('Bearer ') ? serviceToken : `Bearer ${serviceToken}`,
+      'X-Db-Instance': 'default',
+      'Accept-Profile': 'public',
+      'Content-Profile': 'public',
+    },
+    body: JSON.stringify({ p_puid: puid, p_max_age: MAX_CAREER_AGE }),
+  });
+  const raw = await response.text();
+  let result = null;
+  try { result = raw ? JSON.parse(raw) : null; } catch { /* Keep the public error generic. */ }
+  if (!response.ok) throw error('传奇排名暂时无法计算', 500);
+  return Array.isArray(result) ? result[0] : result;
+}
+
 async function mine(puid) {
-  const row = rows(await rdb.from(TABLE).select('display_name,score,record,updated_at').eq('puid', puid).limit(1))[0];
-  if (!row || !isEligibleLeaderboardRow(row)) return null;
-  const higher = rows(await rdb.from(TABLE).select('score,record').gt('score', Number(row.score)).limit(5000));
-  return { rank: higher.filter(isEligibleLeaderboardRow).length + 1, displayName: row.display_name, score: Number(row.score), record: row.record, updatedAt: row.updated_at };
+  return getLeaderboardRank(puid);
 }
 
 http.createServer(async (req, res) => {

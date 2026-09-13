@@ -1,6 +1,7 @@
 import React from 'react';
 import { PlayerProfile } from '../types';
 import { TeamLogo } from './TeamLogo';
+import { formatPercentage } from '../utils/statsFormat';
 import { NBA_TEAMS_2008 } from '../data/nbaData2008';
 import {
   History,
@@ -224,9 +225,9 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({
   const maxTimelineYear = currentYearVal - 1;
 
   // Map user career history by year
-  const userTeamHistoryMap: Record<number, { teamName: string; teamId: string }> = {};
+  const userTeamHistoryMap: Record<number, NonNullable<TimelinePageProps['careerHistory']>[number]> = {};
   careerHistory.forEach((h) => {
-    userTeamHistoryMap[h.year] = { teamName: h.teamName, teamId: h.teamId };
+    userTeamHistoryMap[h.year] = h;
   });
 
   // Collect years strictly from 2008 up to maxTimelineYear
@@ -265,8 +266,9 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({
 
       // User accolades for this year
       // Accolades are stored in player.accolades
-      const userAccs = (player.accolades || []).filter((a) => a.year === yr);
       const userHist = userTeamHistoryMap[yr];
+      const userAccs = (player.accolades || []).filter((a) => a.year === yr);
+      const historyAccolades = userHist?.accoladesEarned || [];
       const userTeamName = userHist?.teamName || '';
 
       const hasUserChampAccolade = userAccs.some((a) => a.type === 'CHAMPION' || a.title.includes('冠军'));
@@ -298,10 +300,10 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({
         },
         userYearAccolades: Array.from(
           new Set(
-            userAccs.map((a) => {
-              if (a.title.includes('冠军') || a.title.includes('Champion')) return '联盟总冠军';
-              if (a.title.includes('FMVP') || a.title.includes('总决赛MVP')) return '总决赛 FMVP';
-              return a.title;
+            [...userAccs.map((a) => a.title), ...historyAccolades].map((title) => {
+              if (title.includes('冠军') || title.includes('Champion')) return '联盟总冠军';
+              if (title.includes('FMVP') || title.includes('总决赛MVP')) return '总决赛 FMVP';
+              return title;
             })
           )
         ),
@@ -514,7 +516,7 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({
                         </div>
                         <div>
                           <span className="text-[9px] text-slate-500 block">命中率</span>
-                          <span className="font-mono font-black text-white">{(userHistForYr.fgPct * 100).toFixed(1)}%</span>
+                          <span className="font-mono font-black text-white">{formatPercentage(userHistForYr.fgPct)}</span>
                         </div>
                       </div>
                     </div>

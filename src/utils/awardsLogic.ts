@@ -54,7 +54,7 @@ export interface EvaluatedPlayer {
   teamWins: number;
   teamConferenceRank: number;
   isPlayoffTeam: boolean;
-  isTop5Seed: boolean;
+  isTop6Seed: boolean;
   ovr: number;
   role: string;
   isUser: boolean;
@@ -185,7 +185,7 @@ export function evaluateAllLeaguePlayers(
   for (const team of teams) {
     const isUserTeam = userPlayer.currentTeamId === team.id;
     const isPlayoffTeam = playoffTeamIds.has(team.id);
-    const isTop5Seed = top6TeamIds.has(team.id);
+    const isTop6Seed = top6TeamIds.has(team.id);
 
     const confRankList = team.conference === 'East' ? eastTeams : westTeams;
     const teamConferenceRank = confRankList.findIndex((t) => t.id === team.id) + 1 || 8;
@@ -297,7 +297,7 @@ export function evaluateAllLeaguePlayers(
         teamWins: team.wins,
         teamConferenceRank,
         isPlayoffTeam,
-        isTop5Seed,
+        isTop6Seed,
         ovr: p.ovr,
         role: p.role || '轮换替补',
         isUser,
@@ -365,20 +365,20 @@ export function calculateSeasonAwards(
     };
   };
 
-  // 1. MVP: Must be from a Conference Top 5 seed -> Directly award to highest calculated mvpScore (no random roll)
-  let mvpTop5Candidates = allPlayers
-    .filter((p) => p.isTop5Seed)
+  // 1. MVP: Must be from a Conference Top 6 seed -> Directly award to highest calculated mvpScore (no random roll)
+  let mvpTop6Candidates = allPlayers
+    .filter((p) => p.isTop6Seed)
     .sort((a, b) => b.mvpScore - a.mvpScore);
 
   // Fallback to playoff teams or all players if exceptional circumstances
-  if (mvpTop5Candidates.length === 0) {
-    mvpTop5Candidates = allPlayers.filter((p) => p.isPlayoffTeam).sort((a, b) => b.mvpScore - a.mvpScore);
+  if (mvpTop6Candidates.length === 0) {
+    mvpTop6Candidates = allPlayers.filter((p) => p.isPlayoffTeam).sort((a, b) => b.mvpScore - a.mvpScore);
   }
-  if (mvpTop5Candidates.length === 0) {
-    mvpTop5Candidates = [...allPlayers].sort((a, b) => b.mvpScore - a.mvpScore);
+  if (mvpTop6Candidates.length === 0) {
+    mvpTop6Candidates = [...allPlayers].sort((a, b) => b.mvpScore - a.mvpScore);
   }
 
-  const safeMvp = mvpTop5Candidates[0] || allPlayers[0];
+  const safeMvp = mvpTop6Candidates[0] || allPlayers[0];
   const mvp = toWinner(
     safeMvp,
     100,
@@ -478,7 +478,7 @@ export function calculateSeasonAwards(
         teamWins: defaultTeam.wins,
         teamConferenceRank: 8,
         isPlayoffTeam: true,
-        isTop5Seed: false,
+        isTop6Seed: false,
         ovr: topDraft.ovr,
         role: '绝对首发',
         isUser: false,

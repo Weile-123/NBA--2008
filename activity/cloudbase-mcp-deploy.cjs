@@ -7,6 +7,7 @@ const FUNCTION_ROOT = path.join(__dirname, 'cloudfunctions');
 const MIGRATIONS = [
   ['20260910070000', 'create_global_legends'],
   ['20260912020000', 'retain_all_legendary_ranks'],
+  ['20260913010000', 'exact_legendary_rank'],
 ];
 const API_BASE = process.env.ACTIVITY_API_BASE || 'https://app-a1c57bc9c2-d5glgsllk7b7bd845-1252166086.ap-shanghai.app.tcloudbase.com/api';
 

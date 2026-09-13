@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { scheduleRootScrollToTop } from '../utils/scroll';
 import { PlayerProfile } from '../types';
-import { calculateGoatScore, TOP_50_LEGENDS } from '../utils/calc2k';
+import { calculateGoatScore, countExclusiveTeamSelections, TOP_50_LEGENDS } from '../utils/calc2k';
 import { GoatCalculatorModal } from './GoatCalculatorModal';
 import { TeamLogo } from './TeamLogo';
 import { NBA_TEAMS_2008 } from '../data/nbaData2008';
@@ -268,43 +268,12 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
     (a) => a.type === 'FMVP' || a.title.includes('FMVP') || a.title.includes('总决赛MVP')
   ).length;
 
-  const allNba1stCount = accolades.filter(
-    (a) =>
-      a.type === 'ALL_NBA_1ST' ||
-      (a.title.includes('最佳阵容') &&
-        (a.title.includes('一阵') || a.title.includes('一队') || a.title.includes('1队')) &&
-        !a.title.includes('防守'))
-  ).length;
-
-  const allNba2ndCount = accolades.filter(
-    (a) =>
-      a.type === 'ALL_NBA_2ND' ||
-      (a.title.includes('最佳阵容') &&
-        (a.title.includes('二阵') || a.title.includes('二队') || a.title.includes('2队')) &&
-        !a.title.includes('防守'))
-  ).length;
-
-  const allNba3rdCount = accolades.filter(
-    (a) =>
-      a.type === 'ALL_NBA_3RD' ||
-      (a.title.includes('最佳阵容') &&
-        (a.title.includes('三阵') || a.title.includes('三队') || a.title.includes('3队')) &&
-        !a.title.includes('防守'))
-  ).length;
-
-  const allDef1stCount = accolades.filter(
-    (a) =>
-      a.type === 'ALL_DEFENSE_1ST' ||
-      (a.title.includes('最佳防守') &&
-        (a.title.includes('一阵') || a.title.includes('一队') || a.title.includes('1队')))
-  ).length;
-
-  const allDef2ndCount = accolades.filter(
-    (a) =>
-      a.type === 'ALL_DEFENSE_2ND' ||
-      (a.title.includes('最佳防守') &&
-        (a.title.includes('二阵') || a.title.includes('二队') || a.title.includes('2队')))
-  ).length;
+  const exclusiveTeamSelections = countExclusiveTeamSelections(accolades);
+  const allNba1stCount = exclusiveTeamSelections.allNbaFirsts;
+  const allNba2ndCount = exclusiveTeamSelections.allNbaSeconds;
+  const allNba3rdCount = exclusiveTeamSelections.allNbaThirds;
+  const allDef1stCount = exclusiveTeamSelections.allDefenseFirsts;
+  const allDef2ndCount = exclusiveTeamSelections.allDefenseSeconds;
 
   const royCount = accolades.filter(
     (a) => a.type === 'ROY' || a.title.includes('ROY') || a.title.includes('最佳新秀')
