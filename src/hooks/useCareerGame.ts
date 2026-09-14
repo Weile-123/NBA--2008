@@ -1,5 +1,5 @@
 import { normalizeBranding } from '../utils/branding';
-import { startTransition,useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState } from 'react';
+import { useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState } from 'react';
 import type { Dispatch,SetStateAction } from 'react';
 import { HISTORICAL_SEASONS,NBA_TEAMS_2008 } from '../data/nbaData2008';
 import { GameState,MatchBoxScore,PlayerProfile,RosterPlayer,Team } from '../types';
@@ -27,10 +27,11 @@ import { evaluateTeamStrategies, initializeTeamStrategies } from '../utils/teamS
 export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   const [phase, setPhaseState] = useState<GameState['phase']>('home');
   const setPhase: Dispatch<SetStateAction<GameState['phase']>> = useCallback((nextPhase) => {
-    // Phase changes frequently cross lazy-loaded chunks. A transition keeps
-    // the current screen visible until the destination is ready instead of
-    // replacing the entire app with the root Suspense fallback for one frame.
-    startTransition(() => setPhaseState(nextPhase));
+    // Keep the phase in the same synchronous React batch as year, roster and
+    // offseason state updates. Giving phase lower transition priority created
+    // an intermediate frame with data from the next screen rendered inside the
+    // previous screen, which some Android WebViews exposed as a full-page flash.
+    setPhaseState(nextPhase);
   }, []);
   const [prevPhase, setPrevPhase] = useState<GameState['phase']>('regular_season');
   const [currentSaveSlot, setCurrentSaveSlot] = useState<SaveSlotId>('slot_1');
@@ -173,9 +174,6 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   };
 
   const handleEnterOffseason = (championTeam?: Team, passedFmvpName?: string, settledSeasonAwards?: SeasonAwards) => {
-    // currentYear updates synchronously while phase uses a React transition.
-    // Suppress the old regular-season effect during that short handoff so it
-    // cannot open a stale age prompt on top of the offseason screen.
     isLeavingRegularSeasonRef.current = true;
     setShowAgeDeclineModal(false);
     setIsPlayoffs(false);
@@ -447,7 +445,12 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   // Mandatory retirement must never be suppressed by saved yearly UI state.
   useEffect(() => {
     if (phase !== 'regular_season') {
-      setShowAgeDeclineModal(false);
+      // A 43-year-old player remains on the offseason screen while the
+      // mandatory-retirement notice is shown. Younger veteran prompts still
+      // belong exclusively to the regular-season screen.
+      if (phase !== 'offseason' || !mustRetireAtAge(player?.age)) {
+        setShowAgeDeclineModal(false);
+      }
       isLeavingRegularSeasonRef.current = false;
       return;
     }
@@ -907,7 +910,17 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   const handleNextSeason = () => {
     if (!player) return;
     if (mustRetireAtAge(player.age)) {
-      handleAgeDeclineRetire();
+      // A legacy/offseason save may already contain a 43-year-old player.
+      // Show the mandatory-retirement notice first; retirement is only
+      // finalized after the player presses the confirmation button.
+      setDeclinePromptYear(null);
+      setShowAgeDeclineModal(true);
+      return;
+    }
+    if (mustRetireAtAge((player.age || 19) + 1)) {
+      setPlayer(syncPlayerAgeDecay({ ...player, age: (player.age || 19) + 1, isRookie: false }));
+      setDeclinePromptYear(null);
+      setShowAgeDeclineModal(true);
       return;
     }
     // A 42-year-old may finish the current season, but cannot enter another

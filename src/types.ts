@@ -168,6 +168,8 @@ export interface PlayerProfile {
   attributeCaps: AttributeCaps;
   ovr: number;
   skillPoints: number;
+  /** Refunded attribute points that may be reassigned even while the age-based OVR cap is reached. */
+  attributeRedistributionPoints?: number;
   xp: number;
   maxXp: number;
   level: number;

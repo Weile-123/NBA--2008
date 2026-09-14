@@ -747,10 +747,10 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
                   </div>
                 </div>
 
-                {/* 属性点加成 */}
+                {/* 未使用属性点奖励 */}
                 <div className="bg-[#0d1017] border border-[#232834] p-3 rounded-xl space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-400">5. 属性点加成</span>
+                    <span className="text-[10px] font-bold text-slate-400">5. 未使用属性点奖励</span>
                     <span className="text-xs font-black text-amber-300 font-mono">+{sSkillPoints} 分</span>
                   </div>
                   <div className="text-[9px] text-slate-500 space-y-0.5 font-mono">

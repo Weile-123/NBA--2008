@@ -90,7 +90,7 @@ test('career retirement becomes mandatory at age 43', () => {
   assert.equal(mustRetireAtAge(62), true);
 });
 
-test('age decline prompt never leaks into offseason or a pending season transition', () => {
+test('age decline prompt stays out of offseason and pending season transitions', () => {
   assert.equal(shouldShowAgeDeclinePrompt(false, 42, 2028, 2027), false);
   assert.equal(shouldShowAgeDeclinePrompt(true, 42, 2028, 2027, true), false);
   assert.equal(shouldShowAgeDeclinePrompt(true, 42, 2028, 2027), true);

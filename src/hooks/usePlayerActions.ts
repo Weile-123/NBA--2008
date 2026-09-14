@@ -1,9 +1,10 @@
 import { Dispatch,SetStateAction } from 'react';
 import { INITIAL_ENDORSEMENTS,PERSONAL_ASSETS } from '../data/nbaData2008';
 import { PlayerProfile,SignatureShoe } from '../types';
-import { getPlayerBaseOvr, getPlayerCareerPeakOvr, getUserPlayerAgePenalty } from '../utils/calc2k';
+import { getPlayerBaseOvr, getPlayerCareerPeakOvr } from '../utils/calc2k';
 import { completeRewardedAd } from '../lib/rewardedAd';
 import { getAssetPurchaseState } from '../utils/economy';
+import { resetPlayerAttribute, spendPlayerAttributePoints } from '../utils/attributeTraining';
 
 export function usePlayerActions(
   player: PlayerProfile | null,
@@ -16,43 +17,7 @@ export function usePlayerActions(
     requestedPoints: number,
   ) => {
     setPlayer((currentPlayer) => {
-      if (!currentPlayer || currentPlayer.skillPoints <= 0 || requestedPoints <= 0) return currentPlayer;
-
-      const maxOvr = 99 - getUserPlayerAgePenalty(currentPlayer.age || 19);
-      if (getPlayerBaseOvr(currentPlayer) >= maxOvr) return currentPlayer;
-
-      const currentValue = currentPlayer.attributes[attrKey] ?? 50;
-      const attributeCap = currentPlayer.attributeCaps?.[attrKey] ?? 99;
-      const availablePoints = Math.min(
-        requestedPoints,
-        currentPlayer.skillPoints,
-        Math.max(0, attributeCap - currentValue),
-      );
-      if (availablePoints <= 0) return currentPlayer;
-
-      let pointsSpent = 0;
-      let nextValue = currentValue;
-      let nextOvr = getPlayerBaseOvr(currentPlayer);
-
-      while (pointsSpent < availablePoints && nextOvr < maxOvr) {
-        nextValue += 1;
-        pointsSpent += 1;
-        nextOvr = getPlayerBaseOvr({
-          ...currentPlayer,
-          attributes: { ...currentPlayer.attributes, [attrKey]: nextValue },
-        });
-      }
-
-      if (pointsSpent === 0) return currentPlayer;
-      const nextAttributes = { ...currentPlayer.attributes, [attrKey]: nextValue };
-      return {
-        ...currentPlayer,
-        attributes: nextAttributes,
-        ovr: nextOvr,
-        peakOvr: Math.max(getPlayerCareerPeakOvr(currentPlayer), nextOvr),
-        peakOvrTracked: true,
-        skillPoints: currentPlayer.skillPoints - pointsSpent,
-      };
+      return currentPlayer ? spendPlayerAttributePoints(currentPlayer, attrKey, requestedPoints) : currentPlayer;
     });
   };
 
@@ -107,26 +72,8 @@ export function usePlayerActions(
   };
 
   const handleResetAttribute = (attrKey: keyof PlayerProfile['attributes']) => {
-    if (!player) return;
-    const currentVal = player.attributes[attrKey] || 50;
-    if (currentVal <= 60) return;
-
-    const refund = currentVal - 60;
-    const newAttrs = {
-      ...player.attributes,
-      [attrKey]: 60,
-    };
-    const tempPlayer = {
-      ...player,
-      attributes: newAttrs,
-    };
-    const newOvr = getPlayerBaseOvr(tempPlayer);
-
-    setPlayer({
-      ...player,
-      attributes: newAttrs,
-      ovr: newOvr,
-      skillPoints: (player.skillPoints || 0) + refund,
+    setPlayer((currentPlayer) => {
+      return currentPlayer ? resetPlayerAttribute(currentPlayer, attrKey) : currentPlayer;
     });
   };
 

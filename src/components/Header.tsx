@@ -22,9 +22,9 @@ import {
   X,
 } from 'lucide-react';
 import { INITIAL_ENDORSEMENTS, PERSONAL_ASSETS } from '../data/nbaData2008';
-import { getPlayerBaseOvr, getUserPlayerAgePenalty } from '../utils/calc2k';
 import { getAssetPurchaseState } from '../utils/economy';
 import { requestAutoSimStop } from '../utils/gameEvents';
+import { getAttributePointStatus } from '../utils/attributeTraining';
 
 interface HeaderProps {
   player: PlayerProfile;
@@ -79,16 +79,9 @@ export const Header: React.FC<HeaderProps> = ({
   });
 
   const hasSocialNotification = hasSignableEndorsements || hasPurchasableAssets;
-  const maxPlayerOvr = 99 - getUserPlayerAgePenalty(player.age || 19);
-  const hasUpgradableAttributes = player.skillPoints > 0
-    && getPlayerBaseOvr(player) < maxPlayerOvr
-    && (
-    Object.keys(player.attributes) as Array<keyof PlayerProfile['attributes']>
-  ).some((key) => {
-    const currentValue = player.attributes[key] ?? 50;
-    const cap = player.attributeCaps?.[key] ?? 99;
-    return currentValue < cap;
-  });
+  const attributePointStatus = getAttributePointStatus(player);
+  const { hasUpgradableAttributes, isOverflowing, overflowGoatBonus } = attributePointStatus;
+  const overflowRewardText = overflowGoatBonus > 0 ? `+${overflowGoatBonus} GOAT` : 'GOAT';
 
   const getOvrColor = (ovr: number) => {
     if (ovr >= 95) return 'from-amber-400 to-amber-600 text-black border-amber-300';
@@ -189,14 +182,20 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Skill Points & Special Training Entry Button */}
           <button
             onClick={onOpenAttributes}
-            className={`relative flex items-center gap-1 bg-amber-500 hover:bg-amber-400 text-black font-black italic px-2 py-1 sm:px-3 sm:py-1.5 rounded transition-all text-[10px] sm:text-xs uppercase shadow-md active:scale-95 cursor-pointer shrink-0 whitespace-nowrap ${
+            className={`relative flex items-center gap-1 border font-black italic px-2 py-1 sm:px-3 sm:py-1.5 rounded transition-all text-[10px] sm:text-xs uppercase shadow-md active:scale-95 cursor-pointer shrink-0 whitespace-nowrap ${
+              isOverflowing
+                ? 'border-amber-500/50 bg-amber-950/80 text-amber-300 hover:bg-amber-900/80'
+                : 'border-amber-400 bg-amber-500 text-black hover:bg-amber-400'
+            } ${
               hasUpgradableAttributes ? 'animate-training-reminder' : ''
             }`}
-            title="点击进入 ⚡ 属性特训"
+            title={isOverflowing ? '查看属性溢出 GOAT 奖励' : '点击进入属性特训'}
           >
-            <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-black animate-pulse shrink-0" />
-            <span className="hidden sm:inline">⚡ 属性特训 (SP: {player.skillPoints})</span>
-            <span className="sm:hidden">特训({player.skillPoints})</span>
+            {isOverflowing
+              ? <Trophy className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+              : <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-black animate-pulse shrink-0" />}
+            <span className="hidden sm:inline">{isOverflowing ? `溢出奖励 ${overflowRewardText}` : `属性特训 (SP: ${player.skillPoints})`}</span>
+            <span className="sm:hidden">{isOverflowing ? overflowRewardText : `特训(${player.skillPoints})`}</span>
             {hasUpgradableAttributes && (
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-[#11141b] shadow-[0_0_8px_rgba(239,68,68,0.95)] animate-pulse pointer-events-none" />
             )}
@@ -311,7 +310,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* 5. 更多 (抽屉入口) */}
           <button
-            onPointerDown={() => setIsMoreMenuOpen(true)}
+            type="button"
             onClick={() => setIsMoreMenuOpen(true)}
             className={`relative flex min-h-12 flex-col items-center justify-center py-2 px-1 rounded-lg transition-all cursor-pointer ${
               isMoreMenuOpen || ['timeline', 'milestones', 'hof', 'attributes'].includes(activeTab)
@@ -428,10 +427,14 @@ export const Header: React.FC<HeaderProps> = ({
                     : 'bg-[#161b26] border-[#2e374d] text-slate-200 hover:bg-[#202736]'
                 }`}
               >
-                <Flame className="w-5 h-5 text-amber-400 shrink-0 animate-pulse" />
+                {isOverflowing
+                  ? <Trophy className="w-5 h-5 text-amber-400 shrink-0" />
+                  : <Flame className="w-5 h-5 text-amber-400 shrink-0 animate-pulse" />}
                 <div>
                   <div className="text-xs font-bold">⚡ 属性特训</div>
-                  <div className="text-[10px] text-amber-300">SP 点: {player.skillPoints}</div>
+                  <div className="text-[10px] text-amber-300">
+                    {isOverflowing ? `溢出奖励 ${overflowRewardText}` : `SP 点: ${player.skillPoints}`}
+                  </div>
                 </div>
                 {hasUpgradableAttributes && (
                   <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#161b26] shadow-[0_0_8px_rgba(52,211,153,0.9)] animate-pulse pointer-events-none" />

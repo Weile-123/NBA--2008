@@ -63,6 +63,7 @@ export function applyDraftRookiesToTeams(
   suppliedDraftData?: YearDraftData | null,
 ): Team[] {
   const draftData = suppliedDraftData || getHistoricalDraftData(year);
+  if (!draftData?.draftPicks?.length) return teams;
   const picks: DraftPickItem[] = draftData.draftPicks;
 
   // Clone teams array

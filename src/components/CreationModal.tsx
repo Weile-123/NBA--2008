@@ -216,6 +216,9 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
     if (!name.trim()) return;
 
     const newPlayer: PlayerProfile = {
+      id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? `career_${crypto.randomUUID()}`
+        : `career_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
       name: name.trim(),
       nationality: birthplace.trim() || '纽约',
       birthplace: birthplace.trim() || '纽约',

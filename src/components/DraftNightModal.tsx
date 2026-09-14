@@ -5,6 +5,7 @@ import { Award, CheckCircle2, ChevronRight, Sparkles } from 'lucide-react';
 import { TeamLogo } from './TeamLogo';
 import { getHistoricalDraftData, YearDraftData } from '../data/draftData';
 import { applyDraftRookiesToTeams } from '../utils/draftLogic';
+import { generateParallelDraftData } from '../utils/randomDraftLogic';
 
 interface DraftNightModalProps {
   player: PlayerProfile;
@@ -15,6 +16,17 @@ interface DraftNightModalProps {
   onComplete: (updatedTeams?: Team[], teamId?: string, pick?: number, selectedJerseyNum?: number) => void;
 }
 
+function createStableDraftRandom(year: number): () => number {
+  let value = (year * 2654435761) >>> 0;
+  return () => {
+    value = (value + 0x6d2b79f5) >>> 0;
+    let mixed = value;
+    mixed = Math.imul(mixed ^ (mixed >>> 15), mixed | 1);
+    mixed ^= mixed + Math.imul(mixed ^ (mixed >>> 7), mixed | 61);
+    return ((mixed ^ (mixed >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 export const DraftNightModal: React.FC<DraftNightModalProps> = ({
   player,
   teams,
@@ -22,7 +34,12 @@ export const DraftNightModal: React.FC<DraftNightModalProps> = ({
   suppliedDraftData,
   onComplete,
 }) => {
-  const draftData: YearDraftData | null = suppliedDraftData || getHistoricalDraftData(currentYear);
+  const draftData: YearDraftData | null = React.useMemo(
+    () => suppliedDraftData
+      || getHistoricalDraftData(currentYear)
+      || (currentYear > 2026 ? generateParallelDraftData(teams, currentYear, createStableDraftRandom(currentYear)) : null),
+    [currentYear, suppliedDraftData, teams],
+  );
 
   // Target team
   const targetTeamId = player.favoriteTeamId || player.currentTeamId || 'lal';

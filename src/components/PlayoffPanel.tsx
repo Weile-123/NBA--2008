@@ -40,16 +40,43 @@ interface SavedPlayoffState {
   currentRound: 1 | 2 | 3 | 4;
   seriesList: PlayoffSeries[];
   champion: Team | null;
+  careerSignature?: string;
 }
 
 function playoffKey(year: number) { return `${PLAYOFF_STORAGE_KEY_PREFIX}${year}`; }
-function loadPlayoffState(year: number): SavedPlayoffState | null {
-  const parsed = getPersistentValue<SavedPlayoffState>(playoffKey(year));
-  return parsed && Array.isArray(parsed.seriesList) && parsed.seriesList.length > 0 ? parsed : null;
+function getCareerSignature(player: PlayerProfile): string {
+  if (player.id) return `id:${player.id}`;
+  return `legacy:${player.name}|${player.draftYear || 2008}|${player.position}|${player.jerseyNum}`;
 }
 
-function savePlayoffState(year: number, currentRound: 1 | 2 | 3 | 4, seriesList: PlayoffSeries[], champion: Team | null) {
-  if (seriesList.length > 0) setPersistentValue(playoffKey(year), { currentYear: year, currentRound, seriesList, champion });
+export function isPlayoffCacheCompatible(
+  savedSignature: string | undefined,
+  hasSavedChampion: boolean,
+  careerSignature: string,
+  hasStableCareerId: boolean,
+): boolean {
+  if (savedSignature) return savedSignature === careerSignature;
+  return !hasStableCareerId && !hasSavedChampion;
+}
+
+function loadPlayoffState(year: number, careerSignature: string, hasStableCareerId: boolean): SavedPlayoffState | null {
+  const parsed = getPersistentValue<SavedPlayoffState>(playoffKey(year));
+  if (!parsed || !Array.isArray(parsed.seriesList) || parsed.seriesList.length === 0) return null;
+  // Old caches did not identify their career. A completed legacy result must
+  // never crown a champion in another save, and a newly identified career
+  // must not inherit any unsigned legacy bracket.
+  return isPlayoffCacheCompatible(
+    parsed.careerSignature,
+    !!parsed.champion,
+    careerSignature,
+    hasStableCareerId,
+  ) ? parsed : null;
+}
+
+function savePlayoffState(year: number, currentRound: 1 | 2 | 3 | 4, seriesList: PlayoffSeries[], champion: Team | null, careerSignature: string) {
+  if (seriesList.length > 0) {
+    setPersistentValue(playoffKey(year), { currentYear: year, currentRound, seriesList, champion, careerSignature });
+  }
 }
 
 export function clearPlayoffStorage(year?: number) {
@@ -73,17 +100,19 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
   onUpdatePlayer,
   onFinishPlayoffs,
 }) => {
+  const careerSignature = getCareerSignature(player);
+  const hasStableCareerId = !!player.id;
   const [currentRound, setCurrentRound] = useState<1 | 2 | 3 | 4>(() => {
-    const saved = loadPlayoffState(currentYear);
+    const saved = loadPlayoffState(currentYear, careerSignature, hasStableCareerId);
     return saved ? saved.currentRound : 1;
   });
   const [seriesList, setSeriesList] = useState<PlayoffSeries[]>(() => {
-    const saved = loadPlayoffState(currentYear);
+    const saved = loadPlayoffState(currentYear, careerSignature, hasStableCareerId);
     return saved ? saved.seriesList : [];
   });
   const [isAutoSimulating, setIsAutoSimulating] = useState(false);
   const [champion, setChampion] = useState<Team | null>(() => {
-    const saved = loadPlayoffState(currentYear);
+    const saved = loadPlayoffState(currentYear, careerSignature, hasStableCareerId);
     return saved ? saved.champion : null;
   });
   const [showHonorsModal, setShowHonorsModal] = useState(false);
@@ -96,10 +125,14 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
 
   useEffect(() => {
     void hydratePersistentValues([playoffKey(currentYear)]).then(() => {
-      const saved = loadPlayoffState(currentYear);
-      if (saved) { setCurrentRound(saved.currentRound); setSeriesList(saved.seriesList); setChampion(saved.champion); }
+      const saved = loadPlayoffState(currentYear, careerSignature, hasStableCareerId);
+      if (saved) {
+        setCurrentRound(saved.currentRound);
+        setSeriesList(saved.seriesList);
+        setChampion(saved.champion);
+      }
     });
-  }, [currentYear]);
+  }, [careerSignature, currentYear, hasStableCareerId]);
 
   useEffect(() => () => {
     if (honorsFrameRef.current !== null) cancelAnimationFrame(honorsFrameRef.current);
@@ -136,13 +169,13 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
   // Auto-save playoff state whenever seriesList, currentRound, or champion changes
   useEffect(() => {
     if (seriesList.length > 0) {
-      savePlayoffState(currentYear, currentRound, seriesList, champion);
+      savePlayoffState(currentYear, currentRound, seriesList, champion, careerSignature);
     }
-  }, [currentYear, currentRound, seriesList, champion]);
+  }, [careerSignature, currentYear, currentRound, seriesList, champion]);
 
   // Initialize Playoff Series on mount if no saved state exists for currentYear
   useEffect(() => {
-    const saved = loadPlayoffState(currentYear);
+    const saved = loadPlayoffState(currentYear, careerSignature, hasStableCareerId);
     if (saved && saved.seriesList.length > 0) {
       setSeriesList(saved.seriesList);
       setCurrentRound(saved.currentRound);
@@ -176,7 +209,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
     setSeriesList(initialSeries);
     setCurrentRound(1);
     setChampion(null);
-  }, [teams, currentYear]);
+  }, [careerSignature, currentYear, hasStableCareerId, teams]);
 
   // A completed series is not an elimination unless the winner is the opponent.
   // During round advancement there is one render where the next series has not

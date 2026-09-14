@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { loadGameFromStorage } from './utils/storage';
+import { getSaveSlotMeta, loadGameFromStorage, SaveSlotId } from './utils/storage';
 import { DEFAULT_GAME_MODE, GameMode } from './gameMode';
 
 import { Header } from './components/Header';
@@ -29,6 +29,7 @@ const SocialAndLife = lazy(() => import('./components/SocialAndLife').then((modu
 const TimelinePage = lazy(() => import('./components/TimelinePage').then((module) => ({ default: module.TimelinePage })));
 
 import { useCareerGame } from './hooks/useCareerGame';
+import { mustRetireAtAge } from './utils/calc2k';
 
 export default function App() {
   const [gameMode, setGameMode] = useState<GameMode>(DEFAULT_GAME_MODE);
@@ -162,6 +163,50 @@ function CareerApp({
   useEffect(() => {
     if (launchAction === 'new') setPhase('creation');
   }, [launchAction, setPhase]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const warmModules = async (loaders: Array<() => Promise<unknown>>) => {
+      for (const load of loaders) {
+        if (cancelled) return;
+        try { await load(); } catch { /* The normal Suspense boundary remains the fallback. */ }
+      }
+    };
+
+    // Warm the chunks used by the linear career flow before the player reaches
+    // them. This preserves code splitting while preventing first-entry page
+    // replacement flashes in slower embedded WebViews.
+    const careerFlowTimer = window.setTimeout(() => {
+      void warmModules([
+        () => import('./components/SeasonDashboard'),
+        () => import('./components/CreationModal'),
+        () => import('./components/RookieDraftAndScoutModal'),
+        () => import('./components/DraftNightModal'),
+        () => import('./components/ContractSigningModal'),
+        () => import('./components/MatchSimulator'),
+        () => import('./components/PostMatchModal'),
+      ]);
+    }, 300);
+
+    const navigationTimer = window.setTimeout(() => {
+      void warmModules([
+        () => import('./components/LeagueStandings'),
+        () => import('./components/AttributesPanel'),
+        () => import('./components/RosterAndTransfers'),
+        () => import('./components/SocialAndLife'),
+        () => import('./components/TimelinePage'),
+        () => import('./components/MilestonesView'),
+        () => import('./components/HallOfFame'),
+        () => import('./components/RetirementFlowModal'),
+      ]);
+    }, 4500);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(careerFlowTimer);
+      window.clearTimeout(navigationTimer);
+    };
+  }, []);
 
   return (
     <div className={`min-h-full bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 ${isRegularSeasonAutoSimulating ? 'app-auto-simulating' : ''}`}>
@@ -462,7 +507,9 @@ function CareerApp({
       )}
 
       {/* Age 38+ Physical Decline Choice Modal */}
-      {phase === 'regular_season' && showAgeDeclineModal && player && (
+      {showAgeDeclineModal && player && (
+        phase === 'regular_season' || (phase === 'offseason' && mustRetireAtAge(player.age))
+      ) && (
         <AgeDeclineModal
           player={player}
           userTeamName={currentTeam?.name || '球队'}

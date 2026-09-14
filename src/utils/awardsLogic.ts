@@ -1,6 +1,7 @@
 import { Team, PlayerProfile, Position, RosterPlayer } from '../types';
 import { calculateExpectedPpg36, enrichRosterPlayer, getCompleteTeamRoster } from './leagueLogic';
 import { getHistoricalDraftData } from '../data/draftData';
+import { generateSyntheticDraftClass } from './randomDraftLogic';
 
 export interface AwardWinner {
   id: string;
@@ -107,6 +108,56 @@ function hashString(str: string): number {
     hash |= 0;
   }
   return Math.abs(hash);
+}
+
+/**
+ * Classic mode intentionally has no historical roster data after 2025. Build a
+ * stable, year-specific award pool instead of relabelling an existing veteran
+ * (previously usually Jayson Tatum) as a rookie every season.
+ */
+export function createFutureRookieAwardPool(teams: Team[], currentYear: number): EvaluatedPlayer[] {
+  if (teams.length === 0) return [];
+  const orderedTeams = [...teams].sort((a, b) => a.wins - b.wins || a.rating - b.rating);
+  return generateSyntheticDraftClass(currentYear).draftPicks.slice(0, 10).map((pick, index) => {
+    const team = orderedTeams[index % orderedTeams.length];
+    const prospect = pick.player;
+    const variance = (hashString(`${currentYear}_${index}`) % 31) / 10;
+    const ppg = +(18.8 - index * 0.65 + variance).toFixed(1);
+    const rpg = +(4.1 + ((index * 7 + currentYear) % 45) / 10).toFixed(1);
+    const apg = +(2.4 + ((index * 11 + currentYear) % 50) / 10).toFixed(1);
+    const spg = +(0.7 + ((index * 3 + currentYear) % 9) / 10).toFixed(1);
+    const bpg = +(0.3 + ((index * 5 + currentYear) % 12) / 10).toFixed(1);
+    const rookieScore = ppg * 1.8 + rpg * 0.8 + apg + spg + bpg;
+    return {
+      id: `future_rookie_${currentYear}_${index + 1}`,
+      name: prospect.name,
+      position: prospect.position,
+      teamId: team.id,
+      teamName: team.name,
+      teamAbbrev: team.abbrev,
+      conference: team.conference,
+      teamWins: team.wins,
+      teamConferenceRank: 8,
+      isPlayoffTeam: team.wins >= 41,
+      isTop6Seed: false,
+      ovr: prospect.ovr,
+      role: index < 5 ? '绝对首发' : '轮换替补',
+      isUser: false,
+      isRookie: true,
+      ppg,
+      rpg,
+      apg,
+      spg,
+      bpg,
+      fgPct: +(43.5 + variance).toFixed(1),
+      minutes: Math.max(22, 33 - index),
+      statScore: rookieScore,
+      mvpScore: rookieScore,
+      defensiveScore: rpg + spg * 4.5 + bpg * 5,
+      sixthManScore: rookieScore,
+      rookieScore,
+    };
+  });
 }
 
 /**
@@ -341,6 +392,9 @@ export function calculateSeasonAwards(
 
   const currentDraftData = getHistoricalDraftData(currentYear);
   const { allPlayers, playoffTeamIds, eastPlayoffTeams, westPlayoffTeams } = evaluateAllLeaguePlayers(teams, userPlayer, currentYear);
+  const futureRookiePool = !currentDraftData && !allPlayers.some((p) => p.isRookie)
+    ? createFutureRookieAwardPool(teams, currentYear)
+    : [];
 
   const userMadePlayoffs = playoffTeamIds.has(userPlayer.currentTeamId);
 
@@ -463,6 +517,10 @@ export function calculateSeasonAwards(
     .sort((a, b) => b.rookieScore - a.rookieScore)
     .slice(0, 10);
 
+  if (rookieCandidates.length === 0 && futureRookiePool.length > 0) {
+    rookieCandidates = [...futureRookiePool].sort((a, b) => b.rookieScore - a.rookieScore);
+  }
+
   if (rookieCandidates.length === 0 && currentDraftData && currentDraftData.draftPicks && currentDraftData.draftPicks.length > 0) {
     const topDraft = currentDraftData.draftPicks[0].player;
     const defaultTeam = teams.find((t) => t.id === currentDraftData.draftPicks[0].teamId) || teams[0];
@@ -497,20 +555,6 @@ export function calculateSeasonAwards(
         rookieScore: 35,
       },
     ];
-  }
-
-  if (rookieCandidates.length === 0) {
-    // If no draft data or rookies exist in current year, fallback to youngest / lowest ovr non-user player
-    const fallbackRookie = allPlayers.find((p) => !p.isUser) || allPlayers[0];
-    if (fallbackRookie) {
-      rookieCandidates = [
-        {
-          ...fallbackRookie,
-          isRookie: true,
-          rookieScore: 30,
-        },
-      ];
-    }
   }
 
   const minRookieScore = rookieCandidates.length > 0 ? rookieCandidates[rookieCandidates.length - 1].rookieScore : 0;
@@ -632,12 +676,12 @@ export function calculateSeasonAwards(
   ];
 
   // 7. 最佳新秀阵容 (All-Rookie 1st, 2nd) - strictly rookies first
-  let sortedRookie = [...allPlayers].filter((p) => p.isRookie).sort((a, b) => b.rookieScore - a.rookieScore);
+  let sortedRookie = [...allPlayers, ...futureRookiePool].filter((p) => p.isRookie).sort((a, b) => b.rookieScore - a.rookieScore);
   if (sortedRookie.length < 10) {
-    sortedRookie = [...allPlayers].filter((p) => p.isRookie || p.ovr <= 80).sort((a, b) => b.rookieScore - a.rookieScore);
+    sortedRookie = [...allPlayers].filter((p) => p.isRookie).sort((a, b) => b.rookieScore - a.rookieScore);
   }
   const selectedRookIds = new Set<string>();
-  const royPlayerCandidate = allPlayers.find((p) => p.id === roy.id || p.name === roy.name);
+  const royPlayerCandidate = [...allPlayers, ...futureRookiePool].find((p) => p.id === roy.id || p.name === roy.name);
 
   const pickRookieTeam = (teamIndex: 1 | 2 | 3, label: string): AllTeamSelection => {
     const pool = sortedRookie.filter((p) => !selectedRookIds.has(p.id));

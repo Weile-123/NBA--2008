@@ -134,7 +134,8 @@ export const OffseasonDashboard: React.FC<OffseasonDashboardProps> = ({
   // Check if current year has draft data
   const historicalDraftData = getHistoricalDraftData(currentYear);
   const currentYearDraftData = gameMode === 'random_trade' ? parallelDraftData : historicalDraftData;
-  const hasDraftForCurrentYear = !!(currentYearDraftData && currentYearDraftData.draftPicks && currentYearDraftData.draftPicks.length > 0);
+  const hasDraftForCurrentYear = (gameMode === 'classic' && currentYear > 2026)
+    || !!(currentYearDraftData && currentYearDraftData.draftPicks && currentYearDraftData.draftPicks.length > 0);
   const isWaitingForParallelDraft = gameMode === 'random_trade' && currentYear > 2008 && !parallelDraftData;
 
   // Use state setter wrappers to update parent persistent state
