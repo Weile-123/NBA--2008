@@ -13,6 +13,7 @@ import { mustRetireAtAge } from '../utils/calc2k';
 import type { SeasonAwards } from '../utils/awardsLogic';
 import type { GameMode } from '../gameMode';
 import type { YearDraftData } from '../data/draftData';
+import { getDestinyEventEvaluations, type DestinyEventRecord } from '../data/destinyEvents';
 
 // The heavy 82-card ticker is replaced by a compact progress view while this
 // loop runs, so we can simulate faster and still yield between games for taps.
@@ -55,6 +56,9 @@ interface SeasonDashboardProps {
   onAddUsedEventId?: (id: string) => void;
   onSignContract?: (newTeamId: string, salaryPerYear: number, totalYears: number) => void;
   onViewSeasonTrades?: () => void;
+  leagueHistory?: GameState['leagueHistory'];
+  destinyEventRecords?: Record<string, DestinyEventRecord>;
+  onOpenDestinyEvents?: () => void;
   hasActiveMilestoneModal?: boolean;
   isSettingsOpen?: boolean;
   onAutoSimulationChange?: (active: boolean) => void;
@@ -94,6 +98,9 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
   onAddUsedEventId,
   onSignContract,
   onViewSeasonTrades,
+  leagueHistory,
+  destinyEventRecords = {},
+  onOpenDestinyEvents,
   hasActiveMilestoneModal,
   isSettingsOpen = false,
   onAutoSimulationChange,
@@ -114,6 +121,11 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
   const settledSeasonAwardsRef = useRef<SeasonAwards | null>(null);
   const lastInjuryKeyRef = useRef<string | null>(null);
   const isInjured = player.health.status === 'injured';
+  const destinyEvaluations = gameMode === 'random_trade'
+    ? getDestinyEventEvaluations(currentYear, teams, leagueHistory, destinyEventRecords)
+    : [];
+  const availableDestinyEvents = destinyEvaluations.filter((item) => item.status === 'available');
+  const currentDestinyEvents = destinyEvaluations.filter((item) => item.event.year === currentYear);
 
   const handleAwardsSettled = React.useCallback((settledAwards: SeasonAwards) => {
     settledSeasonAwardsRef.current = settledAwards;
@@ -362,6 +374,29 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
             </button>
           </div>
         </div>
+      )}
+
+      {gameMode === 'random_trade' && onOpenDestinyEvents && (
+        <button
+          type="button"
+          onClick={onOpenDestinyEvents}
+          className={`relative w-full overflow-hidden rounded-2xl border p-3.5 text-left transition active:scale-[0.99] ${availableDestinyEvents.length ? 'border-amber-400/70 bg-gradient-to-r from-amber-500/20 via-[#171822] to-cyan-500/15 shadow-[0_0_28px_rgba(245,158,11,0.16)]' : 'border-cyan-500/30 bg-gradient-to-r from-cyan-500/10 to-[#111722]'}`}
+        >
+          <div className="absolute -right-5 -top-8 h-24 w-24 rounded-full bg-amber-400/10 blur-2xl" />
+          <div className="relative flex items-center gap-3">
+            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-xl ${availableDestinyEvents.length ? 'border-amber-400/50 bg-amber-400/15' : 'border-cyan-400/30 bg-cyan-400/10'}`}>⏳</div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-black italic ${availableDestinyEvents.length ? 'text-amber-300' : 'text-white'}`}>命定事件</span>
+                {availableDestinyEvents.length > 0 && <span className="animate-pulse rounded-full bg-rose-500 px-2 py-0.5 text-[9px] font-black text-white">{availableDestinyEvents.length} 个可触发</span>}
+              </div>
+              <p className="mt-1 truncate text-[11px] text-slate-400">
+                {availableDestinyEvents[0]?.event.title || (currentDestinyEvents.length ? '本赛季事件条件尚未满足' : '查看历史时间线与未来事件')}
+              </p>
+            </div>
+            <ChevronRight className={`h-5 w-5 shrink-0 ${availableDestinyEvents.length ? 'text-amber-300' : 'text-cyan-300'}`} />
+          </div>
+        </button>
       )}
 
       {/* 1. 82-Game Schedule Horizontal Ticker Bar */}

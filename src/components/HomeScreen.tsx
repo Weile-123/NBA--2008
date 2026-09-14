@@ -397,6 +397,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     <li>• 后续赛季动态生成交易</li>
                     <li>• 生成新秀，选秀归属随战绩变化</li>
                     <li>• 球队方向随联盟发展调整</li>
+                    <li>• 可选择是否重演命定事件</li>
                   </ul>
                 </div>
               </div>
@@ -412,6 +413,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   <li><span className="font-bold text-cyan-300">其他球队：</span>进入底部导航“数据” → “联盟球队战绩榜”，点击任意球队，在阵容详情中查看。</li>
                   <li><span className="font-bold text-cyan-300">赛季交易：</span>常规赛页面点击“查看赛季变动”，可回顾本赛季的重要交易。</li>
                 </ol>
+              </div>
+
+              <div className="rounded-xl border border-amber-400/35 bg-amber-500/[0.08] p-3">
+                <div className="mb-2 flex items-center gap-1.5 font-black text-amber-200">
+                  <Sparkles className="h-3.5 w-3.5" />核心玩法：命定事件
+                </div>
+                <p className="text-[10px] text-slate-400 sm:text-[11px]">
+                  进入常规赛页面，在赛程上方打开“命定事件”。真实历史事件只会在指定赛季出现；满足当前时间线条件后可自行触发，错过赛季便会失效。涉及名单变化的主角将获得 2 至 3 年交易保护。
+                </p>
               </div>
 
               <div className="rounded-xl border border-violet-400/25 bg-violet-500/[0.07] p-3">

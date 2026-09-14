@@ -23,6 +23,7 @@ import { GameMode } from '../gameMode';
 import type { YearDraftData } from '../data/draftData';
 import { generateParallelDraftData } from '../utils/randomDraftLogic';
 import { evaluateTeamStrategies, initializeTeamStrategies } from '../utils/teamStrategyLogic';
+import { triggerDestinyEvent, type DestinyEventDefinition, type DestinyEventRecord } from '../data/destinyEvents';
 
 export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   const [phase, setPhaseState] = useState<GameState['phase']>('home');
@@ -85,6 +86,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   const [tweets, setTweets] = useState<GameState['tweets']>([]);
   const [careerHistory, setCareerHistory] = useState<GameState['careerHistory']>([]);
   const [leagueHistory, setLeagueHistory] = useState<GameState['leagueHistory']>([]);
+  const [destinyEventRecords, setDestinyEventRecords] = useState<Record<string, DestinyEventRecord>>({});
 
   const [usedOffseasonEventIds, setUsedOffseasonEventIds] = useState<Set<string>>(new Set());
   const [offseasonMonth, setOffseasonMonth] = useState<number>(1);
@@ -276,6 +278,10 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
         fmvp: fmvpName,
         dpoy: computedAwards.dpoy.name,
         roy: computedAwards.roy.name,
+        ...(gameMode === 'random_trade' && championTeam ? {
+          championRosterPlayerIds: championTeam.roster.map((rosterPlayer) => rosterPlayer.id),
+          championRosterPlayerNames: championTeam.roster.map((rosterPlayer) => rosterPlayer.name),
+        } : {}),
       };
 
       setLeagueHistory((prev) => {
@@ -518,6 +524,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
       executedTradeYears,
       seasonTradeHistory,
       parallelDraftHistory,
+      ...(gameMode === 'random_trade' ? { destinyEventRecords } : {}),
       activeInSeasonTradeOffers,
       declinePromptYear,
       uiState: {
@@ -534,7 +541,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
         freeAgencyOffers,
       },
     };
-  }, [player, phase, gameMode, currentYear, currentSeasonWeek, isPlayoffs, teams, schedule, tweets, careerHistory, leagueHistory, activeTab, executedTradeYears, seasonTradeHistory, parallelDraftHistory, activeInSeasonTradeOffers, declinePromptYear, isInteractiveMatch, usedOffseasonEventIds, offseasonMonth, offseasonCompletedPlans, offseasonEventMonths, offseasonPhase, isDraftCompleted, isContractCompleted, contractStep, renewalOffer, freeAgencyOffers]);
+  }, [player, phase, gameMode, currentYear, currentSeasonWeek, isPlayoffs, teams, schedule, tweets, careerHistory, leagueHistory, activeTab, executedTradeYears, seasonTradeHistory, parallelDraftHistory, destinyEventRecords, activeInSeasonTradeOffers, declinePromptYear, isInteractiveMatch, usedOffseasonEventIds, offseasonMonth, offseasonCompletedPlans, offseasonEventMonths, offseasonPhase, isDraftCompleted, isContractCompleted, contractStep, renewalOffer, freeAgencyOffers]);
 
   const autoSave = useAutoSave(
     saveSnapshot,
@@ -567,6 +574,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     setExecutedTradeYears(data.executedTradeYears || []);
     setSeasonTradeHistory(data.seasonTradeHistory || {});
     setParallelDraftHistory(data.parallelDraftHistory || {});
+    setDestinyEventRecords(gameMode === 'random_trade' ? (data.destinyEventRecords || {}) : {});
     setActiveInSeasonTradeOffers((data.activeInSeasonTradeOffers || []).slice(0, 3));
     setDeclinePromptYear(data.declinePromptYear ?? null);
     setIsInteractiveMatch(data.uiState?.isInteractiveMatch ?? true);
@@ -631,6 +639,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     setExecutedTradeYears([]);
     setSeasonTradeHistory({});
     setParallelDraftHistory({});
+    setDestinyEventRecords({});
     setTradeModalData(null);
     setActiveInSeasonTradeOffers([]);
     setTeams(NBA_TEAMS_2008.map((t) => ({ ...t, wins: 0, losses: 0 })));
@@ -660,6 +669,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     setExecutedTradeYears([]);
     setSeasonTradeHistory({});
     setParallelDraftHistory({});
+    setDestinyEventRecords({});
     setTradeModalData(null);
     setActiveInSeasonTradeOffers([]);
     setDeclinePromptYear(null);
@@ -999,6 +1009,45 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     }
   };
 
+  const handleTriggerDestinyEvent = (event: DestinyEventDefinition) => {
+    if (!player || gameMode !== 'random_trade') return { success: false, message: '该玩法仅在平行时空开放' };
+    const result = triggerDestinyEvent(
+      event,
+      currentYear,
+      teams,
+      leagueHistory,
+      destinyEventRecords,
+      player.id,
+      player.name,
+    );
+    if (!result.success || !result.record) return { success: false, message: result.message };
+    setTeams(result.teams);
+    setDestinyEventRecords((previous) => ({ ...previous, [event.id]: result.record as DestinyEventRecord }));
+    setSeasonTradeHistory((previous) => {
+      const prior = previous[currentYear];
+      const destinyChange = {
+        id: `destiny_${event.id}`,
+        type: 'league_change' as const,
+        leagueChangeDetail: { title: event.title, description: result.message },
+      };
+      const executedTrades = [...(prior?.executedTrades || []).filter((item) => item.id !== destinyChange.id), destinyChange];
+      return {
+        ...previous,
+        [currentYear]: prior
+          ? { ...prior, totalTransactions: (prior.totalTransactions || prior.executedTrades.length) + 1, executedTrades }
+          : {
+              year: currentYear,
+              seasonName: `${currentYear}-${currentYear + 1} 赛季 · 平行联盟`,
+              tradeSource: 'random',
+              totalTransactions: 1,
+              hiddenTransactions: 0,
+              executedTrades,
+            },
+      };
+    });
+    return { success: true, message: result.message };
+  };
+
   const handleInviteStar = (sourceTeamId: string, starPlayerId: string) => {
     if (!player || gameMode !== 'random_trade') {
       return { success: false, message: '该功能仅在平行联盟模式开放' };
@@ -1090,6 +1139,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     tweets,
     careerHistory,
     leagueHistory,
+    destinyEventRecords,
     usedOffseasonEventIds,
     offseasonMonth,
     setOffseasonMonth,
@@ -1144,6 +1194,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     handleRequestTrade,
     handleNextSeason,
     handleViewSeasonTrades,
+    handleTriggerDestinyEvent,
     handleInviteStar,
     currentTeam,
     oppTeam,

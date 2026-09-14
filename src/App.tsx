@@ -11,6 +11,7 @@ const ContractSigningModal = lazy(() => import('./components/ContractSigningModa
 const CreationModal = lazy(() => import('./components/CreationModal').then((module) => ({ default: module.CreationModal })));
 const DraftNightModal = lazy(() => import('./components/DraftNightModal').then((module) => ({ default: module.DraftNightModal })));
 const DraftWaitingAnimationModal = lazy(() => import('./components/DraftWaitingAnimationModal').then((module) => ({ default: module.DraftWaitingAnimationModal })));
+const DestinyEventsModal = lazy(() => import('./components/DestinyEventsModal').then((module) => ({ default: module.DestinyEventsModal })));
 const HallOfFame = lazy(() => import('./components/HallOfFame').then((module) => ({ default: module.HallOfFame })));
 const LeagueStandings = lazy(() => import('./components/LeagueStandings').then((module) => ({ default: module.LeagueStandings })));
 const LegendaryHallOfFameModal = lazy(() => import('./components/LegendaryHallOfFameModal').then((module) => ({ default: module.LegendaryHallOfFameModal })));
@@ -91,6 +92,7 @@ function CareerApp({
     tweets,
     careerHistory,
     leagueHistory,
+    destinyEventRecords,
     usedOffseasonEventIds,
     offseasonMonth,
     setOffseasonMonth,
@@ -145,10 +147,12 @@ function CareerApp({
     handleRequestTrade,
     handleNextSeason,
     handleViewSeasonTrades,
+    handleTriggerDestinyEvent,
     handleInviteStar,
     currentTeam,
     oppTeam,
   } = useCareerGame(gameMode, resumeOnMount);
+  const [isDestinyEventsOpen, setIsDestinyEventsOpen] = useState(false);
 
   useEffect(() => {
     if (launchAction === 'new') setPhase('creation');
@@ -362,6 +366,9 @@ function CareerApp({
                 onAddUsedEventId={handleAddUsedEventId}
                 onSignContract={handleSignNewContract}
                 onViewSeasonTrades={handleViewSeasonTrades}
+                leagueHistory={leagueHistory}
+                destinyEventRecords={destinyEventRecords}
+                onOpenDestinyEvents={() => setIsDestinyEventsOpen(true)}
                 hasActiveMilestoneModal={!!activeMilestoneModal || showAgeDeclineModal}
                 isSettingsOpen={showSettingsModal}
                 onAutoSimulationChange={setIsRegularSeasonAutoSimulating}
@@ -514,6 +521,17 @@ function CareerApp({
           modalData={tradeModalData}
           teams={teams}
           onConfirm={() => setTradeModalData(null)}
+        />
+      )}
+
+      {gameMode === 'random_trade' && isDestinyEventsOpen && (
+        <DestinyEventsModal
+          currentYear={currentYear}
+          teams={teams}
+          leagueHistory={leagueHistory}
+          records={destinyEventRecords}
+          onTrigger={handleTriggerDestinyEvent}
+          onClose={() => setIsDestinyEventsOpen(false)}
         />
       )}
 

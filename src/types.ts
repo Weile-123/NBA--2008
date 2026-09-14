@@ -238,7 +238,7 @@ export interface RosterPlayer {
   role?: '战术核心' | '绝对首发' | '第六人' | '轮换替补' | '饮水机守门员' | string;
   minutes?: number;
   tradeProtectionUntilYear?: number;
-  acquisitionSource?: 'star_invitation';
+  acquisitionSource?: 'star_invitation' | 'destiny_event';
   stats?: {
     ppg: number;
     rpg: number;
@@ -428,6 +428,8 @@ export interface GameState {
     fmvp: string;
     dpoy: string;
     roy: string;
+    championRosterPlayerIds?: string[];
+    championRosterPlayerNames?: string[];
   }[];
 }
 
