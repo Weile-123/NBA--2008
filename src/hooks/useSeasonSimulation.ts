@@ -1,14 +1,17 @@
 import { Dispatch, SetStateAction } from 'react';
 import { GameState } from '../types';
 import { MatchBoxScore,PlayerProfile,Team } from '../types';
-import { calculateMatchScores,calculateTeamPowerRating,calculateTeamUsageContext,calcWinProbability,generateFullMatchRosterStats,getUserMinutesAndRole,simulatePlayerMatchStats } from '../utils/leagueLogic';
+import { calculateMatchScores,calculateTeamUsageContext,calcWinProbability,generateFullMatchRosterStats,getUserMinutesAndRole,simulatePlayerMatchStats } from '../utils/leagueLogic';
 import { generateTweets } from '../utils/proceduralEngine';
 import { evaluatePostGameHealth, getPlayerTotalAttributes, mustRetireAtAge } from '../utils/calc2k';
+import type { GameMode } from '../gameMode';
+import { getSeasonSimulationPowerRating } from '../utils/parallelSeasonBalance';
 
 import { MilestoneTrigger } from '../data/milestonesData';
 
 
 interface SeasonSimulationContext {
+  gameMode: GameMode;
   player: PlayerProfile | null;
   currentSeasonWeek: number;
   teams: Team[];
@@ -29,6 +32,7 @@ interface SeasonSimulationContext {
 }
 
 export function useSeasonSimulation({
+  gameMode,
   player,
   currentSeasonWeek,
   teams,
@@ -80,8 +84,8 @@ export function useSeasonSimulation({
       const teamA = otherTeams[i];
       const teamB = otherTeams[i + 1];
 
-      const ratingA = calculateTeamPowerRating(teamA);
-      const ratingB = calculateTeamPowerRating(teamB);
+      const ratingA = getSeasonSimulationPowerRating(teamA, gameMode, currentYear);
+      const ratingB = getSeasonSimulationPowerRating(teamB, gameMode, currentYear);
       const aWinProb = calcWinProbability(ratingA, ratingB);
       const aWins = Math.random() < aWinProb;
 
@@ -116,7 +120,10 @@ export function useSeasonSimulation({
       const currentGameOpponentId = curSched[week - 1]?.opponentId;
       const oppTeam = curTeams.find((t) => t.id === currentGameOpponentId) || curTeams[1];
 
-      const matchScores = calculateMatchScores(userTeam, oppTeam, userTeam.id);
+      const matchScores = calculateMatchScores(userTeam, oppTeam, userTeam.id, {
+        teamA: getSeasonSimulationPowerRating(userTeam, gameMode, currentYear),
+        teamB: getSeasonSimulationPowerRating(oppTeam, gameMode, currentYear),
+      });
       const userScore = matchScores.teamAScore;
       const oppScore = matchScores.teamBScore;
       const isUserWin = userScore > oppScore;
@@ -237,7 +244,10 @@ export function useSeasonSimulation({
       const oppTeam = teams.find((t) => t.id === currentGameOpponentId) || teams[1];
 
       // Calculate realistic score using team power rating formula
-      const matchScores = calculateMatchScores(userTeam, oppTeam, userTeam.id);
+      const matchScores = calculateMatchScores(userTeam, oppTeam, userTeam.id, {
+        teamA: getSeasonSimulationPowerRating(userTeam, gameMode, currentYear),
+        teamB: getSeasonSimulationPowerRating(oppTeam, gameMode, currentYear),
+      });
       const userScore = matchScores.teamAScore;
       const oppScore = matchScores.teamBScore;
       const isUserWin = userScore > oppScore;
@@ -570,7 +580,10 @@ export function useSeasonSimulation({
       const userTeam = curTeams.find((team) => team.id === player.currentTeamId) || curTeams[0];
       const scheduleItem = curSchedule[week - 1];
       const oppTeam = curTeams.find((team) => team.id === scheduleItem?.opponentId) || curTeams[1];
-      const matchScores = calculateMatchScores(userTeam, oppTeam, userTeam.id);
+      const matchScores = calculateMatchScores(userTeam, oppTeam, userTeam.id, {
+        teamA: getSeasonSimulationPowerRating(userTeam, gameMode, currentYear),
+        teamB: getSeasonSimulationPowerRating(oppTeam, gameMode, currentYear),
+      });
       const userScore = matchScores.teamAScore;
       const oppScore = matchScores.teamBScore;
       const isUserWin = userScore > oppScore;

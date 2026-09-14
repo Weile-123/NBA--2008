@@ -6,6 +6,8 @@ import { calculateMatchScores, getCompleteTeamRoster, calculateTeamPowerRating, 
 import { Play, Pause, Trophy, Flame, ShieldAlert, ChevronRight, Sparkles, Crown, Award, Star, CheckCircle2, Gamepad2 } from 'lucide-react';
 import { gameConfetti as confetti } from '../utils/gameConfetti';
 import { getUserPlayoffStatus, settleInteractivePlayoffGame } from '../utils/playoffMatch';
+import type { GameMode } from '../gameMode';
+import { getSeasonSimulationPowerRating } from '../utils/parallelSeasonBalance';
 
 const MatchSimulator = React.lazy(() =>
   import('./MatchSimulator').then((module) => ({ default: module.MatchSimulator }))
@@ -84,6 +86,7 @@ export function clearPlayoffStorage(year?: number) {
 }
 
 interface PlayoffPanelProps {
+  gameMode: GameMode;
   userTeam: Team;
   teams: Team[];
   player: PlayerProfile;
@@ -93,6 +96,7 @@ interface PlayoffPanelProps {
 }
 
 export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
+  gameMode,
   userTeam,
   teams,
   player,
@@ -257,8 +261,8 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
     const sA = seedA || 4;
     const sB = seedB || 5;
 
-    const ratingA = calculateTeamPowerRating(teamA);
-    const ratingB = calculateTeamPowerRating(teamB);
+    const ratingA = getSeasonSimulationPowerRating(teamA, gameMode, currentYear);
+    const ratingB = getSeasonSimulationPowerRating(teamB, gameMode, currentYear);
     // Rating difference adjustment: 1 pt difference adds/subtracts 1.5% single-game win rate
     const ratingDiff = (ratingA - ratingB) * 0.015;
 

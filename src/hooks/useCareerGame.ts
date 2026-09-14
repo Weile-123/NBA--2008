@@ -855,6 +855,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
 
   // Helper to simulate a full league game week so all 30 NBA teams get win/loss updates using dynamic power ratings
   const { handleSimulateFullSeason, handleStartMatch, handleFinishMatch, handlePostMatchContinue, handleAdvanceInjury } = useSeasonSimulation({
+    gameMode,
     player,
     currentSeasonWeek,
     teams,

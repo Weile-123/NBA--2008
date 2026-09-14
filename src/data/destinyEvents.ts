@@ -113,7 +113,7 @@ export const DESTINY_EVENTS: DestinyEventDefinition[] = [
     id: 'decision_1', year: 2010, title: '决定一：南海岸集结', category: '决定', protectionYears: 3,
     history: '2010 年夏天，勒布朗·詹姆斯宣布离开克里夫兰，与德维恩·韦德、克里斯·波什在迈阿密联手。',
     result: '勒布朗·詹姆斯与克里斯·波什加盟迈阿密，三位核心进入三年稳定期。',
-    conditions: [exists('勒布朗·詹姆斯')],
+    conditions: [exists('勒布朗·詹姆斯'), withoutTitle('勒布朗·詹姆斯')],
     moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'mia' }, { playerName: '克里斯·波什', destinationTeamId: 'mia' }],
     routes: [
       {
@@ -421,6 +421,19 @@ export function getDestinyEventEvaluations(
   records: Record<string, DestinyEventRecord> = {},
 ): DestinyEventEvaluation[] {
   return DESTINY_EVENTS.map((event) => evaluateDestinyEvent(event, currentYear, teams, leagueHistory, records));
+}
+
+export const DESTINY_EVENT_VISIBLE_SEASONS = 5;
+
+export function getVisibleDestinyEventEvaluations(
+  currentYear: number,
+  teams: Team[],
+  leagueHistory: GameState['leagueHistory'] = [],
+  records: Record<string, DestinyEventRecord> = {},
+): DestinyEventEvaluation[] {
+  const finalVisibleYear = currentYear + DESTINY_EVENT_VISIBLE_SEASONS - 1;
+  return getDestinyEventEvaluations(currentYear, teams, leagueHistory, records)
+    .filter(({ event }) => event.year >= currentYear && event.year <= finalVisibleYear);
 }
 
 function refreshTeam(team: Team): void {

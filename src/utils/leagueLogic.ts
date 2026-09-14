@@ -1420,10 +1420,11 @@ export interface CalculatedMatchScores {
 export function calculateMatchScores(
   teamA: Team,
   teamB: Team,
-  userTeamId?: string
+  userTeamId?: string,
+  ratingOverrides?: { teamA?: number; teamB?: number },
 ): CalculatedMatchScores {
-  const ratingA = calculateTeamPowerRating(teamA);
-  const ratingB = calculateTeamPowerRating(teamB);
+  const ratingA = ratingOverrides?.teamA ?? calculateTeamPowerRating(teamA);
+  const ratingB = ratingOverrides?.teamB ?? calculateTeamPowerRating(teamB);
 
   const isAStronger = ratingA >= ratingB;
   const strongTeam = isAStronger ? teamA : teamB;

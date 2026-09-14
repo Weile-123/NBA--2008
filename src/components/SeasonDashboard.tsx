@@ -314,6 +314,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
   if (isPlayoffs) {
     return (
       <PlayoffPanel
+        gameMode={gameMode}
         userTeam={currentTeam}
         teams={teams}
         player={player}
