@@ -144,11 +144,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <button
               type="button"
               onClick={() => setIsParallelInfoOpen(true)}
-              className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded border border-cyan-300/40 bg-cyan-400/15 px-1.5 py-0.5 text-[8px] font-black text-cyan-200 transition-colors hover:bg-cyan-400/25 sm:text-[9px]"
+              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-cyan-300/70 bg-gradient-to-r from-cyan-400/30 to-violet-400/20 px-2.5 py-1.5 text-[9px] font-black text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.22)] transition-all hover:border-cyan-200 hover:bg-cyan-400/40 active:scale-95 sm:text-[10px]"
               aria-label="查看平行联盟模式介绍"
             >
               <Info className="h-2.5 w-2.5 shrink-0" />
-              新模式：点击查看
+              新模式：玩法说明
             </button>
           )}
         </div>
@@ -380,16 +380,31 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4 text-xs leading-relaxed text-slate-300 sm:p-5">
               <p className="text-slate-400">生涯比赛、属性养成和退役流程与经典模式一致；联盟的交易、选秀和球队发展会走向全新的时间线。两个模式的存档与个人传奇记录完全独立。</p>
 
-              <div className="rounded-xl border border-cyan-400/30 bg-cyan-400/[0.07] p-3">
-                <div className="mb-2 flex items-center gap-1.5 font-black text-cyan-300">
-                  <Shuffle className="h-3.5 w-3.5" />联盟会怎样变化
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-3">
+                  <div className="mb-2 flex items-center gap-1.5 font-black text-amber-300">
+                    <Trophy className="h-3.5 w-3.5" />经典模式
+                  </div>
+                  <ul className="space-y-1.5 text-[10px] text-slate-400 sm:text-[11px]">
+                    <li>• 还原历史真实交易</li>
+                    <li>• 沿用历史选秀名单与归属</li>
+                    <li>• 球队格局贴近真实时间线</li>
+                  </ul>
                 </div>
-                <ul className="space-y-1.5 text-[10px] text-slate-300 sm:text-[11px]">
-                  <li>• 2008 年首个赛季保持原有阵容；后续赛季开始进入平行时间线。</li>
-                  <li>• 每支球队会根据战绩、阵容实力、核心年龄与发展趋势形成自己的球队方向。</li>
-                  <li>• 交易由球队方向动态决定，争冠队倾向补强即战力，重建队倾向年轻球员与未来天赋。</li>
-                  <li>• 休赛期生成新的选秀名单，选秀顺位随当季战绩变化，不再固定复刻历史归属。</li>
-                </ul>
+                <div className="rounded-xl border border-cyan-400/30 bg-cyan-400/[0.07] p-3">
+                  <div className="mb-2 flex items-center gap-1.5 font-black text-cyan-300">
+                    <Shuffle className="h-3.5 w-3.5" />平行联盟
+                  </div>
+                  <ul className="space-y-1.5 text-[10px] text-slate-300 sm:text-[11px]">
+                    <li>• 后续赛季动态生成交易</li>
+                    <li>• 生成新秀，选秀归属随战绩变化</li>
+                    <li>• 球队方向随联盟发展调整</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-cyan-400/20 bg-[#151d2a] px-3 py-2.5 text-[10px] text-slate-400 sm:text-[11px]">
+                2008 年首个赛季保持原有阵容；从后续赛季开始，交易、选秀和球队格局将进入平行时间线。球队会根据战绩、阵容实力、核心年龄与发展趋势决定发展方向。
               </div>
 
               <div className="rounded-xl border border-slate-700/80 bg-[#151d2a] p-3">
@@ -406,12 +421,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   <UserCheck className="h-3.5 w-3.5" />新增：球星邀请计划
                 </div>
                 <p className="text-[10px] text-slate-400 sm:text-[11px]">
-                  进入底部导航“球队”，在球队信息下方找到“球星邀请计划”。每段生涯最多邀请 3 次，每次至少间隔 3 个赛季，并需在交易截止日前完成；球队已有 3 名 90+ 球星时不可继续邀请。观看激励广告后可确认邀请，成功加盟的球星将获得交易保护。
+                  进入底部导航“球队”，在球队信息下方找到“球星邀请计划”。每段生涯最多邀请 3 次，每次至少间隔 3 个赛季，并需在交易截止日前完成；球队已有 3 名 90+ 球星时不可继续邀请。成功加盟的球星将获得交易保护。
                 </p>
-              </div>
-
-              <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-3 py-2.5 text-[10px] text-slate-400 sm:text-[11px]">
-                <span className="font-black text-amber-300">与经典模式的区别：</span>经典模式继续还原历史交易与选秀轨迹；平行联盟每次开档都会产生不同的联盟格局。
               </div>
               <div className="rounded-xl border border-amber-400/30 bg-amber-500/[0.08] px-3 py-2.5 text-[10px] font-bold text-amber-200 sm:text-[11px]">
                 新模式仍在测试，退役记录暂不计入全网排行榜；平行联盟全网榜将在后续开放。
