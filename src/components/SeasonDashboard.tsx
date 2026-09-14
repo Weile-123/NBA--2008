@@ -380,7 +380,14 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
       {gameMode === 'random_trade' && onOpenDestinyEvents && (
         <button
           type="button"
-          onClick={onOpenDestinyEvents}
+          onPointerDown={() => {
+            isAutoSimulatingRef.current = false;
+          }}
+          onClick={() => {
+            if (autoSimTimerRef.current) clearTimeout(autoSimTimerRef.current);
+            setIsAutoSimulating(false);
+            onOpenDestinyEvents();
+          }}
           className={`relative w-full overflow-hidden rounded-2xl border p-3.5 text-left transition active:scale-[0.99] ${availableDestinyEvents.length ? 'border-amber-400/70 bg-gradient-to-r from-amber-500/20 via-[#171822] to-cyan-500/15 shadow-[0_0_28px_rgba(245,158,11,0.16)]' : 'border-cyan-500/30 bg-gradient-to-r from-cyan-500/10 to-[#111722]'}`}
         >
           <div className="absolute -right-5 -top-8 h-24 w-24 rounded-full bg-amber-400/10 blur-2xl" />

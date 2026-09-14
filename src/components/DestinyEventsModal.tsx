@@ -94,38 +94,47 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
               <div><div className="text-[10px] font-black text-amber-400">{selected.event.year}-{selected.event.year + 1} · {selected.event.category}</div><h3 className="mt-1 text-lg font-black text-white">{selected.event.title}</h3></div>
               <button type="button" onClick={() => setSelectedId(null)} className="rounded-lg bg-slate-800 p-1.5 text-slate-400" aria-label="返回事件列表"><X className="h-4 w-4" /></button>
             </div>
-            <p className="mt-3 rounded-xl bg-[#0b1018] p-3 text-xs leading-relaxed text-slate-300">{selected.event.history}</p>
+            <p className="mt-3 text-xs leading-relaxed text-slate-300">{selected.event.history}</p>
 
-            <div className="mt-3 rounded-xl border border-[#2a3445] p-3">
-              <div className="mb-2 text-[10px] font-black text-slate-400">触发条件</div>
-              <div className="space-y-1.5">
-                <div className={`flex items-center gap-1.5 text-[11px] ${currentYear === selected.event.year ? 'text-emerald-300' : 'text-slate-400'}`}><Clock3 className="h-3.5 w-3.5" />仅限 {selected.event.year}-{selected.event.year + 1} 赛季</div>
-                {selected.checks.map(conditionLine)}
-              </div>
-            </div>
-
-            {selected.routeEvaluations.length > 0 ? (
-              <div className="mt-3 space-y-2">
-                {selected.routeEvaluations.map((routeEvaluation) => {
-                  const canTriggerRoute = selected.status === 'available' && routeEvaluation.available;
-                  return (
-                    <div key={routeEvaluation.route.id} className={`rounded-xl border p-3 ${canTriggerRoute ? 'border-amber-400/45 bg-amber-500/10' : 'border-slate-700 bg-slate-900/50'}`}>
-                      <div className="flex items-center justify-between gap-2"><span className="text-xs font-black text-white">{routeEvaluation.route.title}</span><span className="text-[10px] font-black text-amber-300">{routeEvaluation.score}/{routeEvaluation.requiredScore}</span></div>
-                      <div className="mt-2 space-y-1">{routeEvaluation.checks.map(conditionLine)}</div>
-                      <div className="mt-2 border-t border-slate-700/70 pt-2 text-[11px] leading-relaxed text-cyan-100"><strong className="text-cyan-300">结果：</strong>{routeEvaluation.route.result}</div>
-                      {canTriggerRoute && <button type="button" onClick={() => handleTrigger(routeEvaluation.route.id)} className="mt-2.5 w-full rounded-lg bg-amber-500 py-2 text-xs font-black text-black">选择“{routeEvaluation.route.title}”</button>}
-                    </div>
-                  );
-                })}
+            {selected.status === 'triggered' ? (
+              <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                <div className="text-[10px] font-black text-emerald-300">事件已完成{selected.record?.routeTitle ? ` · ${selected.record.routeTitle}` : ''}</div>
+                <p className="mt-2 text-sm leading-relaxed text-emerald-100">{selected.record?.result || selected.event.result}</p>
               </div>
             ) : (
               <>
-                <div className="mt-3 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-3 text-xs leading-relaxed text-cyan-100"><strong className="text-cyan-300">结果：</strong>{selected.event.result}</div>
-                {selected.status === 'available' && <button type="button" onClick={() => handleTrigger()} className="mt-3 w-full rounded-xl bg-amber-500 px-4 py-3 text-sm font-black text-black">触发事件</button>}
+                <div className="mt-4 border-y border-slate-700/70 py-3">
+                  <div className="mb-2 text-[10px] font-black text-slate-400">触发条件</div>
+                  <div className="space-y-1.5">
+                    <div className={`flex items-center gap-1.5 text-[11px] ${currentYear === selected.event.year ? 'text-emerald-300' : 'text-slate-400'}`}><Clock3 className="h-3.5 w-3.5" />仅限 {selected.event.year}-{selected.event.year + 1} 赛季</div>
+                    {selected.checks.map(conditionLine)}
+                  </div>
+                </div>
+
+                {selected.routeEvaluations.length > 0 ? (
+                  <div className="divide-y divide-slate-700/70">
+                    {selected.routeEvaluations.map((routeEvaluation) => {
+                      const canTriggerRoute = selected.status === 'available' && routeEvaluation.available;
+                      return (
+                        <section key={routeEvaluation.route.id} className="py-3">
+                          <div className="flex items-center justify-between gap-2"><span className="text-xs font-black text-white">{routeEvaluation.route.title}</span><span className="text-[10px] font-black text-amber-300">条件 {routeEvaluation.score}/{routeEvaluation.requiredScore}</span></div>
+                          <div className="mt-2 space-y-1">{routeEvaluation.checks.map(conditionLine)}</div>
+                          <p className="mt-2 text-[11px] leading-relaxed text-cyan-100"><strong className="text-cyan-300">结果：</strong>{routeEvaluation.route.result}</p>
+                          {canTriggerRoute && <button type="button" onClick={() => handleTrigger(routeEvaluation.route.id)} className="mt-2.5 w-full rounded-lg bg-amber-500 py-2 text-xs font-black text-black">选择“{routeEvaluation.route.title}”</button>}
+                        </section>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <>
+                    <p className="mt-3 text-xs leading-relaxed text-cyan-100"><strong className="text-cyan-300">结果：</strong>{selected.event.result}</p>
+                    {selected.status === 'available' && <button type="button" onClick={() => handleTrigger()} className="mt-3 w-full rounded-xl bg-amber-500 px-4 py-3 text-sm font-black text-black">触发事件</button>}
+                  </>
+                )}
+
+                {selected.status !== 'available' && <div className={`mt-2 rounded-lg border px-3 py-2 text-center text-xs font-black ${STATUS_META[selected.status].className}`}>{STATUS_META[selected.status].label}</div>}
               </>
             )}
-
-            {selected.status !== 'available' && <div className={`mt-3 rounded-xl border px-3 py-2.5 text-center text-xs font-black ${STATUS_META[selected.status].className}`}>{selected.status === 'triggered' ? selected.record?.result || selected.event.result : STATUS_META[selected.status].label}</div>}
           </div>
         </div>
       )}
