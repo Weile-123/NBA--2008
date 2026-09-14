@@ -12,6 +12,17 @@ export interface AttributePointStatus {
   overflowProgress: number;
 }
 
+export const ATTRIBUTE_AD_REWARD_POINTS = 30;
+
+export function applyAttributeAdReward(player: PlayerProfile): PlayerProfile {
+  if ((player.adRewardUses || 0) >= 3) return player;
+  return {
+    ...player,
+    skillPoints: (player.skillPoints || 0) + ATTRIBUTE_AD_REWARD_POINTS,
+    adRewardUses: (player.adRewardUses || 0) + 1,
+  };
+}
+
 export function getAttributePointStatus(player: PlayerProfile): AttributePointStatus {
   const skillPoints = Math.max(0, player.skillPoints || 0);
   const redistributionPoints = Math.min(skillPoints, Math.max(0, player.attributeRedistributionPoints || 0));

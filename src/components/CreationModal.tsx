@@ -108,7 +108,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
   // Step 4: Player Customization state
   const [jerseyNum, setJerseyNum] = useState(24);
   const [position, setPosition] = useState<Position>('PG');
-  const [favoriteTeamId, setFavoriteTeamId] = useState<string>('lal');
+  const [favoriteTeamId, setFavoriteTeamId] = useState<string>('');
 
   // Height & Weight state
   const [bodyShape, setBodyShape] = useState<'slim' | 'balanced' | 'heavy'>('balanced');
@@ -213,7 +213,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
 
   const handleSubmitFinalPlayer = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || !favoriteTeamId) return;
 
     const newPlayer: PlayerProfile = {
       id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -306,7 +306,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
 
   // Currently selected team object
   const selectedTeamObj = useMemo(() => {
-    return NBA_TEAMS_2008.find((t) => t.id === favoriteTeamId) || NBA_TEAMS_2008[0];
+    return NBA_TEAMS_2008.find((t) => t.id === favoriteTeamId);
   }, [favoriteTeamId]);
 
   // Filtered teams for team selection modal
@@ -742,10 +742,54 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
             </div>
 
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1">
-              {/* Section 1: Position */}
+              {/* Section 1: Favorite draft team */}
+              <div className="bg-[#0d1017] p-3.5 rounded-xl border border-amber-500/50 space-y-3 shadow-[0_0_20px_rgba(245,158,11,0.08)]">
+                <div>
+                  <h3 className="text-xs font-black italic uppercase text-white flex items-center gap-1.5">
+                    <Heart className="w-3.5 h-3.5 text-amber-400 fill-amber-400" /> 1. 选择心仪选秀球队
+                  </h3>
+                  <p className="text-[10px] text-amber-200/80 mt-0.5">
+                    请先选择球队，选秀大会上该球队将动用专属签位选中你。
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowTeamModal(true)}
+                  className={`w-full p-3 rounded-xl border flex items-center justify-between gap-3 text-left transition-all active:scale-[0.99] cursor-pointer ${selectedTeamObj ? 'bg-[#11141b] border-amber-500/30' : 'bg-amber-500/10 border-amber-400 animate-pulse'}`}
+                >
+                  {selectedTeamObj ? (
+                    <div className="flex items-center gap-3 min-w-0">
+                      <TeamLogo
+                        logo={selectedTeamObj.logo}
+                        abbrev={selectedTeamObj.abbrev}
+                        primaryColor={selectedTeamObj.primaryColor}
+                        secondaryColor={selectedTeamObj.secondaryColor}
+                        className="w-9 h-9 object-contain shrink-0"
+                        alt={selectedTeamObj.name}
+                      />
+                      <div className="min-w-0">
+                        <div className="text-xs sm:text-sm font-bold text-white truncate">{selectedTeamObj.name}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">
+                          {selectedTeamObj.conference === 'East' ? '东部联盟' : '西部联盟'} · {selectedTeamObj.abbrev}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-amber-300 font-black text-xs">
+                      <Heart className="w-4 h-4" /> 尚未选择心仪球队
+                    </div>
+                  )}
+                  <span className="px-3 py-2 bg-amber-500 text-black rounded-lg text-xs font-black shrink-0">
+                    {selectedTeamObj ? '更换球队' : '立即选择'}
+                  </span>
+                </button>
+              </div>
+
+              {/* Section 2: Position */}
               <div className="bg-[#0d1017] p-3.5 rounded-xl border border-[#232834] space-y-2.5">
               <h3 className="text-xs font-black italic uppercase text-white flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-amber-400" /> 1. 场上位置
+                <User className="w-3.5 h-3.5 text-amber-400" /> 2. 场上位置
               </h3>
 
               {/* Mobile Quick Pills for 1-Tap Switching */}
@@ -786,11 +830,11 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
               </select>
               </div>
 
-            {/* Section 2: Height & Weight Selection */}
+            {/* Section 3: Height & Weight Selection */}
               <div className="bg-[#0d1017] p-3.5 rounded-xl border border-[#232834] space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-black italic uppercase text-white flex items-center gap-1.5">
-                  <Sliders className="w-3.5 h-3.5 text-amber-400" /> 2. 身高体重定制
+                  <Sliders className="w-3.5 h-3.5 text-amber-400" /> 3. 身高体重定制
                 </h3>
                 <span className="text-xs font-mono font-bold text-amber-400">
                   {heightCm}cm / {weightKg}kg
@@ -860,10 +904,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
               </div>
               </div>
 
-            {/* Section 3: Position-Specific Archetypes */}
+            {/* Section 4: Position-Specific Archetypes */}
               <div className="bg-[#0d1017] p-3.5 rounded-xl border border-[#232834] space-y-2.5">
               <h3 className="text-xs font-black italic uppercase text-white flex items-center gap-1.5">
-                <Trophy className="w-3.5 h-3.5 text-amber-400" /> 3. 【{position}】专属模板风格
+                <Trophy className="w-3.5 h-3.5 text-amber-400" /> 4. 【{position}】专属模板风格
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -890,54 +934,6 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                 ))}
               </div>
               </div>
-
-            {/* Section 4: Favorite NBA Draft Team Selection (SIMPLIFIED INTO POPUP MODAL) */}
-              <div className="bg-[#0d1017] p-3.5 rounded-xl border border-amber-500/20 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xs font-black italic uppercase text-white flex items-center gap-1.5">
-                    <Heart className="w-3.5 h-3.5 text-amber-400 fill-amber-400" /> 4. 选择心仪选秀球队
-                  </h3>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    选秀大会上该球队将动用专属签位指名选中你！
-                  </p>
-                </div>
-              </div>
-
-              {/* Compact Selected Team Card + Trigger Button */}
-              <div className="bg-[#11141b] p-3 rounded-xl border border-[#232834] flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <TeamLogo
-                    logo={selectedTeamObj.logo}
-                    abbrev={selectedTeamObj.abbrev}
-                    primaryColor={selectedTeamObj.primaryColor}
-                    secondaryColor={selectedTeamObj.secondaryColor}
-                    className="w-9 h-9 object-contain shrink-0"
-                    alt={selectedTeamObj.name}
-                  />
-                  <div className="min-w-0">
-                    <div className="text-xs sm:text-sm font-bold text-white truncate flex items-center gap-1.5">
-                      <span>{selectedTeamObj.name}</span>
-                      <span className="text-[9px] sm:text-[10px] font-mono text-amber-400 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.2 rounded shrink-0">
-                        {selectedTeamObj.abbrev}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-slate-400 font-mono">
-                      {selectedTeamObj.conference === 'East' ? '东部联盟' : '西部联盟'}
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setShowTeamModal(true)}
-                  className="px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold shrink-0 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-                >
-                  <Heart className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
-                  <span>选择球队</span>
-                </button>
-              </div>
-              </div>
             </div>
 
             {/* Fixed bottom actions */}
@@ -955,9 +951,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
               </button>
               <button
                 type="submit"
-                className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-black italic rounded-xl text-xs uppercase tracking-tight shadow-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                disabled={!favoriteTeamId}
+                className="w-full py-3 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed text-black font-black italic rounded-xl text-xs uppercase tracking-tight shadow-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
               >
-                <span>2008选秀</span>
+                <span>{favoriteTeamId ? '2008选秀' : '请先选择球队'}</span>
                 <ArrowRight className="w-4 h-4 shrink-0" />
               </button>
             </div>

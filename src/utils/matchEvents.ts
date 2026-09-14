@@ -48,6 +48,24 @@ export interface InteractiveMatchScorePlan {
   quarters: Array<{ user: number; opp: number }>;
 }
 
+export type BuzzerBeaterShotType = '3pt' | 'mid' | 'layup';
+
+/** Keep the displayed final-shot odds and the actual roll on one formula. */
+export function calculateBuzzerBeaterSuccessRate(
+  player: Pick<PlayerProfile, 'attributes'>,
+  shotType: BuzzerBeaterShotType,
+): number {
+  const { attributes } = player;
+  const shotRating = shotType === '3pt'
+    ? attributes.threePoint * 0.8 + attributes.ballHandle * 0.2
+    : shotType === 'mid'
+      ? attributes.midRange * 0.8 + attributes.ballHandle * 0.2
+      : attributes.layup * 0.55 + attributes.insideFinish * 0.3 + attributes.strength * 0.15;
+  const baseRate = shotType === 'layup' ? 0.36 : shotType === 'mid' ? 0.34 : 0.32;
+  const rate = baseRate + (shotRating - 70) * 0.006;
+  return Math.min(shotType === 'layup' ? 0.58 : 0.54, Math.max(0.25, rate));
+}
+
 function distributeScoreAcrossQuarters(total: number): number[] {
   const scores: number[] = [];
   let remaining = total;

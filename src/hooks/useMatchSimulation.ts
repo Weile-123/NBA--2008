@@ -2,7 +2,7 @@ import { useEffect,useRef,useState } from 'react';
 import { MatchBoxScore,MatchLog,PlayerProfile,Team } from '../types';
 import { getUserMinutesAndRole } from '../utils/leagueLogic';
 
-import { ScheduledQuarterEvent,TacticalOption,buildQuarterEvents,calculateInteractiveGrade,createInteractiveMatchScorePlan,isPlayerOnCourt,resolveInteractiveFinalScore,shouldTriggerBuzzerBeater } from '../utils/matchEvents';
+import { ScheduledQuarterEvent,TacticalOption,buildQuarterEvents,calculateBuzzerBeaterSuccessRate,calculateInteractiveGrade,createInteractiveMatchScorePlan,isPlayerOnCourt,resolveInteractiveFinalScore,shouldTriggerBuzzerBeater } from '../utils/matchEvents';
 import { generateTacticalOptions } from '../utils/matchTactics';
 export interface MatchSimulatorProps {
   player: PlayerProfile;
@@ -513,8 +513,7 @@ export function useMatchSimulation({
 
   // Buzzer Beater Choice Handler
   const handleBuzzerBeaterChoice = (shotType: '3pt' | 'mid' | 'layup') => {
-    // Requirement: 30% success rate
-    const isSuccess = Math.random() < 0.30;
+    const isSuccess = Math.random() < calculateBuzzerBeaterSuccessRate(player, shotType);
 
     if (isSuccess) {
       const ptsEarned = shotType === '3pt' ? 3 : 2;

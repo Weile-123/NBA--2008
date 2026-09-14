@@ -69,6 +69,7 @@ export interface EvaluatedPlayer {
   minutes: number;
   // Score metrics
   statScore: number;
+  allNbaScore: number;
   mvpScore: number;
   defensiveScore: number;
   sixthManScore: number;
@@ -152,6 +153,7 @@ export function createFutureRookieAwardPool(teams: Team[], currentYear: number):
       fgPct: +(43.5 + variance).toFixed(1),
       minutes: Math.max(22, 33 - index),
       statScore: rookieScore,
+      allNbaScore: rookieScore,
       mvpScore: rookieScore,
       defensiveScore: rpg + spg * 4.5 + bpg * 5,
       sixthManScore: rookieScore,
@@ -278,6 +280,16 @@ export function evaluateAllLeaguePlayers(
       // Basic stat score
       const statScore = ppg * 2.0 + rpg * 0.8 + apg * 1.0 + spg * 1.2 + bpg * 1.2;
 
+      // Best-team voting values production first and gives strong winning
+      // teams meaningful credit. OVR remains a small tie-breaker only.
+      const allNbaScore = ppg * 2.0
+        + rpg * 0.8
+        + apg * 1.25
+        + spg * 1.2
+        + bpg * 1.2
+        + winFactor * 20.0
+        + Math.max(0, p.ovr - 80) * 0.3;
+
       // MVP score: High scoring weight + team success (heavily rewards high scorers on winning teams)
       const mvpScore = ppg * 2.5 + rpg * 0.7 + apg * 1.1 + spg * 1.0 + bpg * 1.0 + winFactor * 22.0;
 
@@ -361,6 +373,7 @@ export function evaluateAllLeaguePlayers(
         fgPct,
         minutes,
         statScore,
+        allNbaScore,
         mvpScore,
         defensiveScore,
         sixthManScore,
@@ -549,6 +562,7 @@ export function calculateSeasonAwards(
         fgPct: 46.5,
         minutes: 32,
         statScore: 30,
+        allNbaScore: 30,
         mvpScore: 25,
         defensiveScore: 12,
         sixthManScore: 15,
@@ -577,7 +591,7 @@ export function calculateSeasonAwards(
   const posOrder: Record<Position, number> = { PG: 1, SG: 2, SF: 3, PF: 4, C: 5 };
 
   // 5. 最佳阵容 (All-NBA 1st, 2nd, 3rd) - 1 player per position (PG, SG, SF, PF, C)
-  const sortedAllNba = [...allPlayers].sort((a, b) => b.statScore - a.statScore);
+  const sortedAllNba = [...allPlayers].sort((a, b) => b.allNbaScore - a.allNbaScore);
   const selectedAllNbaIds = new Set<string>();
   const mvpPlayerCandidate = allPlayers.find((p) => p.id === mvp.id || p.name === mvp.name);
 

@@ -4,7 +4,7 @@ import { PlayerProfile,SignatureShoe } from '../types';
 import { getPlayerBaseOvr, getPlayerCareerPeakOvr } from '../utils/calc2k';
 import { completeRewardedAd } from '../lib/rewardedAd';
 import { getAssetPurchaseState } from '../utils/economy';
-import { resetPlayerAttribute, spendPlayerAttributePoints } from '../utils/attributeTraining';
+import { applyAttributeAdReward, resetPlayerAttribute, spendPlayerAttributePoints } from '../utils/attributeTraining';
 
 export function usePlayerActions(
   player: PlayerProfile | null,
@@ -40,7 +40,9 @@ export function usePlayerActions(
   const handleWatchAttributeAd = async (): Promise<boolean> => {
     if (!player || (player.adRewardUses || 0) >= 3) return false;
     if (!await completeRewardedAd()) return false;
-    setPlayer({ ...player, skillPoints: (player.skillPoints || 0) + 30, adRewardUses: (player.adRewardUses || 0) + 1 });
+    // The native ad can keep the page suspended for several seconds. Apply the
+    // reward to the latest player snapshot instead of the pre-ad render.
+    setPlayer((currentPlayer) => currentPlayer ? applyAttributeAdReward(currentPlayer) : currentPlayer);
     return true;
   };
 

@@ -2,6 +2,7 @@ import { FastForward,Flame,Pause,Play,Sparkles,UserCheck } from 'lucide-react';
 import React from 'react';
 
 import { MatchSimulatorProps,useMatchSimulation } from '../hooks/useMatchSimulation';
+import { calculateBuzzerBeaterSuccessRate } from '../utils/matchEvents';
 export { buildQuarterEvents,isPlayerOnCourt } from '../utils/matchEvents';
 export type { ScheduledQuarterEvent,TacticalOption } from '../utils/matchEvents';
 export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
@@ -13,6 +14,11 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
   currentYear = 2008,
   onFinishMatch,
 }) => {
+  const buzzerRates = {
+    '3pt': Math.round(calculateBuzzerBeaterSuccessRate(player, '3pt') * 100),
+    mid: Math.round(calculateBuzzerBeaterSuccessRate(player, 'mid') * 100),
+    layup: Math.round(calculateBuzzerBeaterSuccessRate(player, 'layup') * 100),
+  };
   const {
     hasStarted,
     isSimulating,
@@ -337,7 +343,7 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
               </div>
 
               <div className="p-3 sm:p-3.5 bg-gradient-to-r from-red-950/40 via-[#0d1017] to-red-950/40 border border-red-500/30 rounded-xl text-xs text-slate-200 leading-relaxed">
-                🚨 全场仅剩 <span className="text-red-400 font-black font-mono">4.0秒</span>！球队落后 1 分！选择你的绝杀出手方式（<span className="text-amber-400 font-bold">成功率 30%</span>，获 <span className="text-emerald-400 font-bold">+3倍粉丝</span> & <span className="text-amber-400 font-bold">+3属性点</span>）：
+                🚨 全场仅剩 <span className="text-red-400 font-black font-mono">4.0秒</span>！球队落后 1 分！选择你的绝杀出手方式（成功率由对应能力决定，获 <span className="text-emerald-400 font-bold">+3倍粉丝</span> & <span className="text-amber-400 font-bold">+3属性点</span>）：
               </div>
 
               <div className="grid grid-cols-1 gap-2 sm:gap-3">
@@ -356,7 +362,7 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
                   </div>
                   <div className="text-right shrink-0 ml-2 sm:ml-3">
                     <span className="text-[10px] sm:text-xs font-mono font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 block">
-                      30% 成功率
+                      {buzzerRates['3pt']}% 成功率
                     </span>
                     <span className="text-[9px] sm:text-[10px] text-emerald-400 font-mono block mt-0.5 sm:mt-1 font-bold">
                       +3倍粉丝 & +3属性点
@@ -379,7 +385,7 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
                   </div>
                   <div className="text-right shrink-0 ml-2 sm:ml-3">
                     <span className="text-[10px] sm:text-xs font-mono font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 block">
-                      30% 成功率
+                      {buzzerRates.mid}% 成功率
                     </span>
                     <span className="text-[9px] sm:text-[10px] text-emerald-400 font-mono block mt-0.5 sm:mt-1 font-bold">
                       +3倍粉丝 & +3属性点
@@ -402,7 +408,7 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
                   </div>
                   <div className="text-right shrink-0 ml-2 sm:ml-3">
                     <span className="text-[10px] sm:text-xs font-mono font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 block">
-                      30% 成功率
+                      {buzzerRates.layup}% 成功率
                     </span>
                     <span className="text-[9px] sm:text-[10px] text-emerald-400 font-mono block mt-0.5 sm:mt-1 font-bold">
                       +3倍粉丝 & +3属性点
