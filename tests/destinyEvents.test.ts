@@ -61,6 +61,84 @@ test('future routes cannot become available or be triggered early', () => {
   assert.equal(triggerDestinyEvent(event, 2009, teams).success, false);
 });
 
+test('the Lakers F4 event offers three routes and gathers all four stars', () => {
+  const event = DESTINY_EVENTS.find((candidate) => candidate.id === 'lakers_f4')!;
+  const lakers = makeTeam('lal', '洛杉矶湖人', [
+    { id: 'kobe', name: '科比·布莱恩特', ovr: 95 },
+    { id: 'gasol', name: '保罗·加索尔', ovr: 89 },
+  ]);
+  lakers.strategy = 'contender';
+  lakers.previousSeasonWins = 50;
+  const teams = [
+    lakers,
+    makeTeam('orl', '奥兰多', [{ id: 'howard', name: '德怀特·霍华德', ovr: 94 }]),
+    makeTeam('phx', '菲尼克斯', [{ id: 'nash', name: '史蒂夫·纳什', ovr: 90 }]),
+  ];
+  const evaluation = evaluateDestinyEvent(event, 2012, teams);
+  assert.equal(evaluation.routeEvaluations.length, 3);
+  assert.equal(evaluation.routeEvaluations.find((route) => route.route.id === 'purple_gold')?.available, true);
+  const triggered = triggerDestinyEvent(event, 2012, teams, [], {}, undefined, undefined, 'purple_gold');
+  assert.equal(triggered.success, true);
+  const lakersRoster = triggered.teams.find((team) => team.id === 'lal')!.roster.map((player) => player.name);
+  for (const name of ['科比·布莱恩特', '史蒂夫·纳什', '保罗·加索尔', '德怀特·霍华德']) assert.ok(lakersRoster.includes(name));
+});
+
+test('linked destiny events require their preceding event or exact branch', () => {
+  const lebron = { id: 'lebron', name: '勒布朗·詹姆斯', ovr: 96 };
+  const cleveland = makeTeam('cle', '克里夫兰', [lebron]);
+  cleveland.strategy = 'contender';
+  cleveland.previousSeasonWins = 50;
+  const decisionTwo = DESTINY_EVENTS.find((candidate) => candidate.id === 'decision_2')!;
+  assert.equal(evaluateDestinyEvent(decisionTwo, 2014, [cleveland]).checks.find((check) => check.label.includes('决定一'))?.met, false);
+  const decisionOneRecord = { decision_1: { eventId: 'decision_1', triggeredAtYear: 2010, result: '完成', movedPlayers: [] } };
+  assert.equal(evaluateDestinyEvent(decisionTwo, 2014, [cleveland], [], decisionOneRecord).checks.find((check) => check.label.includes('决定一'))?.met, true);
+
+  const davis = makeTeam('noh', '新奥尔良', [{ id: 'davis', name: '安东尼·戴维斯', ovr: 94 }]);
+  const lakers = makeTeam('lal', '洛杉矶湖人', [lebron]);
+  const adEvent = DESTINY_EVENTS.find((candidate) => candidate.id === 'ad_lakers')!;
+  const wrongRouteRecord = { lebron_lakers: { eventId: 'lebron_lakers', triggeredAtYear: 2018, result: '完成', movedPlayers: [], routeId: 'process' } };
+  const rightRouteRecord = { lebron_lakers: { ...wrongRouteRecord.lebron_lakers, routeId: 'hollywood' } };
+  assert.equal(evaluateDestinyEvent(adEvent, 2019, [lakers, davis], [], wrongRouteRecord).checks.find((check) => check.label.includes('天选之子西游'))?.met, false);
+  assert.equal(evaluateDestinyEvent(adEvent, 2019, [lakers, davis], [], rightRouteRecord).checks.find((check) => check.label.includes('天选之子西游'))?.met, true);
+});
+
+test('later event conditions use championship history and the rebuilt Brooklyn chain', () => {
+  const lebronEvent = DESTINY_EVENTS.find((candidate) => candidate.id === 'lebron_lakers')!;
+  const lebronTeams = [makeTeam('cle', '克里夫兰', [{ id: 'lebron', name: '勒布朗·詹姆斯', ovr: 96 }])];
+  const titleHistory = [
+    { year: 2016, seasonStr: '2016-17', champion: '金州', championId: 'gsw', mvp: '其他人', fmvp: '其他人', dpoy: '其他人', roy: '其他人', championRosterPlayerNames: ['其他人'] },
+    { year: 2017, seasonStr: '2017-18', champion: '克里夫兰', championId: 'cle', mvp: '其他人', fmvp: '勒布朗·詹姆斯', dpoy: '其他人', roy: '其他人', championRosterPlayerNames: ['勒布朗·詹姆斯'] },
+  ];
+  assert.equal(evaluateDestinyEvent(lebronEvent, 2018, lebronTeams, titleHistory).checks.find((check) => check.label.includes('此前2个赛季'))?.met, false);
+  titleHistory[1] = { ...titleHistory[1], champion: '波士顿', championId: 'bos', fmvp: '其他人', championRosterPlayerNames: ['其他人'] };
+  assert.equal(evaluateDestinyEvent(lebronEvent, 2018, lebronTeams, titleHistory).checks.find((check) => check.label.includes('此前2个赛季'))?.met, true);
+
+  const brooklynPair = DESTINY_EVENTS.find((candidate) => candidate.id === 'durant_kyrie_brooklyn')!;
+  const nets = makeTeam('bkn', '布鲁克林');
+  const warriors = makeTeam('gsw', '金州', [{ id: 'durant', name: '凯文·杜兰特', ovr: 96 }]);
+  const celtics = makeTeam('bos', '波士顿', [{ id: 'kyrie', name: '凯里·欧文', ovr: 92 }]);
+  const durantRecord = { durant_warriors: { eventId: 'durant_warriors', triggeredAtYear: 2016, result: '完成', movedPlayers: [], routeId: 'bay_area' } };
+  assert.equal(evaluateDestinyEvent(brooklynPair, 2019, [nets, warriors, celtics], [], {}).status, 'unavailable');
+  assert.equal(evaluateDestinyEvent(brooklynPair, 2019, [nets, warriors, celtics], [], durantRecord).status, 'available');
+
+  const hardenEvent = DESTINY_EVENTS.find((candidate) => candidate.id === 'harden_brooklyn')!;
+  const brooklyn = makeTeam('bkn', '布鲁克林', [{ id: 'durant', name: '凯文·杜兰特', ovr: 96 }, { id: 'kyrie', name: '凯里·欧文', ovr: 92 }]);
+  brooklyn.strategy = 'contender';
+  const houston = makeTeam('hou', '休斯敦', [{ id: 'harden', name: '詹姆斯·哈登', ovr: 95 }]);
+  const pairRecord = { durant_kyrie_brooklyn: { eventId: 'durant_kyrie_brooklyn', triggeredAtYear: 2019, result: '完成', movedPlayers: ['凯文·杜兰特', '凯里·欧文'] } };
+  const evaluation = evaluateDestinyEvent(hardenEvent, 2021, [brooklyn, houston], [{ year: 2020, seasonStr: '2020-21', champion: '洛杉矶湖人', championId: 'lal', mvp: '其他人', fmvp: '其他人', dpoy: '其他人', roy: '其他人' }], pairRecord);
+  assert.equal(evaluation.checks.some((check) => check.label.includes('88+综评')), false);
+  assert.equal(evaluation.checks.some((check) => check.label.includes('不超过55胜')), false);
+  assert.equal(evaluation.checks.find((check) => check.label.includes('上赛季未夺冠'))?.met, true);
+  assert.equal(evaluation.status, 'available');
+});
+
+test('removed league-wide events no longer appear in the destiny catalog', () => {
+  for (const id of ['lockout_2011', 'small_ball_revolution', 'bubble_2020']) {
+    assert.equal(DESTINY_EVENTS.some((event) => event.id === id), false);
+  }
+});
+
 test('parallel pre-decision Cavaliers receive a small simulation-only penalty', () => {
   const cavaliers = makeTeam('cle', '克里夫兰', [{ id: 'lebron', name: '勒布朗·詹姆斯', ovr: 97 }]);
   const classicRating = getSeasonSimulationPowerRating(cavaliers, 'classic', 2009);

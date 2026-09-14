@@ -4,9 +4,11 @@ import { calculateTeamPowerRating } from '../utils/leagueLogic';
 export type DestinyEventCategory = '决定' | '重磅交易' | '自由市场' | '联盟大事';
 
 export interface DestinyEventCondition {
-  type: 'player_exists' | 'player_on_team' | 'player_without_title' | 'players_exist' | 'team_strategy_in' | 'team_previous_wins_at_least' | 'team_max_elite_players' | 'player_team_previous_wins_at_most' | 'player_has_higher_rated_teammates';
+  type: 'player_exists' | 'player_on_team' | 'player_without_title' | 'player_without_title_in_previous_seasons' | 'players_exist' | 'team_strategy_in' | 'team_previous_wins_at_least' | 'team_max_elite_players' | 'player_team_previous_wins_at_most' | 'player_team_previous_season_without_title' | 'player_has_higher_rated_teammates' | 'event_completed';
   playerNames?: string[];
   teamId?: string;
+  eventId?: string;
+  routeId?: string;
   strategies?: Array<'contender' | 'playoff' | 'retooling' | 'rebuilding'>;
   value?: number;
   ovrThreshold?: number;
@@ -33,6 +35,7 @@ export interface DestinyEventDefinition {
   guide?: boolean;
   requiredScore?: number;
   routes?: DestinyEventRoute[];
+  skipDefaultScoring?: boolean;
 }
 
 export interface DestinyEventRoute {
@@ -89,8 +92,17 @@ const allExist = (...playerNames: string[]): DestinyEventCondition => ({
 const onTeam = (playerName: string, teamId: string, teamName: string): DestinyEventCondition => ({
   type: 'player_on_team', playerNames: [playerName], teamId, points: 2, label: `${playerName}效力于${teamName}（+2）`,
 });
+const requiredOnTeam = (playerName: string, teamId: string, teamName: string): DestinyEventCondition => ({
+  type: 'player_on_team', playerNames: [playerName], teamId, required: true, label: `${playerName}效力于${teamName}`,
+});
 const withoutTitle = (playerName: string): DestinyEventCondition => ({
   type: 'player_without_title', playerNames: [playerName], required: true, label: `${playerName}此前尚未夺冠`,
+});
+const withoutTitleInPreviousSeasons = (playerName: string, seasons: number): DestinyEventCondition => ({
+  type: 'player_without_title_in_previous_seasons', playerNames: [playerName], value: seasons, required: true, label: `${playerName}此前${seasons}个赛季均未夺冠`,
+});
+const eventCompleted = (eventId: string, eventTitle: string, routeId?: string, routeTitle?: string): DestinyEventCondition => ({
+  type: 'event_completed', eventId, routeId, required: true, label: routeId ? `已完成“${eventTitle}”的“${routeTitle}”分支` : `已完成“${eventTitle}”`,
 });
 const strategyIn = (teamId: string, teamName: string, strategies: DestinyEventCondition['strategies'], points = 1): DestinyEventCondition => ({
   type: 'team_strategy_in', teamId, strategies, points, label: `${teamName}球队方向为${strategies?.map((item) => ({ contender: '争冠', playoff: '季后赛竞争', retooling: '观望调整', rebuilding: '重建' })[item]).join('或')}（+${points}）`,
@@ -103,6 +115,9 @@ const maxElite = (teamId: string, teamName: string, value: number, ovrThreshold 
 });
 const playerTeamMaxWins = (playerName: string, value: number, points = 1): DestinyEventCondition => ({
   type: 'player_team_previous_wins_at_most', playerNames: [playerName], value, points, label: `${playerName}所在球队上赛季不超过${value}胜（+${points}）`,
+});
+const playerTeamPreviousSeasonWithoutTitle = (playerName: string, points = 1): DestinyEventCondition => ({
+  type: 'player_team_previous_season_without_title', playerNames: [playerName], points, label: `${playerName}所在球队上赛季未夺冠（+${points}）`,
 });
 const higherRatedTeammates = (playerName: string, value: number, points = 1): DestinyEventCondition => ({
   type: 'player_has_higher_rated_teammates', playerNames: [playerName], value, points, label: `${playerName}队内至少有${value}名综评更高的队友（+${points}）`,
@@ -140,10 +155,27 @@ export const DESTINY_EVENTS: DestinyEventDefinition[] = [
     guide: true, conditions: [exists('卡梅隆·安东尼')], moves: [{ playerName: '卡梅隆·安东尼', destinationTeamId: 'nyk' }],
   },
   {
-    id: 'lockout_2011', year: 2011, title: '停摆后的缩水赛季', category: '联盟大事', protectionYears: 2,
-    history: '劳资谈判让新赛季延迟开启，密集赛程成为所有球队必须面对的新考验。',
-    result: '缩水赛季成为这条时间线的重要节点，联盟竞争进入高强度阶段。',
-    guide: true, conditions: [exists('勒布朗·詹姆斯')],
+    id: 'lakers_f4', year: 2012, title: '紫金F4集结', category: '重磅交易', protectionYears: 2,
+    history: '2012 年夏天，洛杉矶湖人引入史蒂夫·纳什与德怀特·霍华德，尝试让四位明星共同冲击冠军。',
+    result: '科比·布莱恩特、史蒂夫·纳什、保罗·加索尔与德怀特·霍华德组成四星阵容。',
+    conditions: [allExist('科比·布莱恩特', '史蒂夫·纳什', '保罗·加索尔', '德怀特·霍华德')],
+    routes: [
+      {
+        id: 'purple_gold', title: '紫金四星豪赌', result: '科比·布莱恩特、史蒂夫·纳什、保罗·加索尔与德怀特·霍华德齐聚洛杉矶湖人。', requiredScore: 3,
+        conditions: [requiredOnTeam('科比·布莱恩特', 'lal', '洛杉矶湖人'), onTeam('保罗·加索尔', 'lal', '洛杉矶湖人'), strategyIn('lal', '洛杉矶湖人', ['contender', 'playoff']), minWins('lal', '洛杉矶湖人', 45)],
+        moves: ['科比·布莱恩特', '史蒂夫·纳什', '保罗·加索尔', '德怀特·霍华德'].map((playerName) => ({ playerName, destinationTeamId: 'lal' })),
+      },
+      {
+        id: 'magic_galaxy', title: '魔术银河战舰', result: '科比·布莱恩特、史蒂夫·纳什与保罗·加索尔前往奥兰多，与德怀特·霍华德组成四星阵容。', requiredScore: 3,
+        conditions: [requiredOnTeam('德怀特·霍华德', 'orl', '奥兰多'), strategyIn('orl', '奥兰多', ['contender', 'playoff'], 2), maxElite('orl', '奥兰多', 2), playerTeamMaxWins('科比·布莱恩特', 55)],
+        moves: ['科比·布莱恩特', '史蒂夫·纳什', '保罗·加索尔', '德怀特·霍华德'].map((playerName) => ({ playerName, destinationTeamId: 'orl' })),
+      },
+      {
+        id: 'phoenix_twilight', title: '凤凰城最后一舞', result: '科比·布莱恩特、保罗·加索尔与德怀特·霍华德前往菲尼克斯，与史蒂夫·纳什展开最后一次争冠冲刺。', requiredScore: 3,
+        conditions: [requiredOnTeam('史蒂夫·纳什', 'phx', '菲尼克斯'), strategyIn('phx', '菲尼克斯', ['contender', 'playoff', 'retooling'], 2), maxElite('phx', '菲尼克斯', 2), playerTeamMaxWins('科比·布莱恩特', 55)],
+        moves: ['科比·布莱恩特', '史蒂夫·纳什', '保罗·加索尔', '德怀特·霍华德'].map((playerName) => ({ playerName, destinationTeamId: 'phx' })),
+      },
+    ],
   },
   {
     id: 'harden_houston', year: 2012, title: '大胡子独当一面', category: '重磅交易', protectionYears: 3,
@@ -161,25 +193,19 @@ export const DESTINY_EVENTS: DestinyEventDefinition[] = [
     id: 'decision_2', year: 2014, title: '决定二：回到故乡', category: '决定', protectionYears: 3,
     history: '勒布朗·詹姆斯宣布回归克里夫兰，要为家乡带回一座冠军奖杯。',
     result: '勒布朗·詹姆斯回归克里夫兰，重新成为球队核心。',
-    conditions: [exists('勒布朗·詹姆斯')], moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'cle' }],
+    conditions: [exists('勒布朗·詹姆斯'), eventCompleted('decision_1', '决定一')], moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'cle' }],
   },
   {
     id: 'love_cleveland', year: 2014, title: '三巨头最后一块拼图', category: '重磅交易', protectionYears: 2,
     history: '克里夫兰以年轻资产换来凯文·乐福，组建新的争冠三巨头。',
     result: '凯文·乐福加盟克里夫兰，与球队核心共同冲击冠军。',
-    conditions: [exists('凯文·乐福'), onTeam('勒布朗·詹姆斯', 'cle', '克里夫兰')], moves: [{ playerName: '凯文·乐福', destinationTeamId: 'cle' }],
+    conditions: [exists('凯文·乐福'), requiredOnTeam('凯里·欧文', 'cle', '克里夫兰'), onTeam('勒布朗·詹姆斯', 'cle', '克里夫兰')], moves: [{ playerName: '凯文·乐福', destinationTeamId: 'cle' }],
   },
   {
     id: 'aldridge_spurs', year: 2015, title: '马刺迎来全明星内线', category: '自由市场', protectionYears: 2,
     history: '拉马库斯·阿尔德里奇选择圣安东尼奥，延续球队的争冠周期。',
     result: '拉马库斯·阿尔德里奇加盟圣安东尼奥。',
     conditions: [exists('拉马库斯·阿尔德里奇')], moves: [{ playerName: '拉马库斯·阿尔德里奇', destinationTeamId: 'sas' }],
-  },
-  {
-    id: 'small_ball_revolution', year: 2015, title: '三分浪潮席卷联盟', category: '联盟大事', protectionYears: 2,
-    history: '金州的传切与三分体系改变了比赛空间，越来越多球队开始拥抱小球阵容。',
-    result: '小球革命被写入联盟时间线，比赛正式迈入空间与三分时代。',
-    guide: true, conditions: [exists('斯蒂芬·库里')],
   },
   {
     id: 'durant_warriors', year: 2016, title: '杜兰特的抉择', category: '决定', protectionYears: 3,
@@ -209,7 +235,7 @@ export const DESTINY_EVENTS: DestinyEventDefinition[] = [
     id: 'cp3_houston', year: 2017, title: '灯泡组合成军', category: '重磅交易', protectionYears: 2,
     history: '克里斯·保罗转投休斯敦，与詹姆斯·哈登组成联盟顶级后场。',
     result: '克里斯·保罗加盟休斯敦，与哈登共同进入争冠窗口。',
-    conditions: [allExist('克里斯·保罗', '詹姆斯·哈登'), onTeam('詹姆斯·哈登', 'hou', '休斯敦')], moves: [{ playerName: '克里斯·保罗', destinationTeamId: 'hou' }],
+    conditions: [allExist('克里斯·保罗', '詹姆斯·哈登'), eventCompleted('harden_houston', '大胡子独当一面'), onTeam('詹姆斯·哈登', 'hou', '休斯敦')], moves: [{ playerName: '克里斯·保罗', destinationTeamId: 'hou' }],
   },
   {
     id: 'kyrie_boston', year: 2017, title: '欧文接掌绿军', category: '重磅交易', protectionYears: 2,
@@ -221,7 +247,7 @@ export const DESTINY_EVENTS: DestinyEventDefinition[] = [
     id: 'lebron_lakers', year: 2018, title: '詹姆斯的下一站', category: '决定', protectionYears: 3,
     history: '勒布朗·詹姆斯加盟洛杉矶，将自己的生涯带到新的舞台。',
     result: '勒布朗·詹姆斯加盟洛杉矶湖人，开启三年稳定期。',
-    conditions: [exists('勒布朗·詹姆斯')], moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'lal' }],
+    conditions: [exists('勒布朗·詹姆斯'), withoutTitleInPreviousSeasons('勒布朗·詹姆斯', 2)], moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'lal' }],
     routes: [
       {
         id: 'hollywood', title: '天选之子西游', result: '勒布朗·詹姆斯加盟洛杉矶湖人，开启新的争冠篇章。', requiredScore: 3,
@@ -250,7 +276,7 @@ export const DESTINY_EVENTS: DestinyEventDefinition[] = [
     id: 'ad_lakers', year: 2019, title: '浓眉加盟湖人', category: '重磅交易', protectionYears: 3,
     history: '安东尼·戴维斯前往洛杉矶，与勒布朗·詹姆斯组成顶级锋线组合。',
     result: '安东尼·戴维斯加盟洛杉矶湖人，两位核心进入三年稳定期。',
-    conditions: [allExist('安东尼·戴维斯', '勒布朗·詹姆斯'), onTeam('勒布朗·詹姆斯', 'lal', '洛杉矶湖人')], moves: [{ playerName: '安东尼·戴维斯', destinationTeamId: 'lal' }],
+    conditions: [allExist('安东尼·戴维斯', '勒布朗·詹姆斯'), eventCompleted('lebron_lakers', '詹姆斯的下一站', 'hollywood', '天选之子西游'), onTeam('勒布朗·詹姆斯', 'lal', '洛杉矶湖人')], moves: [{ playerName: '安东尼·戴维斯', destinationTeamId: 'lal' }],
   },
   {
     id: 'kawhi_pg_clippers', year: 2019, title: '洛城双翼集结', category: '决定', protectionYears: 3,
@@ -265,22 +291,35 @@ export const DESTINY_EVENTS: DestinyEventDefinition[] = [
     conditions: [allExist('拉塞尔·威斯布鲁克', '詹姆斯·哈登'), onTeam('詹姆斯·哈登', 'hou', '休斯敦')], moves: [{ playerName: '拉塞尔·威斯布鲁克', destinationTeamId: 'hou' }],
   },
   {
+    id: 'durant_kyrie_brooklyn', year: 2019, title: '双星汇聚布鲁克林', category: '自由市场', protectionYears: 3,
+    history: '凯文·杜兰特与凯里·欧文相约布鲁克林，篮网由此迎来新的争冠核心。',
+    result: '凯文·杜兰特与凯里·欧文加盟布鲁克林，双星获得三年交易保护。',
+    conditions: [allExist('凯文·杜兰特', '凯里·欧文'), eventCompleted('durant_warriors', '杜兰特的抉择')],
+    moves: [{ playerName: '凯文·杜兰特', destinationTeamId: 'bkn' }, { playerName: '凯里·欧文', destinationTeamId: 'bkn' }],
+    requiredScore: 0,
+    skipDefaultScoring: true,
+  },
+  {
     id: 'holiday_bucks', year: 2020, title: '雄鹿补上冠军后卫', category: '重磅交易', protectionYears: 2,
     history: '密尔沃基得到朱·霍勒迪，为核心阵容补上攻防兼备的后场。',
     result: '朱·霍勒迪加盟密尔沃基。',
     conditions: [exists('朱·霍勒迪')], moves: [{ playerName: '朱·霍勒迪', destinationTeamId: 'mil' }],
   },
   {
-    id: 'bubble_2020', year: 2020, title: '封闭园区特别赛季', category: '联盟大事', protectionYears: 2,
-    history: '一场前所未有的公共事件改变了赛季安排，所有球队在封闭园区完成余下赛程。',
-    result: '封闭园区赛季正式进入本存档的联盟历史。',
-    guide: true, conditions: [exists('勒布朗·詹姆斯')],
-  },
-  {
     id: 'harden_brooklyn', year: 2021, title: '布鲁克林超级三巨头', category: '重磅交易', protectionYears: 2,
     history: '詹姆斯·哈登前往布鲁克林，与杜兰特、欧文组成豪华进攻阵容。',
     result: '詹姆斯·哈登加盟布鲁克林，核心成员获得两年稳定期。',
-    conditions: [allExist('詹姆斯·哈登', '凯文·杜兰特', '凯里·欧文'), onTeam('凯文·杜兰特', 'bkn', '布鲁克林')], moves: [{ playerName: '詹姆斯·哈登', destinationTeamId: 'bkn' }],
+    conditions: [
+      allExist('詹姆斯·哈登', '凯文·杜兰特', '凯里·欧文'),
+      eventCompleted('durant_kyrie_brooklyn', '双星汇聚布鲁克林'),
+      onTeam('凯文·杜兰特', 'bkn', '布鲁克林'),
+      onTeam('凯里·欧文', 'bkn', '布鲁克林'),
+      strategyIn('bkn', '布鲁克林', ['contender', 'playoff']),
+      playerTeamPreviousSeasonWithoutTitle('詹姆斯·哈登'),
+    ],
+    moves: [{ playerName: '凯文·杜兰特', destinationTeamId: 'bkn' }, { playerName: '凯里·欧文', destinationTeamId: 'bkn' }, { playerName: '詹姆斯·哈登', destinationTeamId: 'bkn' }],
+    requiredScore: 3,
+    skipDefaultScoring: true,
   },
   {
     id: 'westbrook_lakers', year: 2021, title: '三双王来到洛杉矶', category: '重磅交易', protectionYears: 2,
@@ -341,13 +380,30 @@ function playerWonTitle(playerName: string, leagueHistory: GameState['leagueHist
   );
 }
 
-function checkCondition(condition: DestinyEventCondition, teams: Team[], leagueHistory: GameState['leagueHistory'] = []): DestinyConditionCheck {
+function playerWonTitleInSeason(playerName: string, year: number, leagueHistory: GameState['leagueHistory'] = []): boolean {
+  const season = leagueHistory.find((item) => item.year === year);
+  return !!season && (season.fmvp === playerName || season.championRosterPlayerNames?.includes(playerName) === true);
+}
+
+function checkCondition(
+  condition: DestinyEventCondition,
+  teams: Team[],
+  leagueHistory: GameState['leagueHistory'] = [],
+  records: Record<string, DestinyEventRecord> = {},
+  currentYear = 0,
+): DestinyConditionCheck {
   const names = condition.playerNames || [];
   let met = false;
   if (condition.type === 'player_exists') met = !!findPlayer(teams, names[0]);
   else if (condition.type === 'players_exist') met = names.every((name) => !!findPlayer(teams, name));
   else if (condition.type === 'player_on_team') met = findPlayer(teams, names[0])?.team.id === condition.teamId;
   else if (condition.type === 'player_without_title') met = !playerWonTitle(names[0], leagueHistory);
+  else if (condition.type === 'player_without_title_in_previous_seasons') {
+    const seasonCount = condition.value || 0;
+    const relevantYears = Array.from({ length: seasonCount }, (_, index) => currentYear - seasonCount + index);
+    met = seasonCount > 0 && relevantYears.every((year) =>
+      leagueHistory.some((season) => season.year === year) && !playerWonTitleInSeason(names[0], year, leagueHistory));
+  }
   else if (condition.type === 'team_strategy_in') met = !!condition.strategies?.includes(teams.find((team) => team.id === condition.teamId)?.strategy || 'retooling');
   else if (condition.type === 'team_previous_wins_at_least') met = (teams.find((team) => team.id === condition.teamId)?.previousSeasonWins || 0) >= (condition.value || 0);
   else if (condition.type === 'team_max_elite_players') {
@@ -356,15 +412,22 @@ function checkCondition(condition: DestinyEventCondition, teams: Team[], leagueH
   } else if (condition.type === 'player_team_previous_wins_at_most') {
     const located = findPlayer(teams, names[0]);
     met = !!located && (located.team.previousSeasonWins || 0) <= (condition.value || 0);
+  } else if (condition.type === 'player_team_previous_season_without_title') {
+    const located = findPlayer(teams, names[0]);
+    const previousSeason = leagueHistory.find((season) => season.year === currentYear - 1);
+    met = !!located && !!previousSeason && previousSeason.championId !== located.team.id;
   } else if (condition.type === 'player_has_higher_rated_teammates') {
     const located = findPlayer(teams, names[0]);
     met = !!located && located.team.roster.filter((player) => player.id !== located.player.id && player.ovr > located.player.ovr).length >= (condition.value || 0);
+  } else if (condition.type === 'event_completed') {
+    const record = condition.eventId ? records[condition.eventId] : undefined;
+    met = !!record && (!condition.routeId || record.routeId === condition.routeId);
   }
   return { label: condition.label, met, required: condition.required === true, points: condition.required ? 0 : (condition.points || 0) };
 }
 
 function defaultScoringConditions(event: DestinyEventDefinition, teams: Team[]): DestinyEventCondition[] {
-  if (event.guide || event.routes?.length || !event.moves?.length) return [];
+  if (event.guide || event.skipDefaultScoring || event.routes?.length || !event.moves?.length) return [];
   const primaryMove = event.moves[0];
   const destination = teams.find((team) => team.id === primaryMove.destinationTeamId);
   const destinationName = destination?.name || primaryMove.destinationTeamId.toUpperCase();
@@ -383,12 +446,12 @@ export function evaluateDestinyEvent(
   records: Record<string, DestinyEventRecord> = {},
 ): DestinyEventEvaluation {
   const record = records[event.id];
-  const checks = [...event.conditions, ...defaultScoringConditions(event, teams)].map((condition) => checkCondition(condition, teams, leagueHistory));
+  const checks = [...event.conditions, ...defaultScoringConditions(event, teams)].map((condition) => checkCondition(condition, teams, leagueHistory, records, currentYear));
   const requiredMet = checks.filter((check) => check.required).every((check) => check.met);
   const score = checks.reduce((sum, check) => sum + (check.met ? check.points : 0), 0);
   const requiredScore = event.requiredScore ?? (event.guide ? 0 : event.category === '决定' ? 3 : 2);
   const routeEvaluations = (event.routes || []).map((route) => {
-    const routeChecks = route.conditions.map((condition) => checkCondition(condition, teams, leagueHistory));
+    const routeChecks = route.conditions.map((condition) => checkCondition(condition, teams, leagueHistory, records, currentYear));
     const routeRequiredMet = routeChecks.filter((check) => check.required).every((check) => check.met);
     const routeScore = routeChecks.reduce((sum, check) => sum + (check.met ? check.points : 0), 0);
     return {

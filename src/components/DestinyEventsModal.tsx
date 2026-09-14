@@ -71,7 +71,7 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
           <button type="button" onClick={onClose} className="rounded-lg bg-slate-800 p-2 text-slate-400" aria-label="关闭"><X className="h-5 w-5" /></button>
         </header>
 
-        <div className="destiny-events-scroll overflow-y-auto p-3 sm:p-4">
+        <div className="scrollbar-thin overflow-y-auto p-3 sm:p-4">
           <div className="mb-3 text-xs text-slate-400">
             当前赛季：<strong className="font-mono text-cyan-300">{currentYear}-{currentYear + 1}</strong>
           </div>
