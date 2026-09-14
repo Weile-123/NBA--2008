@@ -21,9 +21,9 @@ export interface UpdateAnnouncement {
 // include completed features, optimizations and bug fixes in concise wording.
 export const UPDATE_ANNOUNCEMENTS: UpdateAnnouncement[] = [
   {
-    id: '20260913-2240',
-    publishedAt: '2026-09-13 22:40',
-    title: '第七次更新说明',
+    id: '20260914-1051',
+    publishedAt: '2026-09-14 10:51',
+    title: '第八次更新说明',
     introduction: [
       '所有玩家的反馈都已收到并查看，当前仍在持续修复问题并优化游戏体验。',
       '关于可选加入年代、新模式、随机交易、新增荣誉、难度调整、季后赛数据、奥运会、场外关系及更多剧情等建议，均已纳入后续更新的规划与评估。',
@@ -31,6 +31,20 @@ export const UPDATE_ANNOUNCEMENTS: UpdateAnnouncement[] = [
     ],
     notice: '针对多位玩家反馈的“闪屏”“白屏”问题，当前版本已完成初步优化。如后续仍有类似情况，请及时通过反馈入口反馈。',
     versions: [
+      {
+        version: 'v8',
+        sections: [
+          {
+            title: '属性溢出奖励',
+            items: [
+              '综评达到当前上限后，无法继续使用的属性点改为显示对应的 GOAT 奖励。',
+              '每累计100点未使用属性点奖励10点 GOAT 分数，并显示距离下一档奖励的进度。',
+              '属性溢出时不再显示可加点提醒，属性点广告按钮同步置灰。',
+              '重置属性后返还的点数仍可重新分配，不受属性溢出状态影响。',
+            ],
+          },
+        ],
+      },
       {
         version: 'v7',
         sections: [

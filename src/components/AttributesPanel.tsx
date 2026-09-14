@@ -18,7 +18,7 @@ import {
   MonitorPlay,
 } from 'lucide-react';
 import { PERSONAL_ASSETS } from '../data/nbaData2008';
-import { getPlayerBaseOvr, getUserPlayerAgePenalty } from '../utils/calc2k';
+import { getAttributePointStatus } from '../utils/attributeTraining';
 
 interface AttributesPanelProps {
   player: PlayerProfile;
@@ -85,12 +85,11 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
   // Get active purchased assets
   const activeAssets = PERSONAL_ASSETS.filter((a) => (player.purchasedAssetIds || []).includes(a.id));
   const age = player.age || 19;
-  const agePenalty = getUserPlayerAgePenalty(age);
-  const baseOvr = getPlayerBaseOvr(player);
-  const maxOvr = 99 - agePenalty;
-  const isOvrAtCap = baseOvr >= maxOvr;
-  const redistributionPoints = Math.max(0, player.attributeRedistributionPoints || 0);
+  const pointStatus = getAttributePointStatus(player);
+  const { baseOvr, maxOvr, redistributionPoints, isOvrAtCap, isOverflowing, overflowGoatBonus, overflowProgress } = pointStatus;
+  const agePenalty = 99 - maxOvr;
   const canRedistributeAtOvrCap = redistributionPoints > 0;
+  const overflowRewardLabel = `+${overflowGoatBonus} GOAT`;
 
   // Filter attributes list
   const filteredAttrs = attrList.filter((item) => {
@@ -127,18 +126,20 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
       <div className="sticky top-0 z-30 bg-[#0d1017]/95 backdrop-blur-md border border-[#232834] rounded-xl p-2.5 shadow-xl flex items-center justify-between gap-2 sm:hidden">
         {/* Left: Original SP card (Click 10 times to unlock debug buttons) */}
         <div className="flex items-center gap-2 min-w-0">
-          <div className="bg-[#11141b] border border-[#232834] px-3 py-1 rounded-xl select-none shadow-inner flex flex-col justify-center shrink-0">
-            <span className="text-[9px] text-slate-400 font-bold leading-tight">可分配属性点</span>
-            <span className="text-base font-black text-amber-400 font-mono italic leading-tight">{skillPoints}</span>
-            {redistributionPoints > 0 && <span className="text-[8px] text-cyan-300">含 {redistributionPoints} 点可重分配</span>}
+          <div className={`border px-3 py-1 rounded-xl select-none shadow-inner flex flex-col justify-center shrink-0 ${isOverflowing ? 'border-amber-500/40 bg-amber-950/50' : 'border-[#232834] bg-[#11141b]'}`}>
+            <span className="text-[9px] text-slate-400 font-bold leading-tight">{isOverflowing ? '属性溢出奖励' : '可分配属性点'}</span>
+            <span className="text-base font-black text-amber-400 font-mono italic leading-tight">{isOverflowing ? overflowRewardLabel : skillPoints}</span>
+            {isOverflowing
+              ? <span className="text-[8px] text-amber-300/70">下一档进度 {overflowProgress}%</span>
+              : redistributionPoints > 0 && <span className="text-[8px] text-cyan-300">含 {redistributionPoints} 点可重分配</span>}
           </div>
 
         </div>
 
         {/* Right: Boosts button & "可加点" badge */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <button type="button" onClick={handleWatchAd} disabled={!onWatchAd || adUsesLeft <= 0 || isWatchingAd} className="bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white px-2 py-1.5 rounded-lg text-[10px] font-black flex items-center gap-1">
-            <MonitorPlay className="w-3 h-3" /> {isWatchingAd ? '广告加载中…' : `+30属性点 ${adUsesLeft}/3`}
+          <button type="button" onClick={handleWatchAd} disabled={!onWatchAd || adUsesLeft <= 0 || isWatchingAd || isOverflowing} className="bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-500 disabled:opacity-60 text-white px-2 py-1.5 rounded-lg text-[10px] font-black flex items-center gap-1">
+            <MonitorPlay className="w-3 h-3" /> {isOverflowing ? '综评已满' : isWatchingAd ? '广告加载中…' : `+30属性点 ${adUsesLeft}/3`}
           </button>
           <button
             type="button"
@@ -150,8 +151,8 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
           </button>
         </div>
       </div>
-      <p className="sm:hidden text-[10px] text-slate-500 px-1">
-        未使用的属性点将计入 GOAT 分数统计
+      <p className={`sm:hidden text-[10px] px-1 ${isOverflowing ? 'text-amber-300/80' : 'text-slate-500'}`}>
+        {isOverflowing ? '综评已达到当前上限，剩余点数已作为 GOAT 奖励累计' : '未使用的属性点将计入 GOAT 分数统计'}
       </p>
       {agePenalty > 0 && (
         <div className="sm:hidden flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-2 text-[10px] font-bold text-rose-300">
@@ -202,15 +203,24 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
               <span>查看场外加成</span>
             </button>
 
-            <div className="bg-[#0d1017] border border-[#232834] px-4 py-1.5 sm:py-2 rounded-xl text-center select-none shadow-inner min-w-[120px]">
-              <span className="text-[9px] text-slate-500 uppercase tracking-wider block font-bold">可分配属性点</span>
-              <span className="text-xl sm:text-2xl font-black text-amber-400 font-mono italic">{skillPoints}</span>
-              {redistributionPoints > 0 && <span className="text-[9px] text-cyan-300 block">其中 {redistributionPoints} 点可重新分配</span>}
-              <span className="text-[9px] text-slate-500 block mt-0.5 whitespace-nowrap">未使用的属性点将计入 GOAT 分数统计</span>
+            <div className={`border px-4 py-1.5 sm:py-2 rounded-xl text-center select-none shadow-inner min-w-[140px] ${isOverflowing ? 'border-amber-500/40 bg-amber-950/40' : 'border-[#232834] bg-[#0d1017]'}`}>
+              <span className="text-[9px] text-slate-500 uppercase tracking-wider block font-bold">{isOverflowing ? '属性溢出奖励' : '可分配属性点'}</span>
+              <span className="text-xl sm:text-2xl font-black text-amber-400 font-mono italic">{isOverflowing ? overflowRewardLabel : skillPoints}</span>
+              {isOverflowing ? (
+                <div className="mt-1">
+                  <div className="h-1 overflow-hidden rounded-full bg-slate-800"><div className="h-full bg-amber-400 transition-all" style={{ width: `${overflowProgress}%` }} /></div>
+                  <span className="text-[9px] text-amber-300/70 block mt-0.5">下一档奖励进度 {overflowProgress}%</span>
+                </div>
+              ) : (
+                <>
+                  {redistributionPoints > 0 && <span className="text-[9px] text-cyan-300 block">其中 {redistributionPoints} 点可重新分配</span>}
+                  <span className="text-[9px] text-slate-500 block mt-0.5 whitespace-nowrap">未使用的属性点将计入 GOAT 分数统计</span>
+                </>
+              )}
             </div>
 
-            <button type="button" onClick={handleWatchAd} disabled={!onWatchAd || adUsesLeft <= 0 || isWatchingAd} className="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white font-black text-xs rounded-lg shadow-md transition-all active:scale-95 flex items-center gap-1 whitespace-nowrap">
-              <MonitorPlay className="w-3 h-3" /> {isWatchingAd ? '广告加载中…' : '+30属性点'} <span className="text-[10px]">{adUsesLeft}/3</span>
+            <button type="button" onClick={handleWatchAd} disabled={!onWatchAd || adUsesLeft <= 0 || isWatchingAd || isOverflowing} className="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-500 disabled:opacity-60 text-white font-black text-xs rounded-lg shadow-md transition-all active:scale-95 flex items-center gap-1 whitespace-nowrap">
+              <MonitorPlay className="w-3 h-3" /> {isOverflowing ? '综评已满' : isWatchingAd ? '广告加载中…' : '+30属性点'} {!isOverflowing && <span className="text-[10px]">{adUsesLeft}/3</span>}
             </button>
           </div>
       </div>

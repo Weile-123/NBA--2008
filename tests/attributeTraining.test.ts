@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Attributes, PlayerProfile } from '../src/types';
-import { resetPlayerAttribute, spendPlayerAttributePoints } from '../src/utils/attributeTraining';
+import { getAttributePointStatus, resetPlayerAttribute, spendPlayerAttributePoints } from '../src/utils/attributeTraining';
 
 const highAttributes: Attributes = {
   layup: 99, dunk: 99, insideFinish: 99, midRange: 60, threePoint: 99, freeThrow: 99,
@@ -36,4 +36,24 @@ test('ordinary new points cannot bypass the veteran OVR ceiling', () => {
   const unchanged = spendPlayerAttributePoints(player, 'midRange', 10);
   assert.equal(unchanged.attributes.midRange, 60);
   assert.equal(unchanged.skillPoints, 10);
+});
+
+test('capped players display unusable points as a GOAT overflow reward', () => {
+  const status = getAttributePointStatus({
+    ...cappedVeteran(),
+    skillPoints: 235,
+    attributeRedistributionPoints: 0,
+  });
+  assert.equal(status.isOverflowing, true);
+  assert.equal(status.hasUpgradableAttributes, false);
+  assert.equal(status.overflowGoatBonus, 20);
+  assert.equal(status.overflowProgress, 35);
+});
+
+test('resetting an attribute returns a capped player to spendable-point mode', () => {
+  const reset = resetPlayerAttribute({ ...cappedVeteran(), skillPoints: 200 }, 'threePoint');
+  const status = getAttributePointStatus(reset);
+  assert.equal(status.isOverflowing, false);
+  assert.equal(status.hasUpgradableAttributes, true);
+  assert.equal(status.redistributionPoints, 39);
 });

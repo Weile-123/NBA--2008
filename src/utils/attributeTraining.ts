@@ -1,6 +1,45 @@
 import type { PlayerProfile } from '../types';
 import { getPlayerBaseOvr, getPlayerCareerPeakOvr, getUserPlayerAgePenalty } from './calc2k';
 
+export interface AttributePointStatus {
+  baseOvr: number;
+  maxOvr: number;
+  redistributionPoints: number;
+  hasUpgradableAttributes: boolean;
+  isOvrAtCap: boolean;
+  isOverflowing: boolean;
+  overflowGoatBonus: number;
+  overflowProgress: number;
+}
+
+export function getAttributePointStatus(player: PlayerProfile): AttributePointStatus {
+  const skillPoints = Math.max(0, player.skillPoints || 0);
+  const redistributionPoints = Math.min(skillPoints, Math.max(0, player.attributeRedistributionPoints || 0));
+  const baseOvr = getPlayerBaseOvr(player);
+  const maxOvr = 99 - getUserPlayerAgePenalty(player.age || 19);
+  const isOvrAtCap = baseOvr >= maxOvr;
+  const hasAttributeRoom = (Object.keys(player.attributes) as Array<keyof PlayerProfile['attributes']>).some((key) => {
+    const currentValue = player.attributes[key] ?? 50;
+    const cap = player.attributeCaps?.[key] ?? 99;
+    return currentValue < cap;
+  });
+  const hasUpgradableAttributes = skillPoints > 0
+    && hasAttributeRoom
+    && (!isOvrAtCap || redistributionPoints > 0);
+  const isOverflowing = skillPoints > 0 && isOvrAtCap && redistributionPoints === 0;
+
+  return {
+    baseOvr,
+    maxOvr,
+    redistributionPoints,
+    hasUpgradableAttributes,
+    isOvrAtCap,
+    isOverflowing,
+    overflowGoatBonus: Math.floor(skillPoints / 100) * 10,
+    overflowProgress: skillPoints % 100,
+  };
+}
+
 export function spendPlayerAttributePoints(
   player: PlayerProfile,
   attrKey: keyof PlayerProfile['attributes'],
