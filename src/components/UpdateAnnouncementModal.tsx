@@ -80,10 +80,12 @@ export const UpdateAnnouncementModal: React.FC<UpdateAnnouncementModalProps> = (
                       {version.version}
                     </div>
                     <div className="space-y-3">
-                      {version.sections.map((section, sectionIndex) => (
-                        <div key={section.title}>
-                          <h4 className="mb-1.5 text-xs font-black text-white sm:text-sm">
-                            {sectionIndex + 1}. {section.title}
+                      {version.sections.map((section, sectionIndex) => {
+                        const isNewModeFeature = section.title === '新模式——平行联盟';
+                        return (
+                        <div key={section.title} className={isNewModeFeature ? 'rounded-xl border border-cyan-400/45 bg-gradient-to-br from-cyan-500/15 to-violet-500/15 p-3 shadow-[0_0_20px_rgba(34,211,238,0.1)]' : ''}>
+                          <h4 className={`mb-1.5 text-xs font-black sm:text-sm ${isNewModeFeature ? 'text-cyan-200' : 'text-white'}`}>
+                            {isNewModeFeature ? section.title : `${sectionIndex + 1}. ${section.title}`}
                           </h4>
                           <ul className="space-y-1.5">
                             {section.items.map((item) => (
@@ -94,7 +96,8 @@ export const UpdateAnnouncementModal: React.FC<UpdateAnnouncementModalProps> = (
                             ))}
                           </ul>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </section>
                 ))}

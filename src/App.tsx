@@ -494,6 +494,7 @@ function CareerApp({
           player={player}
           careerHistory={careerHistory}
           leagueHistory={leagueHistory}
+          destinyEventRecords={destinyEventRecords}
           currentYear={currentYear}
           initialStep={(player.age || 19) >= 43 ? 'timeline' : 'confirm'}
           onClose={() => setPhase(prevPhase && prevPhase !== 'hall_of_fame' ? prevPhase : 'regular_season')}

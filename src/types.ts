@@ -437,6 +437,13 @@ export interface RetiredPlayerRecord {
   id: string;
   /** Missing on legacy records; those records always belong to classic mode. */
   gameMode?: 'classic' | 'random_trade';
+  unlockedDestinyEvents?: {
+    eventId: string;
+    title: string;
+    year: number;
+    result: string;
+    routeTitle?: string;
+  }[];
   retireDate: string;
   player: {
     name: string;

@@ -36,12 +36,14 @@ import {
   Quote,} from 'lucide-react';
 import { gameConfetti as confetti } from '../utils/gameConfetti';
 import { DEFAULT_GAME_MODE, GameMode } from '../gameMode';
+import { DESTINY_EVENTS, type DestinyEventRecord } from '../data/destinyEvents';
 
 interface RetirementFlowModalProps {
   gameMode?: GameMode;
   player: PlayerProfile;
   careerHistory?: GameState['careerHistory'];
   leagueHistory?: GameState['leagueHistory'];
+  destinyEventRecords?: Record<string, DestinyEventRecord>;
   currentYear: number;
   onClose: () => void;
   onResetGame: () => void;
@@ -253,6 +255,7 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
   player,
   careerHistory = [],
   leagueHistory = [],
+  destinyEventRecords = {},
   currentYear,
   onClose,
   onResetGame,
@@ -318,6 +321,18 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
 
       const legendRecord: RetiredPlayerRecord = {
         gameMode,
+        unlockedDestinyEvents: gameMode === 'random_trade'
+          ? Object.values(destinyEventRecords as Record<string, DestinyEventRecord>).map((record) => {
+              const definition = DESTINY_EVENTS.find((event) => event.id === record.eventId);
+              return {
+                eventId: record.eventId,
+                title: definition?.title || record.eventId,
+                year: record.triggeredAtYear,
+                result: record.result,
+                routeTitle: record.routeTitle,
+              };
+            }).sort((a, b) => a.year - b.year)
+          : undefined,
         id: retirementRecordIdRef.current,
         retireDate: formatLocalDateTime(retirementMomentRef.current),
         player: {

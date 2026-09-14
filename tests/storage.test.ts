@@ -109,7 +109,11 @@ test('classic and random-trade careers use completely separate single saves', ()
 
 test('classic and random-trade personal leaderboards are independent', () => {
   const classicLegend = { id: 'classic-legend', goatScore: 100 } as RetiredPlayerRecord;
-  const randomLegend = { id: 'random-legend', goatScore: 200 } as RetiredPlayerRecord;
+  const randomLegend = {
+    id: 'random-legend',
+    goatScore: 200,
+    unlockedDestinyEvents: [{ eventId: 'decision_one', title: '决定一', year: 2010, routeTitle: '南海岸集结', result: '加盟迈阿密' }],
+  } as RetiredPlayerRecord;
 
   saveHallOfFameLegend(classicLegend, 'classic');
   saveHallOfFameLegend(randomLegend, 'random_trade');
@@ -118,4 +122,5 @@ test('classic and random-trade personal leaderboards are independent', () => {
   assert.equal(getHallOfFameLegends('classic').some((legend) => legend.id === randomLegend.id), false);
   assert.equal(getHallOfFameLegends('random_trade').some((legend) => legend.id === randomLegend.id), true);
   assert.equal(getHallOfFameLegends('random_trade').some((legend) => legend.id === classicLegend.id), false);
+  assert.equal(getHallOfFameLegends('random_trade').find((legend) => legend.id === randomLegend.id)?.unlockedDestinyEvents?.[0].routeTitle, '南海岸集结');
 });

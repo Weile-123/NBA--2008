@@ -94,9 +94,20 @@ test('parallel reads and submissions explicitly use an isolated mode', async () 
   });
 
   await loadGlobalHallOfFame('random_trade');
-  await uploadToGlobalHallOfFame({ ...record, retireAge: 43 }, 'random_trade');
+  await uploadToGlobalHallOfFame({
+    ...record,
+    retireAge: 43,
+    unlockedDestinyEvents: [{
+      eventId: 'decision_one',
+      title: '决定一',
+      year: 2010,
+      routeTitle: '南海岸集结',
+      result: '加盟迈阿密',
+    }],
+  }, 'random_trade');
 
   assert.match(requests[0].url, /gameMode=random_trade$/);
   assert.equal(requests[1].data?.gameMode, 'random_trade');
   assert.equal((requests[1].data?.record as RetiredPlayerRecord).gameMode, 'random_trade');
+  assert.equal((requests[1].data?.record as RetiredPlayerRecord).unlockedDestinyEvents?.[0].eventId, 'decision_one');
 });

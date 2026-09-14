@@ -35,7 +35,7 @@ export const UPDATE_ANNOUNCEMENTS: UpdateAnnouncement[] = [
         version: 'v8',
         sections: [
           {
-            title: '重点更新：平行联盟',
+            title: '新模式——平行联盟',
             items: [
               '新增平行联盟模式：后续交易、球队方向与选秀归属会随每个存档动态变化。',
               '新增命定事件：公开数字条件、可选分支与结果，玩家可在指定赛季改变历史走向。',

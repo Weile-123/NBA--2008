@@ -636,6 +636,31 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
                 );
               })()}
 
+              {selectedLegend.gameMode === 'random_trade' && (
+                <div className="space-y-2.5 sm:space-y-3">
+                  <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-cyan-300">
+                    <Sparkles className="h-4 w-4 shrink-0" />
+                    <span>解锁命定事件</span>
+                  </h3>
+                  {selectedLegend.unlockedDestinyEvents?.length ? (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {selectedLegend.unlockedDestinyEvents.map((event) => (
+                        <div key={event.eventId} className="rounded-xl border border-cyan-400/25 bg-gradient-to-br from-cyan-500/[0.08] to-violet-500/[0.08] p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-xs font-black leading-snug text-white">{event.title}</span>
+                            <span className="shrink-0 font-mono text-[9px] font-black text-cyan-300">{event.year}-{event.year + 1}</span>
+                          </div>
+                          {event.routeTitle && <div className="mt-1 text-[10px] font-bold text-violet-300">分支：{event.routeTitle}</div>}
+                          <p className="mt-1.5 text-[10px] leading-relaxed text-slate-400">{event.result}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-slate-700 bg-[#121724] px-3 py-3 text-xs text-slate-400">本次生涯没有解锁命定事件</div>
+                  )}
+                </div>
+              )}
+
               {/* Section 2: 退役球衣汇总 (Simplified: Enlarged Team Logo + Jersey Number below) */}
               {selectedLegend.retiredJerseys && selectedLegend.retiredJerseys.length > 0 && (
                 <div className="space-y-2.5 sm:space-y-3">
@@ -867,7 +892,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
                         setSelectedLegend(legend);
                         resetModalScroll();
                       }}
-                      className={`p-3.5 sm:p-5 rounded-2xl bg-gradient-to-r from-[#121624] via-[#161d2e] to-[#121624] border border-[#232c42] hover:border-amber-500/60 transition-all cursor-pointer shadow-xl relative group overflow-hidden ${leaderboardGameMode === 'random_trade' ? 'pt-10 sm:pt-10' : ''}`}
+                      className="p-3.5 sm:p-5 rounded-2xl bg-gradient-to-r from-[#121624] via-[#161d2e] to-[#121624] border border-[#232c42] hover:border-amber-500/60 transition-all cursor-pointer shadow-xl relative group overflow-hidden"
                     >
                       {leaderboardGameMode === 'random_trade' && (
                         <span className="absolute right-3 top-2.5 inline-flex items-center gap-1 rounded-full border border-cyan-400/40 bg-gradient-to-r from-cyan-500/15 to-violet-500/15 px-2 py-1 text-[9px] font-black text-cyan-200">

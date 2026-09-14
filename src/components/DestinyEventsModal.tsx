@@ -66,7 +66,7 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/85 p-2 backdrop-blur-md sm:p-4">
-      <section className="flex max-h-[94dvh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-amber-500/35 bg-[#0d1119] shadow-[0_0_60px_rgba(245,158,11,0.15)]">
+      <section className="flex h-[94dvh] max-h-[94dvh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-amber-500/35 bg-[#0d1119] shadow-[0_0_60px_rgba(245,158,11,0.15)]">
         <header className="flex items-center justify-between border-b border-[#293140] px-4 py-3.5">
           <div>
             <h2 className="flex items-center gap-2 text-lg font-black text-white"><Sparkles className="h-4 w-4 text-amber-400" />命定事件</h2>

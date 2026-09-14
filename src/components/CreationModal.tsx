@@ -789,9 +789,6 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                   <h3 className="text-xs font-black italic uppercase text-white flex items-center gap-1.5">
                     <Heart className="w-3.5 h-3.5 text-amber-400 fill-amber-400" /> 1. 选择心仪选秀球队
                   </h3>
-                  <p className="text-[10px] text-amber-200/80 mt-0.5">
-                    请先选择球队，选秀大会上该球队将动用专属签位选中你。
-                  </p>
                 </div>
 
                 <button
