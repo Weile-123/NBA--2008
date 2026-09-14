@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createAutoSave } from '../src/utils/autoSave';
-import { clearGameStorage, clearSlotStorage, getHallOfFameLegends, loadGameFromStorage, SavedData, saveGameToStorage, saveHallOfFameLegend } from '../src/utils/storage';
+import { clearGameStorage, clearSlotStorage, getHallOfFameLegends, getLatestSaveSlotMeta, loadGameFromStorage, SavedData, saveGameToStorage, saveHallOfFameLegend } from '../src/utils/storage';
 import { RetiredPlayerRecord } from '../src/types';
 
 const snapshot = (name: string) => ({
@@ -116,6 +116,20 @@ test('classic and random-trade careers use completely separate save slots', () =
   clearGameStorage('random_trade');
   assert.equal(loadGameFromStorage('slot_1', 'classic')?.player?.name, '经典球员');
   assert.equal(loadGameFromStorage('slot_1', 'random_trade'), null);
+});
+
+test('each mode resumes its newest save across all four slots', () => {
+  clearGameStorage('classic');
+  clearGameStorage('random_trade');
+  saveGameToStorage({ ...snapshot('经典旧档'), updatedAt: '2026-09-10T10:00:00Z' }, 'slot_1', 'classic');
+  saveGameToStorage({ ...snapshot('经典新档'), updatedAt: '2026-09-12T10:00:00Z' }, 'slot_3', 'classic');
+  saveGameToStorage({ ...snapshot('平行旧档'), updatedAt: '2026-09-11T10:00:00Z' }, 'slot_2', 'random_trade');
+  saveGameToStorage({ ...snapshot('平行新档'), updatedAt: '2026-09-13T10:00:00Z' }, 'slot_4', 'random_trade');
+
+  assert.equal(getLatestSaveSlotMeta('classic').slotId, 'slot_3');
+  assert.equal(getLatestSaveSlotMeta('classic').playerName, '经典新档');
+  assert.equal(getLatestSaveSlotMeta('random_trade').slotId, 'slot_4');
+  assert.equal(getLatestSaveSlotMeta('random_trade').playerName, '平行新档');
 });
 
 test('classic and random-trade personal leaderboards are independent', () => {

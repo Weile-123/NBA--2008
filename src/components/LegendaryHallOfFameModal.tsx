@@ -40,6 +40,7 @@ interface LegendaryHallOfFameModalProps {
   onClose?: () => void;
   onGoHome?: () => void;
   initialMode?: 'local' | 'global';
+  initialGameMode?: GameMode;
 }
 
 // Preset demo legend for preview when list is empty
@@ -128,6 +129,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
   onClose,
   onGoHome,
   initialMode = 'local',
+  initialGameMode = DEFAULT_GAME_MODE,
 }) => {
   const [tabMode, setTabMode] = useState<'local' | 'global'>(initialMode);
   const [leaderboardGameMode, setLeaderboardGameMode] = useState<GameMode>(DEFAULT_GAME_MODE);
@@ -203,9 +205,9 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
   useEffect(() => {
     if (isOpen !== false) {
       setTabMode(initialMode);
-      setLeaderboardGameMode(DEFAULT_GAME_MODE);
+      setLeaderboardGameMode(initialMode === 'global' ? DEFAULT_GAME_MODE : initialGameMode);
     }
-  }, [isOpen, initialMode]);
+  }, [isOpen, initialMode, initialGameMode]);
 
   // Reset scroll position when selecting a legend, returning to list, switching tab, or opening modal
   useEffect(() => {

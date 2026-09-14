@@ -46,6 +46,12 @@ export function saveGameToStorage(data: SavedData, slotId: SaveSlotId = 'slot_1'
 export function loadGameFromStorage(slotId?: SaveSlotId, gameMode: GameMode = DEFAULT_GAME_MODE): SavedData | null { const keys = storageKeysFor(gameMode); const target = slotId || getPersistentValue<SaveSlotId>(keys.activeSlot) || 'slot_1'; const save = getPersistentValue<SavedData>(keys.slot(target)); return valid(save) && (save.gameMode || DEFAULT_GAME_MODE) === gameMode ? normalizeBranding(migrateLegacyPeak(save)) : null; }
 export function getSaveSlotMeta(slotId: SaveSlotId, gameMode: GameMode = DEFAULT_GAME_MODE): SaveSlotMeta { const slotName = SAVE_SLOTS_CONFIG.find((slot) => slot.id === slotId)?.name || '存档'; const save = loadGameFromStorage(slotId, gameMode); if (!save?.player) return { slotId, slotName, isEmpty: true }; const team = save.teams.find((item) => item.id === save.player?.currentTeamId); return { slotId, slotName, isEmpty: false, updatedAt: save.updatedAt, playerName: save.player.name, playerOvr: save.player.ovr, playerPosition: save.player.position, currentTeamName: team?.name || '自由球员', currentTeamLogo: team?.logo, currentTeamAbbrev: team?.abbrev, currentTeamPrimaryColor: team?.primaryColor, currentTeamSecondaryColor: team?.secondaryColor, currentYear: save.currentYear, currentWeek: save.currentSeasonWeek, phase: save.phase }; }
 export function getAllSaveSlotsMeta(gameMode: GameMode = DEFAULT_GAME_MODE): SaveSlotMeta[] { return SAVE_SLOTS_CONFIG.map(({ id }) => getSaveSlotMeta(id, gameMode)); }
+export function getLatestSaveSlotMeta(gameMode: GameMode = DEFAULT_GAME_MODE): SaveSlotMeta {
+  const latest = getAllSaveSlotsMeta(gameMode)
+    .filter((slot) => !slot.isEmpty)
+    .sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())[0];
+  return latest || getSaveSlotMeta('slot_1', gameMode);
+}
 export function clearSlotStorage(slotId: SaveSlotId, gameMode: GameMode = DEFAULT_GAME_MODE): void { const keys = storageKeysFor(gameMode); removePersistentValue(keys.slot(slotId)); if (getPersistentValue(keys.activeSlot) === slotId) removePersistentValue(keys.activeSlot); }
 export function clearGameStorage(gameMode: GameMode = DEFAULT_GAME_MODE): void { SAVE_SLOTS_CONFIG.forEach(({ id }) => clearSlotStorage(id, gameMode)); }
 export function getHallOfFameLegends(gameMode: GameMode = DEFAULT_GAME_MODE): RetiredPlayerRecord[] {

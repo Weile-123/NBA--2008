@@ -18,13 +18,13 @@ import {
 } from 'lucide-react';
 import { GameMode, GAME_MODE_CONFIG } from '../gameMode';
 import { loadGlobalHallOfFame, retryPendingGlobalHallOfFameUpload } from '../lib/globalLeaderboard';
-import { getSaveSlotMeta, hydrateGameStorage, SaveSlotMeta } from '../utils/storage';
+import { getLatestSaveSlotMeta, hydrateGameStorage, SaveSlotId, SaveSlotMeta } from '../utils/storage';
 import { TeamLogo } from './TeamLogo';
 import { UpdateAnnouncementModal } from './UpdateAnnouncementModal';
 import { UserFeedbackModal } from './UserFeedbackModal';
 
 interface HomeScreenProps {
-  onLaunchMode: (mode: GameMode, action: 'new' | 'continue') => void;
+  onLaunchMode: (mode: GameMode, action: 'new' | 'continue', slotId?: SaveSlotId) => void;
   onOpenHallOfFame: () => void;
   onOpenGlobalHallOfFame?: () => void;
 }
@@ -111,8 +111,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   }, []);
 
   const savesByMode = useMemo<Record<GameMode, SaveSlotMeta>>(() => ({
-    classic: getSaveSlotMeta('slot_1', 'classic'),
-    random_trade: getSaveSlotMeta('slot_1', 'random_trade'),
+    classic: getLatestSaveSlotMeta('classic'),
+    random_trade: getLatestSaveSlotMeta('random_trade'),
   }), [saveRevision]);
 
   const renderModeCard = (mode: GameMode) => {
@@ -194,7 +194,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <button
               type="button"
               disabled={!modeSavesReady}
-              onClick={() => onLaunchMode(mode, hasSave ? 'continue' : 'new')}
+              onClick={() => onLaunchMode(mode, hasSave ? 'continue' : 'new', meta.slotId)}
               className={`flex min-w-0 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-1.5 py-2.5 text-[10px] font-black transition-transform active:scale-[0.98] disabled:cursor-wait disabled:opacity-50 sm:text-sm ${
                 isClassic
                   ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black'
@@ -301,7 +301,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </main>
 
         <footer className="w-full max-w-4xl border-t border-[#1e2535] py-3 text-center text-[10px] text-slate-500 sm:text-[11px]">
-          两种模式均为单一存档，生涯进度与个人传奇记录完全独立
+          两种模式的生涯存档与个人传奇记录完全独立
         </footer>
       </div>
 
@@ -333,7 +333,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 onClick={() => {
                   const targetMode = pendingNewMode;
                   setPendingNewMode(null);
-                  onLaunchMode(targetMode, 'new');
+                  onLaunchMode(targetMode, 'new', savesByMode[targetMode].slotId);
                 }}
                 className="rounded-xl bg-red-600 px-4 py-2 text-xs font-black text-white shadow-lg shadow-red-600/30 active:scale-95"
               >

@@ -37,26 +37,30 @@ export default function App() {
   // the player explicitly chooses the matching mode's "continue" action.
   const [resumeOnMount, setResumeOnMount] = useState(false);
   const [launchAction, setLaunchAction] = useState<'home' | 'new' | 'continue'>('home');
+  const [launchSlotId, setLaunchSlotId] = useState<SaveSlotId>('slot_1');
 
-  const handleSelectGameMode = (nextMode: GameMode, action: 'new' | 'continue') => {
+  const handleSelectGameMode = (nextMode: GameMode, action: 'new' | 'continue', slotId: SaveSlotId = 'slot_1') => {
     setResumeOnMount(action === 'continue');
     setLaunchAction(action);
+    setLaunchSlotId(slotId);
     setGameMode(nextMode);
   };
 
-  return <div key={gameMode}><CareerApp gameMode={gameMode} resumeOnMount={resumeOnMount} launchAction={launchAction} onSelectGameMode={handleSelectGameMode} /></div>;
+  return <div key={gameMode}><CareerApp gameMode={gameMode} resumeOnMount={resumeOnMount} launchAction={launchAction} launchSlotId={launchSlotId} onSelectGameMode={handleSelectGameMode} /></div>;
 }
 
 function CareerApp({
   gameMode,
   resumeOnMount,
   launchAction,
+  launchSlotId,
   onSelectGameMode,
 }: {
   gameMode: GameMode;
   resumeOnMount: boolean;
   launchAction: 'home' | 'new' | 'continue';
-  onSelectGameMode: (mode: GameMode, action: 'new' | 'continue') => void;
+  launchSlotId: SaveSlotId;
+  onSelectGameMode: (mode: GameMode, action: 'new' | 'continue', slotId?: SaveSlotId) => void;
 }) {
   const {
     handleOpenSaveSlots,
@@ -65,6 +69,7 @@ function CareerApp({
     prevPhase,
     setPrevPhase,
     currentSaveSlot,
+    setCurrentSaveSlot,
     isSaveSlotsOpen,
     setIsSaveSlotsOpen,
     toastMsg,
@@ -158,7 +163,7 @@ function CareerApp({
     handleInviteStar,
     currentTeam,
     oppTeam,
-  } = useCareerGame(gameMode, resumeOnMount);
+  } = useCareerGame(gameMode, resumeOnMount, launchSlotId);
 
   useEffect(() => {
     if (launchAction === 'new') setPhase('creation');
@@ -230,17 +235,18 @@ function CareerApp({
       {/* Title / Home Screen Phase */}
       {phase === 'home' && (
           <HomeScreen
-            onLaunchMode={(targetMode, action) => {
+            onLaunchMode={(targetMode, action, slotId: SaveSlotId = 'slot_1') => {
               if (targetMode !== gameMode) {
-                onSelectGameMode(targetMode, action);
+                onSelectGameMode(targetMode, action, slotId);
                 return;
               }
               if (action === 'continue') {
-                const saved = loadGameFromStorage('slot_1', targetMode);
-                if (saved?.player) handleLoadSaveData(saved);
+                const saved = loadGameFromStorage(slotId, targetMode);
+                if (saved?.player) handleLoadSaveData(saved, slotId);
                 else if (player) setPhase('regular_season');
                 else setPhase('creation');
               } else {
+                setCurrentSaveSlot(slotId);
                 setPhase('creation');
               }
             }}
@@ -576,6 +582,7 @@ function CareerApp({
           <LegendaryHallOfFameModal
             isOpen={true}
             initialMode={legendaryHofInitialMode}
+            initialGameMode={gameMode}
             onClose={() => {
               setIsLegendaryHofOpen(false);
               if (phase === 'legendary_hof') setPhase(prevPhase || 'home');

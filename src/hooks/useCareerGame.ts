@@ -24,7 +24,7 @@ import type { YearDraftData } from '../data/draftData';
 import { generateParallelDraftData } from '../utils/randomDraftLogic';
 import { evaluateTeamStrategies, initializeTeamStrategies } from '../utils/teamStrategyLogic';
 
-export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
+export function useCareerGame(gameMode: GameMode, resumeOnMount = true, initialSaveSlot: SaveSlotId = 'slot_1') {
   const [phase, setPhaseState] = useState<GameState['phase']>('home');
   const setPhase: Dispatch<SetStateAction<GameState['phase']>> = useCallback((nextPhase) => {
     // Keep the phase in the same synchronous React batch as year, roster and
@@ -34,7 +34,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     setPhaseState(nextPhase);
   }, []);
   const [prevPhase, setPrevPhase] = useState<GameState['phase']>('regular_season');
-  const [currentSaveSlot, setCurrentSaveSlot] = useState<SaveSlotId>('slot_1');
+  const [currentSaveSlot, setCurrentSaveSlot] = useState<SaveSlotId>(initialSaveSlot);
   const [isSaveSlotsOpen, setIsSaveSlotsOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [currentYear, setCurrentYear] = useState(2008);
@@ -479,11 +479,11 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   // Load saved game state on initial mount
   useEffect(() => {
     void hydrateGameStorage(gameMode).then(() => {
-      const saved = loadGameFromStorage(undefined, gameMode);
+      const saved = loadGameFromStorage(initialSaveSlot, gameMode);
       if (resumeOnMount && saved?.player) handleLoadSaveData(saved);
       setStorageReady(true);
     });
-  }, [gameMode, resumeOnMount]);
+  }, [gameMode, resumeOnMount, initialSaveSlot]);
 
   const saveSnapshot = useMemo<SavedData | null>(() => {
     if (!player) return null;
@@ -1102,6 +1102,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     prevPhase,
     setPrevPhase,
     currentSaveSlot,
+    setCurrentSaveSlot,
     isSaveSlotsOpen,
     setIsSaveSlotsOpen,
     toastMsg,
