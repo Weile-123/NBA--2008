@@ -66,6 +66,20 @@
   background: transparent;
 }
 
+/* Mobile WebViews can keep custom scrollbars painted after expanding long lists. */
+@media (max-width: 639px) {
+  .destiny-events-scroll {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .destiny-events-scroll::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+
 /* Custom High Density Theme Scrollbar */
 * {
   scrollbar-width: thin;

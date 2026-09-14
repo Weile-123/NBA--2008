@@ -71,7 +71,7 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
           <button type="button" onClick={onClose} className="rounded-lg bg-slate-800 p-2 text-slate-400" aria-label="关闭"><X className="h-5 w-5" /></button>
         </header>
 
-        <div className="overflow-y-auto p-3 sm:p-4">
+        <div className="destiny-events-scroll overflow-y-auto p-3 sm:p-4">
           <div className="mb-3 text-xs text-slate-400">
             当前赛季：<strong className="font-mono text-cyan-300">{currentYear}-{currentYear + 1}</strong>
           </div>
@@ -79,11 +79,10 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
             {displayedEvents.map((item) => {
               const meta = STATUS_META[item.status];
               return (
-                <button type="button" key={item.event.id} onClick={() => setSelectedId(item.event.id)} className={`flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition active:scale-[0.99] ${item.status === 'available' ? 'border-amber-400/55 bg-amber-500/10' : 'border-[#283141] bg-[#111722]'}`}>
-                  <div className="w-14 shrink-0 text-center font-mono text-xs font-black text-cyan-300">{item.event.year}<div className="text-[9px] font-normal text-slate-500">赛季</div></div>
+                <button type="button" key={item.event.id} onClick={() => setSelectedId(item.event.id)} className={`flex w-full items-center gap-2 rounded-xl border px-2.5 py-3 text-left transition active:scale-[0.99] sm:gap-3 sm:px-3 ${item.status === 'available' ? 'border-amber-400/55 bg-amber-500/10' : 'border-[#283141] bg-[#111722]'}`}>
+                  <div className="w-10 shrink-0 text-center font-mono text-[11px] font-black text-cyan-300 sm:w-12 sm:text-xs">{item.event.year}<div className="text-[8px] font-normal text-slate-500">赛季</div></div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-black text-white">{item.event.title}</div>
-                    <div className="mt-1 text-[10px] text-slate-500">{item.event.category}{item.event.routes?.length ? ` · ${item.event.routes.length} 条分支` : ''}</div>
+                    <div className="line-clamp-2 text-[13px] font-black leading-snug text-white sm:text-sm">{item.event.title}</div>
                   </div>
                   <span className={`shrink-0 rounded-full border px-2 py-1 text-[9px] font-black ${meta.className}`}>{meta.label}</span>
                   <ChevronRight className="h-4 w-4 shrink-0 text-slate-600" />
