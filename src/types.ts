@@ -435,6 +435,8 @@ export interface GameState {
 
 export interface RetiredPlayerRecord {
   id: string;
+  /** Missing on legacy records; those records always belong to classic mode. */
+  gameMode?: 'classic' | 'random_trade';
   retireDate: string;
   player: {
     name: string;

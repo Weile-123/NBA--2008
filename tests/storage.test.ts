@@ -3,6 +3,7 @@ import test from 'node:test';
 import { createAutoSave } from '../src/utils/autoSave';
 import { clearGameStorage, getHallOfFameLegends, loadGameFromStorage, SavedData, saveGameToStorage, saveHallOfFameLegend } from '../src/utils/storage';
 import { RetiredPlayerRecord } from '../src/types';
+import { setPersistentValue } from '../src/lib/persistentStorage';
 
 const snapshot = (name: string) => ({
   version: 1, player: { name }, teams: [{ id: 'lal' }], updatedAt: '2026-09-10T10:00:00Z',
@@ -83,6 +84,13 @@ test('each mode keeps one save and a newer write replaces it', () => {
   assert.equal(loadGameFromStorage()?.player?.name, 'A');
   saveGameToStorage(snapshot('B'));
   assert.equal(loadGameFromStorage()?.player?.name, 'B');
+});
+
+test('a legacy save without gameMode remains a classic save after the update', () => {
+  clearGameStorage('classic');
+  setPersistentValue('career.save.slot_1.v2', snapshot('旧版本经典球员'));
+  assert.equal(loadGameFromStorage('classic')?.player?.name, '旧版本经典球员');
+  assert.equal(loadGameFromStorage('random_trade'), null);
 });
 
 test('classic and random-trade careers use completely separate single saves', () => {

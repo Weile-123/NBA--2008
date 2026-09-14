@@ -3,17 +3,18 @@ const zlib = require('zlib');
 const tcb = require('@cloudbase/node-sdk');
 
 const app = tcb.init({ env: process.env.CLOUDBASE_ENV_ID, accessKey: process.env.COLORBOX__ACCESS_KEY });
-const rdb = app.rdb({ database: 'public' });
-const TABLE = 'leaderboard_entries';
 const MAX_LEGENDS = 50;
 const MAX_CAREER_AGE = 43;
-let cachedRows = null;
-let cacheUntil = 0;
+const cachedBoards = new Map();
 
 function apiPath(req) { return (new URL(req.url, 'http://localhost').pathname || '/').replace(/^\/api(?=\/|$)/, '') || '/'; }
-function rows(result) { return Array.isArray(result) ? result : result?.data || result?.rows || []; }
 function send(res, statusCode, body) { res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-CloudBase-Context' }); res.end(JSON.stringify(body)); }
 function error(message, statusCode = 400) { const value = new Error(message); value.statusCode = statusCode; return value; }
+function readGameMode(value) {
+  const mode = value == null || String(value).trim() === '' ? 'classic' : String(value).trim();
+  if (mode !== 'classic' && mode !== 'random_trade') throw error('游戏模式不正确');
+  return mode;
+}
 
 function readPuid(req) {
   const raw = req.headers['x-cloudbase-context'];
@@ -49,12 +50,29 @@ function isEligibleLeaderboardRow(row) {
   return Number.isInteger(retireAge) && retireAge <= MAX_CAREER_AGE;
 }
 
-async function leaderboard() {
-  if (cachedRows && Date.now() < cacheUntil) return cachedRows;
-  const candidates = rows(await rdb.from(TABLE).select('id,display_name,score,record,updated_at').order('score', { ascending: false }).order('updated_at', { ascending: true }).order('id', { ascending: true }).limit(MAX_LEGENDS + 50));
-  cachedRows = candidates.filter(isEligibleLeaderboardRow).slice(0, MAX_LEGENDS);
-  cacheUntil = Date.now() + 5000;
-  return cachedRows;
+async function leaderboard(gameMode) {
+  const cached = cachedBoards.get(gameMode);
+  if (cached && Date.now() < cached.until) return cached.rows;
+  const serviceToken = await getRdbServiceToken();
+  const envId = process.env.CLOUDBASE_ENV_ID || process.env.TCB_ENV;
+  const response = await fetch(`https://${envId}.api.tcloudbasegateway.com/v1/rdb/rest/rpc/get_legendary_leaderboard`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: serviceToken.startsWith('Bearer ') ? serviceToken : `Bearer ${serviceToken}`,
+      'X-Db-Instance': 'default',
+      'Accept-Profile': 'public',
+      'Content-Profile': 'public',
+    },
+    body: JSON.stringify({ p_game_mode: gameMode, p_max_age: MAX_CAREER_AGE }),
+  });
+  const raw = await response.text();
+  let candidates = [];
+  try { candidates = raw ? JSON.parse(raw) : []; } catch { /* Keep the public error generic. */ }
+  if (!response.ok || !Array.isArray(candidates)) throw error('传奇榜暂时无法读取', 500);
+  const boardRows = candidates.filter(isEligibleLeaderboardRow).slice(0, MAX_LEGENDS);
+  cachedBoards.set(gameMode, { rows: boardRows, until: Date.now() + 5000 });
+  return boardRows;
 }
 
 async function getRdbServiceToken() {
@@ -66,7 +84,7 @@ async function getRdbServiceToken() {
   throw error('数据库服务凭据不可用', 500);
 }
 
-async function submit(puid, displayName, score, record) {
+async function submit(puid, displayName, score, record, gameMode) {
   const serviceToken = await getRdbServiceToken();
   const envId = process.env.CLOUDBASE_ENV_ID || process.env.TCB_ENV;
   const response = await fetch(`https://${envId}.api.tcloudbasegateway.com/v1/rdb/rest/rpc/submit_legendary_leaderboard_record`, {
@@ -78,17 +96,17 @@ async function submit(puid, displayName, score, record) {
       'Accept-Profile': 'public',
       'Content-Profile': 'public',
     },
-    body: JSON.stringify({ p_puid: puid, p_display_name: displayName, p_score: score, p_record: record }),
+    body: JSON.stringify({ p_puid: puid, p_display_name: displayName, p_score: score, p_record: record, p_game_mode: gameMode }),
   });
   const raw = await response.text();
   let result = null;
   try { result = raw ? JSON.parse(raw) : null; } catch { /* Keep the public error generic. */ }
   if (!response.ok) throw error('传奇记录暂时无法保存', 500);
-  cachedRows = null;
+  cachedBoards.delete(gameMode);
   return Array.isArray(result) ? result[0] : result;
 }
 
-async function getLeaderboardRank(puid) {
+async function getLeaderboardRank(puid, gameMode) {
   const serviceToken = await getRdbServiceToken();
   const envId = process.env.CLOUDBASE_ENV_ID || process.env.TCB_ENV;
   const response = await fetch(`https://${envId}.api.tcloudbasegateway.com/v1/rdb/rest/rpc/get_legendary_leaderboard_rank`, {
@@ -100,7 +118,7 @@ async function getLeaderboardRank(puid) {
       'Accept-Profile': 'public',
       'Content-Profile': 'public',
     },
-    body: JSON.stringify({ p_puid: puid, p_max_age: MAX_CAREER_AGE }),
+    body: JSON.stringify({ p_puid: puid, p_max_age: MAX_CAREER_AGE, p_game_mode: gameMode }),
   });
   const raw = await response.text();
   let result = null;
@@ -109,23 +127,25 @@ async function getLeaderboardRank(puid) {
   return Array.isArray(result) ? result[0] : result;
 }
 
-async function mine(puid) {
-  return getLeaderboardRank(puid);
+async function mine(puid, gameMode) {
+  return getLeaderboardRank(puid, gameMode);
 }
 
 http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') return send(res, 204, {});
   try {
     const target = apiPath(req);
+    const requestUrl = new URL(req.url, 'http://localhost');
     if (req.method === 'GET' && target === '/health') return send(res, 200, { code: 0, message: 'ok' });
-    if (req.method === 'GET' && target === '/leaderboard') return send(res, 200, { code: 0, message: 'success', data: await leaderboard() });
-    if (req.method === 'GET' && target === '/leaderboard/me') return send(res, 200, { code: 0, message: 'success', data: await mine(readPuid(req)) });
+    if (req.method === 'GET' && target === '/leaderboard') return send(res, 200, { code: 0, message: 'success', data: await leaderboard(readGameMode(requestUrl.searchParams.get('gameMode'))) });
+    if (req.method === 'GET' && target === '/leaderboard/me') return send(res, 200, { code: 0, message: 'success', data: await mine(readPuid(req), readGameMode(requestUrl.searchParams.get('gameMode'))) });
     if (req.method === 'POST' && target === '/leaderboard/submit') {
       const input = await readBody(req);
+      const gameMode = readGameMode(input.gameMode);
       const score = Number(input.score);
       if (!Number.isSafeInteger(score) || score < 0 || score > 2147483647) throw error('传奇积分格式不正确');
       const displayName = typeof input.displayName === 'string' && input.displayName.trim() ? input.displayName.trim().slice(0, 40) : '传奇球员';
-      const result = await submit(readPuid(req), displayName, score, normalizeRecord(input.record, score, displayName));
+      const result = await submit(readPuid(req), displayName, score, normalizeRecord({ ...input.record, gameMode }, score, displayName), gameMode);
       const message = result.accepted ? '上传成功' : '已保留更高的历史成绩';
       return send(res, 200, { code: 0, message, data: result });
     }

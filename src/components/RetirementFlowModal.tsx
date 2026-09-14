@@ -317,6 +317,7 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
       allNbaThirds = [...allNbaBySeason.values()].filter((tier) => tier === 3).length;
 
       const legendRecord: RetiredPlayerRecord = {
+        gameMode,
         id: retirementRecordIdRef.current,
         retireDate: formatLocalDateTime(retirementMomentRef.current),
         player: {
@@ -372,11 +373,11 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
 
       saveHallOfFameLegend(legendRecord, gameMode);
       await flushPersistentWrites();
-      if (gameMode === 'classic') try {
+      try {
         // Do not leave the retirement flow while the global submission is
         // still in flight. A failure is persisted as pending by the upload
         // helper and will be retried from the global leaderboard.
-        await uploadToGlobalHallOfFame(legendRecord);
+        await uploadToGlobalHallOfFame(legendRecord, gameMode);
       } catch (error) {
         console.warn('全网传奇榜上传失败，本地记录已保留', error);
       }

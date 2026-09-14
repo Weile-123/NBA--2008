@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowRight,
@@ -19,6 +19,7 @@ import { GameMode, GAME_MODE_CONFIG } from '../gameMode';
 import { loadGlobalHallOfFame, retryPendingGlobalHallOfFameUpload } from '../lib/globalLeaderboard';
 import { getSaveMeta, hydrateGameStorage, SaveMeta } from '../utils/storage';
 import { TeamLogo } from './TeamLogo';
+import { MobilePersistentScrollbar } from './MobilePersistentScrollbar';
 import { UpdateAnnouncementModal } from './UpdateAnnouncementModal';
 import { UserFeedbackModal } from './UserFeedbackModal';
 
@@ -48,6 +49,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenHallOfFame,
   onOpenGlobalHallOfFame,
 }) => {
+  const parallelInfoScrollRef = useRef<HTMLDivElement>(null);
   const [topLegendName, setTopLegendName] = useState('');
   const [topLegendScore, setTopLegendScore] = useState<number | null>(null);
   const [isBannerLoading, setIsBannerLoading] = useState(true);
@@ -75,7 +77,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
     const loadTopLegend = () => {
       if (!isMounted) return;
-      void retryPendingGlobalHallOfFameUpload()
+      void Promise.allSettled(MODES.map((mode) => retryPendingGlobalHallOfFameUpload(mode)))
         .catch((error) => console.warn('全网传奇榜待上传记录暂未同步', error))
         .finally(() => loadGlobalHallOfFame()
           .then((records) => {
@@ -353,7 +355,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             aria-modal="true"
             aria-labelledby="parallel-mode-title"
             onClick={(event) => event.stopPropagation()}
-            className="flex max-h-[90svh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-cyan-400/40 bg-[#101621] text-left shadow-2xl shadow-cyan-950/40"
+            className="flex h-[90svh] max-h-[90svh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-cyan-400/40 bg-[#101621] text-left shadow-2xl shadow-cyan-950/40"
           >
             <header className="flex items-center justify-between border-b border-cyan-400/20 bg-gradient-to-r from-cyan-500/15 to-violet-500/10 px-4 py-3.5">
               <div className="flex items-center gap-2.5">
@@ -375,7 +377,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               </button>
             </header>
 
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4 text-xs leading-relaxed text-slate-300 sm:p-5">
+            <div className="relative min-h-0 flex-1 overflow-hidden">
+            <div ref={parallelInfoScrollRef} className="absolute inset-0 space-y-3 overflow-y-auto overscroll-contain p-4 pr-6 text-xs leading-relaxed text-slate-300 sm:p-5">
               <p className="text-slate-400">生涯比赛、属性养成和退役流程与经典模式一致；联盟的交易、选秀和球队发展会走向全新的时间线。两个模式的存档与个人传奇记录完全独立。</p>
 
               <div className="grid grid-cols-2 gap-2.5">
@@ -433,8 +436,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 </p>
               </div>
               <div className="rounded-xl border border-amber-400/30 bg-amber-500/[0.08] px-3 py-2.5 text-[10px] font-bold text-amber-200 sm:text-[11px]">
-                新模式仍在测试，退役记录暂不计入全网排行榜；平行联盟全网榜将在后续开放。
+                平行联盟拥有独立的个人传奇榜与全网传奇榜，成绩不会与经典模式混排或互相覆盖。
               </div>
+            </div>
+            <MobilePersistentScrollbar scrollRef={parallelInfoScrollRef} tone="cyan" />
             </div>
 
             <footer className="border-t border-slate-800 bg-[#0d121b] p-3">

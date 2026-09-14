@@ -1,13 +1,15 @@
 import { RetiredPlayerRecord } from '../types';
 import { flushPersistentWrites, getPersistentValue, setPersistentValue } from './persistentStorage';
 import { MAX_CAREER_AGE, normalizeRetiredPlayerPeak } from '../utils/calc2k';
+import { DEFAULT_GAME_MODE, type GameMode } from '../gameMode';
 
 // This activity is permanently bound to app_a1c57bc9c2. Keep the gateway
 // static so a stale host-injected ACTIVITY_API_BASE cannot send player data to
 // the CloudBase environment that belonged to the previous project.
 const API_BASE = 'https://app-a1c57bc9c2-d5glgsllk7b7bd845-1252166086.ap-shanghai.app.tcloudbase.com/api';
 const ENV_ID = 'app-a1c57bc9c2-d5glgsllk7b7bd845';
-const PENDING_UPLOAD_KEY = 'career.hof.pending-global-upload.v1';
+const pendingUploadKey = (gameMode: GameMode) => `career.${gameMode === DEFAULT_GAME_MODE ? 'hof' : 'random-trade.hof'}.pending-global-upload.v2`;
+const LEGACY_CLASSIC_PENDING_UPLOAD_KEY = 'career.hof.pending-global-upload.v1';
 type CloudResponse = { statusCode?: number; code?: number; message?: string; data?: unknown };
 
 export interface GlobalHallOfFameRank {
@@ -39,13 +41,13 @@ function ensureSuccess(response: CloudResponse) {
   return result;
 }
 
-async function submit(record: RetiredPlayerRecord): Promise<void> {
+async function submit(record: RetiredPlayerRecord, gameMode: GameMode): Promise<void> {
   if (!window.ColorboxAI?.cloud?.request) throw new Error('请在虎扑 App 内登录后上传全网传奇榜');
   if (record.retireAge > MAX_CAREER_AGE) throw new Error(`退役年龄超过 ${MAX_CAREER_AGE} 岁上限，无法上传全网传奇榜`);
-  const normalizedRecord = normalizeRetiredPlayerPeak(record);
+  const normalizedRecord = { ...normalizeRetiredPlayerPeak(record), gameMode };
   // Keep the SDK call direct so Colorbox's static reviewer can verify the
   // complete business-request chain in the production bundle.
-  const response = ensureSuccess(await window.ColorboxAI.cloud.request({ url: `${API_BASE}/leaderboard/submit`, method: 'POST', envId: ENV_ID, auth: true, data: { score: normalizedRecord.goatScore, displayName: normalizedRecord.player.name, record: normalizedRecord } }));
+  const response = ensureSuccess(await window.ColorboxAI.cloud.request({ url: `${API_BASE}/leaderboard/submit`, method: 'POST', envId: ENV_ID, auth: true, data: { gameMode, score: normalizedRecord.goatScore, displayName: normalizedRecord.player.name, record: normalizedRecord } }));
   if (response.code !== 0 && response.code !== 200) throw new Error(response.message || '全网传奇榜上传失败');
   if (response.data && typeof response.data === 'object' && !Array.isArray(response.data)) {
     const result = response.data as { accepted?: boolean; reason?: string };
@@ -55,19 +57,19 @@ async function submit(record: RetiredPlayerRecord): Promise<void> {
   }
 }
 
-export async function loadGlobalHallOfFame(): Promise<RetiredPlayerRecord[]> {
+export async function loadGlobalHallOfFame(gameMode: GameMode = DEFAULT_GAME_MODE): Promise<RetiredPlayerRecord[]> {
   if (!window.ColorboxAI?.cloud?.request) return [];
-  const response = ensureSuccess(await window.ColorboxAI.cloud.request({ url: `${API_BASE}/leaderboard`, method: 'GET', envId: ENV_ID, auth: false }));
+  const response = ensureSuccess(await window.ColorboxAI.cloud.request({ url: `${API_BASE}/leaderboard?gameMode=${encodeURIComponent(gameMode)}`, method: 'GET', envId: ENV_ID, auth: false }));
   const rows = Array.isArray(response.data) ? response.data as Array<{ record?: RetiredPlayerRecord }> : [];
   return rows
     .map((row) => row.record)
     .filter((record): record is RetiredPlayerRecord => !!record && record.retireAge <= MAX_CAREER_AGE)
-    .map(normalizeRetiredPlayerPeak);
+    .map((record) => ({ ...normalizeRetiredPlayerPeak(record), gameMode: record.gameMode || gameMode }));
 }
 
-export async function loadMyGlobalHallOfFameRank(): Promise<GlobalHallOfFameRank | null> {
+export async function loadMyGlobalHallOfFameRank(gameMode: GameMode = DEFAULT_GAME_MODE): Promise<GlobalHallOfFameRank | null> {
   if (!window.ColorboxAI?.cloud?.request) throw new Error('请在虎扑 App 内登录后查看我的排名');
-  const response = ensureSuccess(await window.ColorboxAI.cloud.request({ url: `${API_BASE}/leaderboard/me`, method: 'GET', envId: ENV_ID, auth: true }));
+  const response = ensureSuccess(await window.ColorboxAI.cloud.request({ url: `${API_BASE}/leaderboard/me?gameMode=${encodeURIComponent(gameMode)}`, method: 'GET', envId: ENV_ID, auth: true }));
   if (response.data === null || response.data === undefined) return null;
   if (typeof response.data !== 'object' || Array.isArray(response.data)) throw new Error('我的排名数据格式异常');
   const row = response.data as Partial<GlobalHallOfFameRank>;
@@ -79,27 +81,30 @@ export async function loadMyGlobalHallOfFameRank(): Promise<GlobalHallOfFameRank
     rank: Number(row.rank),
     score: Number(row.score),
     displayName: typeof row.displayName === 'string' ? row.displayName : row.record.player.name,
-    record: normalizeRetiredPlayerPeak(row.record),
+    record: { ...normalizeRetiredPlayerPeak(row.record), gameMode: row.record.gameMode || gameMode },
     updatedAt: typeof row.updatedAt === 'string' ? row.updatedAt : undefined,
   };
 }
 
-export async function uploadToGlobalHallOfFame(record: RetiredPlayerRecord): Promise<void> {
+export async function uploadToGlobalHallOfFame(record: RetiredPlayerRecord, gameMode: GameMode = record.gameMode || DEFAULT_GAME_MODE): Promise<void> {
+  const key = pendingUploadKey(gameMode);
   try {
-    await submit(record);
-    setPersistentValue(PENDING_UPLOAD_KEY, null);
+    await submit(record, gameMode);
+    setPersistentValue(key, null);
+    if (gameMode === DEFAULT_GAME_MODE) setPersistentValue(LEGACY_CLASSIC_PENDING_UPLOAD_KEY, null);
     await flushPersistentWrites();
   } catch (error) {
-    setPersistentValue(PENDING_UPLOAD_KEY, record);
+    setPersistentValue(key, { ...record, gameMode });
     await flushPersistentWrites();
     throw error;
   }
 }
 
-export async function retryPendingGlobalHallOfFameUpload(): Promise<void> {
-  const pending = getPersistentValue<RetiredPlayerRecord>(PENDING_UPLOAD_KEY);
+export async function retryPendingGlobalHallOfFameUpload(gameMode: GameMode = DEFAULT_GAME_MODE): Promise<void> {
+  const pending = getPersistentValue<RetiredPlayerRecord>(pendingUploadKey(gameMode))
+    || (gameMode === DEFAULT_GAME_MODE ? getPersistentValue<RetiredPlayerRecord>(LEGACY_CLASSIC_PENDING_UPLOAD_KEY) : null);
   if (!pending) return;
-  await uploadToGlobalHallOfFame(pending);
+  await uploadToGlobalHallOfFame(pending, gameMode);
 }
 
 /**
@@ -107,18 +112,19 @@ export async function retryPendingGlobalHallOfFameUpload(): Promise<void> {
  * global rank. The server keeps the higher score, so this is safe to repeat on
  * every leaderboard visit and also repairs records discarded by older builds.
  */
-export async function syncLocalBestAndLoadMyRank(localRecords: RetiredPlayerRecord[]): Promise<GlobalHallOfFameRank | null> {
-  const pending = getPersistentValue<RetiredPlayerRecord>(PENDING_UPLOAD_KEY);
+export async function syncLocalBestAndLoadMyRank(localRecords: RetiredPlayerRecord[], gameMode: GameMode = DEFAULT_GAME_MODE): Promise<GlobalHallOfFameRank | null> {
+  const pending = getPersistentValue<RetiredPlayerRecord>(pendingUploadKey(gameMode))
+    || (gameMode === DEFAULT_GAME_MODE ? getPersistentValue<RetiredPlayerRecord>(LEGACY_CLASSIC_PENDING_UPLOAD_KEY) : null);
   const candidates = [...localRecords, ...(pending ? [pending] : [])]
     .filter((record) => record.retireAge <= MAX_CAREER_AGE)
     .map(normalizeRetiredPlayerPeak)
     .sort((a, b) => b.goatScore - a.goatScore);
-  if (candidates[0]) await uploadToGlobalHallOfFame(candidates[0]);
+  if (candidates[0]) await uploadToGlobalHallOfFame(candidates[0], gameMode);
 
   // The write and authenticated read can land on different gateway workers.
   // Allow a short bounded convergence window before declaring the rank empty.
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const mine = await loadMyGlobalHallOfFameRank();
+    const mine = await loadMyGlobalHallOfFameRank(gameMode);
     if (mine) return mine;
     if (attempt < 2) await new Promise((resolve) => window.setTimeout(resolve, 350 * (attempt + 1)));
   }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadGlobalHallOfFame, loadMyGlobalHallOfFameRank } from '../src/lib/globalLeaderboard';
+import { loadGlobalHallOfFame, loadMyGlobalHallOfFameRank, uploadToGlobalHallOfFame } from '../src/lib/globalLeaderboard';
 import type { RetiredPlayerRecord } from '../src/types';
 
 const record = {
@@ -18,6 +18,10 @@ function setCloudResponse(response: unknown) {
     },
   };
   Object.assign(globalThis, { window: runtimeWindow });
+}
+
+function setCloudHandler(handler: (request: { url: string; data?: Record<string, unknown> }) => Promise<unknown>) {
+  Object.assign(globalThis, { window: { ColorboxAI: { cloud: { request: handler } } } });
 }
 
 test('reads an object-valued rank from the flat cloud.request response', async () => {
@@ -70,4 +74,29 @@ test('does not expose an over-age legacy record as my current rank', async () =>
   });
 
   assert.equal(await loadMyGlobalHallOfFameRank(), null);
+});
+
+test('legacy calls default to the classic global leaderboard', async () => {
+  let requestedUrl = '';
+  setCloudHandler(async (request) => {
+    requestedUrl = request.url;
+    return { statusCode: 200, code: 0, data: [] };
+  });
+  await loadGlobalHallOfFame();
+  assert.match(requestedUrl, /gameMode=classic$/);
+});
+
+test('parallel reads and submissions explicitly use an isolated mode', async () => {
+  const requests: Array<{ url: string; data?: Record<string, unknown> }> = [];
+  setCloudHandler(async (request) => {
+    requests.push(request);
+    return { statusCode: 200, code: 0, data: request.url.includes('/submit') ? { accepted: true } : [] };
+  });
+
+  await loadGlobalHallOfFame('random_trade');
+  await uploadToGlobalHallOfFame({ ...record, retireAge: 43 }, 'random_trade');
+
+  assert.match(requests[0].url, /gameMode=random_trade$/);
+  assert.equal(requests[1].data?.gameMode, 'random_trade');
+  assert.equal((requests[1].data?.record as RetiredPlayerRecord).gameMode, 'random_trade');
 });

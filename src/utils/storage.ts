@@ -45,10 +45,11 @@ export function clearGameStorage(gameMode: GameMode = DEFAULT_GAME_MODE): void {
 export function getHallOfFameLegends(gameMode: GameMode = DEFAULT_GAME_MODE): RetiredPlayerRecord[] {
   const legends = getPersistentValue<RetiredPlayerRecord[]>(storageKeysFor(gameMode).legends);
   if (!Array.isArray(legends)) return [];
-  const normalized = normalizeBranding(legends.map(normalizeRetiredPlayerPeak));
+  const normalized = normalizeBranding(legends.map((legend) => normalizeRetiredPlayerPeak({ ...legend, gameMode: legend.gameMode || gameMode })));
   return normalized.sort((a, b) => b.goatScore - a.goatScore).slice(0, MAX_LEGENDS);
 }
 export function saveHallOfFameLegend(legend: RetiredPlayerRecord, gameMode: GameMode = DEFAULT_GAME_MODE): void {
+  legend = { ...legend, gameMode };
   const prior = getHallOfFameLegends(gameMode);
   const index = prior.findIndex((item) => item.id === legend.id);
   const next = index < 0 ? [legend, ...prior] : prior.map((item, i) => i === index ? legend : item);

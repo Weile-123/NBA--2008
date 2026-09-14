@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Check, ChevronRight, Clock3, Sparkles, X, XCircle } from 'lucide-react';
 import type { GameState, Team } from '../types';
 import {
@@ -7,6 +7,7 @@ import {
   type DestinyEventRecord,
   type DestinyEventStatus,
 } from '../data/destinyEvents';
+import { MobilePersistentScrollbar } from './MobilePersistentScrollbar';
 
 interface DestinyEventsModalProps {
   currentYear: number;
@@ -29,6 +30,8 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const listScrollRef = useRef<HTMLDivElement>(null);
+  const detailScrollRef = useRef<HTMLDivElement>(null);
   const evaluations = useMemo(
     () => getDestinyEventEvaluations(currentYear, teams, leagueHistory, records),
     [currentYear, teams, leagueHistory, records],
@@ -45,6 +48,7 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
   }), [evaluations, currentYear]);
   const displayedEvents = showAll ? ordered : ordered.slice(0, 5);
   const selected = evaluations.find((item) => item.event.id === selectedId) || null;
+  const availableRoutes = selected?.routeEvaluations.filter((route) => selected.status === 'available' && route.available) || [];
 
   const handleTrigger = (routeId?: string) => {
     if (!selected) return;
@@ -71,7 +75,8 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
           <button type="button" onClick={onClose} className="rounded-lg bg-slate-800 p-2 text-slate-400" aria-label="关闭"><X className="h-5 w-5" /></button>
         </header>
 
-        <div className="scrollbar-thin overflow-y-auto p-3 sm:p-4">
+        <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div ref={listScrollRef} className="absolute inset-0 overflow-y-auto p-3 pr-5 sm:p-4">
           <div className="mb-3 text-xs text-slate-400">
             当前赛季：<strong className="font-mono text-cyan-300">{currentYear}-{currentYear + 1}</strong>
           </div>
@@ -96,16 +101,21 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
             </button>
           )}
         </div>
+        <MobilePersistentScrollbar scrollRef={listScrollRef} />
+        </div>
       </section>
 
       {selected && (
         <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/85 p-3 backdrop-blur-sm">
-          <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-amber-500/35 bg-[#111722] p-4 shadow-2xl">
-            <div className="flex items-start justify-between gap-3">
+          <div className="flex h-[92dvh] max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-amber-500/35 bg-[#111722] shadow-2xl">
+            <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-700/70 p-4">
               <div><div className="text-[10px] font-black text-amber-400">{selected.event.year}-{selected.event.year + 1} · {selected.event.category}</div><h3 className="mt-1 text-lg font-black text-white">{selected.event.title}</h3></div>
               <button type="button" onClick={() => setSelectedId(null)} className="rounded-lg bg-slate-800 p-1.5 text-slate-400" aria-label="返回事件列表"><X className="h-4 w-4" /></button>
-            </div>
-            <p className="mt-3 text-xs leading-relaxed text-slate-300">{selected.event.history}</p>
+            </header>
+
+            <div className="relative min-h-0 flex-1 overflow-hidden">
+            <div ref={detailScrollRef} className="absolute inset-0 overflow-y-auto p-4 pr-6">
+            <p className="text-xs leading-relaxed text-slate-300">{selected.event.history}</p>
 
             {selected.status === 'triggered' ? (
               <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
@@ -115,7 +125,10 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
             ) : (
               <>
                 <div className="mt-4 border-y border-slate-700/70 py-3">
-                  <div className="mb-2 text-[10px] font-black text-slate-400">触发条件</div>
+                  <div className="mb-2 flex items-center justify-between gap-2 text-[10px] font-black text-slate-400">
+                    <span>触发条件</span>
+                    {selected.routeEvaluations.length === 0 && selected.requiredScore > 0 && <span className="text-amber-300">条件 {selected.score}/{selected.requiredScore}</span>}
+                  </div>
                   <div className="space-y-1.5">
                     <div className={`flex items-center gap-1.5 text-[11px] ${currentYear === selected.event.year ? 'text-emerald-300' : 'text-slate-400'}`}><Clock3 className="h-3.5 w-3.5" />仅限 {selected.event.year}-{selected.event.year + 1} 赛季</div>
                     {selected.checks.map(conditionLine)}
@@ -125,13 +138,11 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
                 {selected.routeEvaluations.length > 0 ? (
                   <div className="divide-y divide-slate-700/70">
                     {selected.routeEvaluations.map((routeEvaluation) => {
-                      const canTriggerRoute = selected.status === 'available' && routeEvaluation.available;
                       return (
                         <section key={routeEvaluation.route.id} className="py-3">
                           <div className="flex items-center justify-between gap-2"><span className="text-xs font-black text-white">{routeEvaluation.route.title}</span><span className="text-[10px] font-black text-amber-300">条件 {routeEvaluation.score}/{routeEvaluation.requiredScore}</span></div>
                           <div className="mt-2 space-y-1">{routeEvaluation.checks.map(conditionLine)}</div>
                           <p className="mt-2 text-[11px] leading-relaxed text-cyan-100"><strong className="text-cyan-300">结果：</strong>{routeEvaluation.route.result}</p>
-                          {canTriggerRoute && <button type="button" onClick={() => handleTrigger(routeEvaluation.route.id)} className="mt-2.5 w-full rounded-lg bg-amber-500 py-2 text-xs font-black text-black">选择“{routeEvaluation.route.title}”</button>}
                         </section>
                       );
                     })}
@@ -139,13 +150,27 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
                 ) : (
                   <>
                     <p className="mt-3 text-xs leading-relaxed text-cyan-100"><strong className="text-cyan-300">结果：</strong>{selected.event.result}</p>
-                    {selected.status === 'available' && <button type="button" onClick={() => handleTrigger()} className="mt-3 w-full rounded-xl bg-amber-500 px-4 py-3 text-sm font-black text-black">触发事件</button>}
                   </>
                 )}
-
-                {selected.status !== 'available' && <div className={`mt-2 rounded-lg border px-3 py-2 text-center text-xs font-black ${STATUS_META[selected.status].className}`}>{STATUS_META[selected.status].label}</div>}
               </>
             )}
+            </div>
+            <MobilePersistentScrollbar scrollRef={detailScrollRef} />
+            </div>
+
+            <footer className="shrink-0 border-t border-slate-700/70 bg-[#0d121b] p-3">
+              {selected.status === 'triggered' ? (
+                <button type="button" onClick={() => setSelectedId(null)} className="w-full rounded-xl border border-emerald-500/35 bg-emerald-500/10 py-2.5 text-sm font-black text-emerald-300">返回事件列表</button>
+              ) : availableRoutes.length > 0 ? (
+                <div className="grid gap-2">
+                  {availableRoutes.map((route) => <button key={route.route.id} type="button" onClick={() => handleTrigger(route.route.id)} className="w-full rounded-xl bg-amber-500 px-3 py-2.5 text-xs font-black text-black">选择“{route.route.title}”</button>)}
+                </div>
+              ) : selected.status === 'available' ? (
+                <button type="button" onClick={() => handleTrigger()} className="w-full rounded-xl bg-amber-500 px-4 py-3 text-sm font-black text-black">触发事件</button>
+              ) : (
+                <div className={`rounded-xl border px-3 py-2.5 text-center text-xs font-black ${STATUS_META[selected.status].className}`}>{STATUS_META[selected.status].label}</div>
+              )}
+            </footer>
           </div>
         </div>
       )}

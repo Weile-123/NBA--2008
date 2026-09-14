@@ -5,9 +5,8 @@ const { createClient, readToolText } = require('./cloudbase-mcp-tools.cjs');
 const ROOT = path.resolve(__dirname, '..');
 const FUNCTION_ROOT = path.join(__dirname, 'cloudfunctions');
 const MIGRATIONS = [
-  ['20260910070000', 'create_global_legends'],
-  ['20260912020000', 'retain_all_legendary_ranks'],
-  ['20260913010000', 'exact_legendary_rank'],
+  ['20260914180000', 'split_leaderboard_by_game_mode'],
+  ['20260914190000', 'read_leaderboard_by_game_mode'],
 ];
 const API_BASE = process.env.ACTIVITY_API_BASE || 'https://app-a1c57bc9c2-d5glgsllk7b7bd845-1252166086.ap-shanghai.app.tcloudbase.com/api';
 
@@ -98,6 +97,19 @@ async function verifyCloud(client) {
   }
   if (leaderboardBody.data.length > 50) throw new Error('公开榜单返回超过 50 条');
   process.stdout.write(`✓ 线上公开榜单读取（${leaderboardBody.data.length} 条）\n`);
+
+  const classicBoard = await fetch(`${API_BASE}/leaderboard?gameMode=classic`).then((response) => response.json());
+  const parallelBoard = await fetch(`${API_BASE}/leaderboard?gameMode=random_trade`).then((response) => response.json());
+  if (!Array.isArray(classicBoard.data) || classicBoard.data.some((row) => row.game_mode !== 'classic')) {
+    throw new Error('经典模式排行榜隔离验证失败');
+  }
+  if (!Array.isArray(parallelBoard.data) || parallelBoard.data.some((row) => row.game_mode !== 'random_trade')) {
+    throw new Error('平行模式排行榜隔离验证失败');
+  }
+  if (JSON.stringify(leaderboardBody.data) !== JSON.stringify(classicBoard.data)) {
+    throw new Error('旧版缺省排行榜不再等同于经典模式');
+  }
+  process.stdout.write(`✓ 双模式榜单隔离（经典 ${classicBoard.data.length} 条，平行 ${parallelBoard.data.length} 条）\n`);
 
   const rejected = await fetch(`${API_BASE}/leaderboard/submit`, {
     method: 'POST',

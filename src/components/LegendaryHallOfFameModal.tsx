@@ -22,7 +22,6 @@ import {
   BookOpen,
   Home,
   ChevronRight,
-  Lock,
   Loader2,
   Clock,
   RefreshCw,
@@ -205,7 +204,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
   useEffect(() => {
     if (isOpen !== false) {
       setTabMode(initialMode);
-      setLeaderboardGameMode(initialMode === 'global' ? DEFAULT_GAME_MODE : initialGameMode);
+      setLeaderboardGameMode(initialGameMode);
     }
   }, [isOpen, initialMode, initialGameMode]);
 
@@ -247,15 +246,15 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
       const loadGlobal = async () => {
         if (!isMounted) return;
         try {
-          let records = await loadGlobalHallOfFame();
+          let records = await loadGlobalHallOfFame(leaderboardGameMode);
           let mine: GlobalHallOfFameRank | null = null;
           let rankError: string | null = null;
           try {
             // Always reconcile the best local retirement first. This covers
             // both new retirements and users discarded by the old top-50-only
             // server rule, even when their previous /me lookup was empty.
-            mine = await syncLocalBestAndLoadMyRank(getHallOfFameLegends(DEFAULT_GAME_MODE));
-            records = await loadGlobalHallOfFame();
+            mine = await syncLocalBestAndLoadMyRank(getHallOfFameLegends(leaderboardGameMode), leaderboardGameMode);
+            records = await loadGlobalHallOfFame(leaderboardGameMode);
           } catch (error) {
             rankError = error instanceof Error ? error.message : '本地退役记录暂时无法同步';
           }
@@ -298,10 +297,10 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
     setMyGlobalRankError(null);
     setLocalSyncNotice('正在上传本地最佳退役记录并查询名次…');
     try {
-      const mine = await syncLocalBestAndLoadMyRank(getHallOfFameLegends(DEFAULT_GAME_MODE));
+      const mine = await syncLocalBestAndLoadMyRank(getHallOfFameLegends(leaderboardGameMode), leaderboardGameMode);
       setMyGlobalRank(mine);
       setLocalSyncNotice(mine ? `同步成功：当前全网第 ${mine.rank} 名` : '没有找到可同步的本地退役记录');
-      const records = await loadGlobalHallOfFame();
+      const records = await loadGlobalHallOfFame(leaderboardGameMode);
       setLegends(records.map(sanitizeLegend));
     } catch (error) {
       setLocalSyncNotice(null);
@@ -409,23 +408,18 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
                 </button>
                 <button
                   type="button"
-                  disabled={tabMode === 'global'}
                   onClick={() => {
                     setLeaderboardGameMode('random_trade');
                     resetModalScroll();
                   }}
                   className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                    tabMode === 'global'
-                      ? 'cursor-not-allowed border border-slate-700/70 bg-slate-900/80 text-slate-600'
-                      : leaderboardGameMode === 'random_trade'
+                    leaderboardGameMode === 'random_trade'
                         ? 'bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 font-black shadow-md shadow-cyan-500/20'
                         : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
                   }`}
-                  title={tabMode === 'global' ? '平行时空全网榜暂未开放' : undefined}
                 >
-                  {tabMode === 'global' ? <Lock className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
+                  <Sparkles className="w-3.5 h-3.5" />
                   <span>平行时空</span>
-                  {tabMode === 'global' && <span className="text-[8px] font-black">暂未开放</span>}
                 </button>
               </div>
             </div>
@@ -873,8 +867,13 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
                         setSelectedLegend(legend);
                         resetModalScroll();
                       }}
-                      className="p-3.5 sm:p-5 rounded-2xl bg-gradient-to-r from-[#121624] via-[#161d2e] to-[#121624] border border-[#232c42] hover:border-amber-500/60 transition-all cursor-pointer shadow-xl relative group overflow-hidden"
+                      className={`p-3.5 sm:p-5 rounded-2xl bg-gradient-to-r from-[#121624] via-[#161d2e] to-[#121624] border border-[#232c42] hover:border-amber-500/60 transition-all cursor-pointer shadow-xl relative group overflow-hidden ${leaderboardGameMode === 'random_trade' ? 'pt-10 sm:pt-10' : ''}`}
                     >
+                      {leaderboardGameMode === 'random_trade' && (
+                        <span className="absolute right-3 top-2.5 inline-flex items-center gap-1 rounded-full border border-cyan-400/40 bg-gradient-to-r from-cyan-500/15 to-violet-500/15 px-2 py-1 text-[9px] font-black text-cyan-200">
+                          <Sparkles className="h-3 w-3" />平行时空
+                        </span>
+                      )}
                       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
                         {/* Left: Rank, Name, Career Years */}
                         <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">

@@ -11,6 +11,7 @@ calculateAttributesAndCaps,
 POSITION_ARCHETYPES,
 } from '../utils/attributeCalculator';
 import { calculateUserDraftPick } from '../utils/draftLogic';
+import { MobilePersistentScrollbar } from './MobilePersistentScrollbar';
 import { TeamLogo } from './TeamLogo';
 
 interface CreationModalProps {
@@ -128,6 +129,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
   const [showAllAttrsModal, setShowAllAttrsModal] = useState(false);
   const [teamConfFilter, setTeamConfFilter] = useState<'ALL' | 'East' | 'West'>('ALL');
   const [teamSearchQuery, setTeamSearchQuery] = useState('');
+  const identityScrollRef = useRef<HTMLDivElement>(null);
   const customizationScrollRef = useRef<HTMLDivElement>(null);
   const [customizationScrollbar, setCustomizationScrollbar] = useState({ visible: false, top: 0, height: 44 });
 
@@ -354,7 +356,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto text-slate-200">
-      <div className={`bg-[#11141b] border border-[#232834] rounded-2xl max-w-3xl w-full p-5 sm:p-7 shadow-2xl relative my-auto max-h-[92svh] ${step === 'customize' ? 'h-[92svh] overflow-hidden flex min-h-0 flex-col' : step === 'identity' ? 'overflow-hidden flex min-h-0 flex-col' : 'overflow-y-auto'}`}>
+      <div className={`bg-[#11141b] border border-[#232834] rounded-2xl max-w-3xl w-full p-5 sm:p-7 shadow-2xl relative my-auto max-h-[92svh] ${step === 'customize' || step === 'identity' ? 'h-[92svh] overflow-hidden flex min-h-0 flex-col' : 'overflow-y-auto'}`}>
         {/* TOP HEADER NAVIGATION BAR */}
         {onBackToHome && (
           <div className="shrink-0 flex items-center justify-between mb-4 pb-3 border-b border-[#232834]">
@@ -377,7 +379,8 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
         {/* STEP 1: IDENTITY & IMMERSION BACKGROUND */}
         {step === 'identity' && (
           <form onSubmit={handleStartSimulation} className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden py-1">
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+            <div className="relative min-h-0 flex-1 overflow-hidden">
+            <div ref={identityScrollRef} className="absolute inset-0 overflow-y-auto overscroll-contain pr-3 sm:pr-1">
               <div className="bg-[#0d1017] p-4 sm:p-5 rounded-2xl border border-[#232834] space-y-4 max-w-2xl mx-auto">
               {/* Hupu account identity */}
               <div>
@@ -472,6 +475,8 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                 </div>
               </div>
               </div>
+            </div>
+            <MobilePersistentScrollbar scrollRef={identityScrollRef} />
             </div>
 
             <div className="flex shrink-0 flex-col sm:flex-row gap-2 sm:gap-3 w-full max-w-2xl mx-auto pt-2 border-t border-[#232834] sm:border-0 sm:pt-1">
