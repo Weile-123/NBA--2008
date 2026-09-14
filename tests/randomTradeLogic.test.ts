@@ -7,6 +7,7 @@ import { evaluateTeamStrategies, initializeTeamStrategies } from '../src/utils/t
 import { calculateTeamPowerRating } from '../src/utils/leagueLogic';
 import { applyDraftRookiesToTeams } from '../src/utils/draftLogic';
 import { progressLeagueForNewSeason } from '../src/utils/progressionLogic';
+import { getHistoricalDraftData } from '../src/data/draftData';
 
 const positions: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
 
@@ -105,15 +106,34 @@ test('initial team directions always cover all four league tiers', () => {
   assert.ok(initialized.every((team) => team.strategyModelVersion === 2));
 });
 
-test('parallel draft follows simulated order while protecting elite prospects', () => {
+test('parallel draft keeps the 2008 and Curry 2009 classes on historical draft order', () => {
+  const teams = makeLeague(30).map((team, index) => ({ ...team, wins: index + 10, losses: 72 - index }));
+  for (const year of [2008, 2009]) {
+    const historical = getHistoricalDraftData(year)!;
+    const parallel = generateParallelDraftData(teams, year, seededRandom(42))!;
+    assert.deepEqual(
+      parallel.draftPicks.map((pick) => [pick.pick, pick.teamId, pick.player.id]),
+      historical.draftPicks.map((pick) => [pick.pick, pick.teamId, pick.player.id]),
+    );
+  }
+  const curry = generateParallelDraftData(teams, 2009, seededRandom(42))?.draftPicks.find((pick) => pick.player.name === '斯蒂芬·库里');
+  assert.equal(curry?.pick, 7);
+  assert.equal(curry?.teamId, 'gsw');
+});
+
+test('parallel draft follows simulated order from 2010 onward while protecting elite prospects', () => {
   const teams = makeLeague(30).map((team, index) => ({
     ...team,
     wins: index + 10,
     losses: 72 - index,
   }));
-  const draft = generateParallelDraftData(teams, 2009, seededRandom(42));
+  const draft = generateParallelDraftData(teams, 2010, seededRandom(42));
   assert.equal(draft?.draftPicks.length, 30);
   assert.equal(new Set(draft?.draftPicks.map((pick) => pick.teamId)).size, 30);
+  assert.notDeepEqual(
+    draft?.draftPicks.map((pick) => pick.teamId),
+    getHistoricalDraftData(2010)?.draftPicks.map((pick) => pick.teamId),
+  );
   for (const pick of draft?.draftPicks || []) {
     if ((pick.player.peakOvr || 0) >= 95) assert.ok(pick.pick <= 5);
     else if ((pick.player.peakOvr || 0) >= 91) assert.ok(pick.pick <= 10);

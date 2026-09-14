@@ -395,7 +395,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   </div>
                   <ul className="space-y-1.5 text-[10px] text-slate-300 sm:text-[11px]">
                     <li>• 后续赛季动态生成交易</li>
-                    <li>• 生成新秀，选秀归属随战绩变化</li>
+                    <li>• 前两届按真实顺位，之后随战绩选秀</li>
                     <li>• 球队方向随联盟发展调整</li>
                     <li>• 可选择是否重演命定事件</li>
                   </ul>
@@ -403,7 +403,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               </div>
 
               <div className="rounded-xl border border-cyan-400/20 bg-[#151d2a] px-3 py-2.5 text-[10px] text-slate-400 sm:text-[11px]">
-                2008 年首个赛季保持原有阵容；从后续赛季开始，交易、选秀和球队格局将进入平行时间线。球队会根据战绩、阵容实力、核心年龄与发展趋势决定发展方向。
+                2008 年首个赛季保持原有阵容，2008、2009 两届新秀按历史真实顺位进入联盟；从 2010 届开始，选秀归属根据上赛季战绩变化。后续赛季的交易和球队格局仍会进入平行时间线。
               </div>
 
               <div className="rounded-xl border border-slate-700/80 bg-[#151d2a] p-3">

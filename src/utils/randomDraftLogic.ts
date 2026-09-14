@@ -1,6 +1,8 @@
 import { getHistoricalDraftData, type DraftPickItem, type YearDraftData } from '../data/draftData';
 import type { Position, Team } from '../types';
 
+export const PARALLEL_HISTORICAL_DRAFT_END_YEAR = 2009;
+
 function shuffleWeightedLottery(teams: Team[], random: () => number): Team[] {
   const pool = [...teams];
   const winners: Team[] = [];
@@ -97,10 +99,10 @@ export function generateSyntheticDraftClass(year: number): YearDraftData {
   };
 }
 
-/** Builds a draft owned by this save: order follows simulated records while the real rookie class and elite talent hierarchy remain intact. */
+/** Keeps the 2008 and 2009 classes on their real draft order, then follows simulated records from 2010 onward. */
 export function generateParallelDraftData(teams: Team[], year: number, random: () => number = Math.random): YearDraftData | null {
   const historical = getHistoricalDraftData(year) || (year > 2026 ? generateSyntheticDraftClass(year) : null);
-  if (year <= 2008 || !historical?.draftPicks?.length) return historical || null;
+  if (year <= PARALLEL_HISTORICAL_DRAFT_END_YEAR || !historical?.draftPicks?.length) return historical || null;
 
   const standings = [...teams].sort((a, b) => a.wins - b.wins || b.losses - a.losses || a.rating - b.rating);
   const lottery = shuffleWeightedLottery(standings.slice(0, 14), random);

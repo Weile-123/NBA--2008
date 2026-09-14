@@ -21,7 +21,7 @@ import { Accolade } from '../types';
 import { scheduleRootScrollToTop } from '../utils/scroll';
 import { GameMode } from '../gameMode';
 import type { YearDraftData } from '../data/draftData';
-import { generateParallelDraftData } from '../utils/randomDraftLogic';
+import { generateParallelDraftData, PARALLEL_HISTORICAL_DRAFT_END_YEAR } from '../utils/randomDraftLogic';
 import { evaluateTeamStrategies, initializeTeamStrategies } from '../utils/teamStrategyLogic';
 import { triggerDestinyEvent, type DestinyEventDefinition, type DestinyEventRecord } from '../data/destinyEvents';
 
@@ -109,8 +109,13 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   const [activeMilestoneModal, setActiveMilestoneModal] = useState<MilestoneTrigger | null>(null);
 
   useEffect(() => {
-    if (gameMode !== 'random_trade' || phase !== 'offseason' || currentYear <= 2008 || parallelDraftHistory[currentYear]) return;
+    if (gameMode !== 'random_trade' || phase !== 'offseason' || currentYear <= 2008) return;
+    const existing = parallelDraftHistory[currentYear];
+    if (existing && currentYear > PARALLEL_HISTORICAL_DRAFT_END_YEAR) return;
     const generated = generateParallelDraftData(teams, currentYear);
+    const alreadyMatches = !!existing && !!generated && existing.draftPicks.length === generated.draftPicks.length
+      && existing.draftPicks.every((pick, index) => pick.player.id === generated.draftPicks[index]?.player.id && pick.teamId === generated.draftPicks[index]?.teamId);
+    if (alreadyMatches) return;
     if (generated) setParallelDraftHistory((previous) => ({ ...previous, [currentYear]: generated }));
   }, [gameMode, phase, currentYear, parallelDraftHistory, teams]);
 
