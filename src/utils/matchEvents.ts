@@ -48,6 +48,13 @@ export interface InteractiveMatchScorePlan {
   quarters: Array<{ user: number; opp: number }>;
 }
 
+export interface OvertimeScorePlan {
+  user: number;
+  opp: number;
+}
+
+export const OVERTIME_SECONDS = 5 * 60;
+
 export type BuzzerBeaterShotType = '3pt' | 'mid' | 'layup';
 
 /** Keep the displayed final-shot odds and the actual roll on one formula. */
@@ -97,16 +104,118 @@ export function shouldTriggerBuzzerBeater(isSelectedGame: boolean, userScore: nu
   return isSelectedGame && oppScore - userScore === 1;
 }
 
-export function resolveInteractiveFinalScore(
-  userScore: number,
-  oppScore: number,
-  plannedUserWin: boolean,
-): { userScore: number; oppScore: number; wentToOvertime: boolean } {
-  if (userScore !== oppScore) return { userScore, oppScore, wentToOvertime: false };
-  const overtimeMargin = 1 + Math.floor(Math.random() * 6);
-  return plannedUserWin
-    ? { userScore: userScore + overtimeMargin, oppScore, wentToOvertime: true }
-    : { userScore, oppScore: oppScore + overtimeMargin, wentToOvertime: true };
+/** NBA overtime lasts five minutes. A tied period deliberately remains
+ * possible so the match can proceed into a second or later overtime. */
+export function createOvertimeScorePlan(userTeam: Team, oppTeam: Team): OvertimeScorePlan {
+  const basePoints = 7 + Math.floor(Math.random() * 9);
+  if (Math.random() < 0.12) return { user: basePoints, opp: basePoints };
+
+  const userWinChance = Math.min(0.75, Math.max(0.25, 0.5 + (userTeam.rating - oppTeam.rating) * 0.015));
+  const margin = 1 + Math.floor(Math.random() * 5);
+  return Math.random() < userWinChance
+    ? { user: basePoints + margin, opp: basePoints }
+    : { user: basePoints, opp: basePoints + margin };
+}
+
+function splitOvertimePoints(total: number): number[] {
+  const scores: number[] = [];
+  let remaining = total;
+  while (remaining > 0) {
+    if (remaining === 1) {
+      scores.push(1);
+      break;
+    }
+    const points = remaining === 4 || remaining < 3 || Math.random() >= 0.35 ? 2 : 3;
+    scores.push(Math.min(points, remaining));
+    remaining -= points;
+  }
+  return scores;
+}
+
+/** Builds one visible five-minute overtime period. Score, clock and player
+ * box-score changes all travel through the same event queue as regulation. */
+export function buildOvertimeEvents(
+  overtimeNumber: number,
+  userTeam: Team,
+  oppTeam: Team,
+  player: PlayerProfile,
+  assignedMPG: number,
+  scorePlan: OvertimeScorePlan = createOvertimeScorePlan(userTeam, oppTeam),
+): ScheduledQuarterEvent[] {
+  const quarter = 4 + overtimeNumber;
+  const userScores = splitOvertimePoints(scorePlan.user);
+  const oppScores = splitOvertimePoints(scorePlan.opp);
+  const playerShare = assignedMPG >= 34 ? 0.4 : assignedMPG >= 28 ? 0.28 : assignedMPG >= 20 ? 0.14 : 0;
+  const playerScoringEvents = Math.round(userScores.length * playerShare);
+  const scoringEvents: Array<{ side: 'user' | 'opp'; points: number; playerEvent?: boolean }> = [
+    ...userScores.map((points) => ({ side: 'user' as const, points })),
+    ...oppScores.map((points) => ({ side: 'opp' as const, points })),
+  ];
+
+  for (let index = scoringEvents.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [scoringEvents[index], scoringEvents[swapIndex]] = [scoringEvents[swapIndex], scoringEvents[index]];
+  }
+
+  const overtimeMinutes = assignedMPG >= 28 ? 5 : assignedMPG >= 20 ? 2.5 : 0;
+  const eventSeconds = scoringEvents.map((_, index) =>
+    Math.max(4, 270 - Math.floor(index * (250 / Math.max(1, scoringEvents.length - 1)))),
+  );
+  const onCourtEventIndexes = eventSeconds
+    .map((seconds, index) => isPlayerOnCourt(quarter, seconds, assignedMPG) ? index : -1)
+    .filter((index) => index >= 0);
+  const playerScoringIndexes = onCourtEventIndexes
+    .filter((index) => scoringEvents[index].side === 'user')
+    .slice(0, playerScoringEvents);
+  playerScoringIndexes.forEach((index) => { scoringEvents[index].playerEvent = true; });
+  const minuteTenths = Math.round(overtimeMinutes * 10);
+  const baseMinuteTenths = onCourtEventIndexes.length > 0 ? Math.floor(minuteTenths / onCourtEventIndexes.length) : 0;
+  const extraMinuteTenths = onCourtEventIndexes.length > 0 ? minuteTenths % onCourtEventIndexes.length : 0;
+  const minutesByEventIndex = new Map(onCourtEventIndexes.map((eventIndex, position) => [
+    eventIndex,
+    (baseMinuteTenths + (position < extraMinuteTenths ? 1 : 0)) / 10,
+  ]));
+  const events: ScheduledQuarterEvent[] = [{
+    id: `ot${overtimeNumber}_start`,
+    quarter,
+    targetSeconds: OVERTIME_SECONDS,
+    timeStr: '05:00',
+    text: `双方战平，第 ${overtimeNumber} 个加时赛开始！`,
+    type: 'system',
+    userPtsDelta: 0,
+    oppPtsDelta: 0,
+  }];
+
+  scoringEvents.forEach((event, index) => {
+    const targetSeconds = eventSeconds[index];
+    const timeStr = `${Math.floor(targetSeconds / 60).toString().padStart(2, '0')}:${(targetSeconds % 60).toString().padStart(2, '0')}`;
+    const isFreeThrow = event.points === 1;
+    const scoringStats = event.playerEvent
+      ? isFreeThrow
+        ? { pts: 1, ftm: 1, fta: 1 }
+        : { pts: event.points, fgm: 1, fga: 1, ...(event.points === 3 ? { tpm: 1, tpa: 1 } : {}) }
+      : undefined;
+    const playerStatsDelta = minutesByEventIndex.has(index)
+      ? { ...scoringStats, minutes: minutesByEventIndex.get(index) }
+      : scoringStats;
+    events.push({
+      id: `ot${overtimeNumber}_score_${index}`,
+      quarter,
+      targetSeconds,
+      timeStr,
+      text: event.side === 'user'
+        ? event.playerEvent
+          ? `${player.name}${isFreeThrow ? '制造犯规并罚球命中' : event.points === 3 ? '命中关键三分' : '强攻篮下得手'}！`
+          : `${userTeam.name}${isFreeThrow ? '罚球命中' : event.points === 3 ? '外线三分命中' : '完成关键进球'}。`
+        : `${oppTeam.name}${isFreeThrow ? '罚球命中' : event.points === 3 ? '命中三分' : '进攻得手'}。`,
+      type: event.side === 'user' ? (event.playerEvent ? 'highlight' : 'user') : 'away',
+      userPtsDelta: event.side === 'user' ? event.points : 0,
+      oppPtsDelta: event.side === 'opp' ? event.points : 0,
+      playerStatsDelta,
+    });
+  });
+
+  return events.sort((a, b) => b.targetSeconds - a.targetSeconds);
 }
 
 function hasPersonalScoringStats(event: ScheduledQuarterEvent): boolean {
@@ -273,6 +382,11 @@ export function calculateInteractiveGrade(stats: {
   * based on assigned minutes per game (assignedMPG out of 48 total game minutes).
   */
 export function isPlayerOnCourt(q: number, remainingSecs: number, assignedMPG: number): boolean {
+  if (q > 4) {
+    if (assignedMPG >= 28) return true;
+    if (assignedMPG >= 20) return remainingSecs <= 150;
+    return false;
+  }
   if (assignedMPG >= 34) {
     // Star player (34-38 mins): Sits middle/late Q2 (6m to 3m) and early Q4 (12m to 9m)
     if (q === 1 || q === 3) return true;

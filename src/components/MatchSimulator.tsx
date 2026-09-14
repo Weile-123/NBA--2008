@@ -14,6 +14,8 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
   currentYear = 2008,
   onFinishMatch,
 }) => {
+  const showLocalDebugControls = typeof window !== 'undefined'
+    && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   const buzzerRates = {
     '3pt': Math.round(calculateBuzzerBeaterSuccessRate(player, '3pt') * 100),
     mid: Math.round(calculateBuzzerBeaterSuccessRate(player, 'mid') * 100),
@@ -62,6 +64,7 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
     startMatchSimulation,
     handleNextQuarterOrFinish,
     quickSimulateCurrentQuarter,
+    debugJumpToFourthQuarterTie,
     handleTacticalChoiceOption,
     handleBuzzerBeaterChoice,
   } = useMatchSimulation({ player, userTeam, oppTeam, isInteractive, isPlayoffs, currentYear, onFinishMatch });
@@ -114,7 +117,7 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
                 </span>
               ) : quarterSimulated ? (
                 <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-blue-500/20 text-blue-300 text-[10px] sm:text-[11px] font-bold border border-blue-500/40">
-                  🏁 第 {currentQuarter} 节结束
+                  🏁 {currentQuarter > 4 ? `第 ${currentQuarter - 4} 个加时结束` : `第 ${currentQuarter} 节结束`}
                 </span>
               ) : (
                 <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-slate-800 text-slate-300 text-[10px] sm:text-[11px] font-bold border border-slate-700">
@@ -128,7 +131,8 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
           <div className="py-1 sm:py-2 flex flex-col items-center justify-center space-y-1">
             <div className="text-xs sm:text-sm font-black italic uppercase tracking-widest text-amber-400 flex items-center gap-2">
               <span className="px-2.5 sm:px-3.5 py-0.5 sm:py-1 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 font-mono shadow-inner text-[10px] sm:text-xs">
-                第 {currentQuarter} 节<span className="hidden sm:inline"> (QUARTER {currentQuarter} / 4)</span>
+                {currentQuarter > 4 ? `第 ${currentQuarter - 4} 个加时` : `第 ${currentQuarter} 节`}
+                {currentQuarter <= 4 && <span className="hidden sm:inline"> (QUARTER {currentQuarter} / 4)</span>}
               </span>
             </div>
 
@@ -177,7 +181,17 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
             </div>
 
             {/* ACTION / CONTROL BUTTONS */}
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {showLocalDebugControls && isInteractive && (
+                <button
+                  type="button"
+                  onClick={debugJumpToFourthQuarterTie}
+                  className="rounded-xl border border-fuchsia-500/45 bg-fuchsia-500/10 px-3 py-1.5 text-[10px] font-black text-fuchsia-300 hover:bg-fuchsia-500/20"
+                  title="仅本地开发环境显示"
+                >
+                  调试：第四节平局
+                </button>
+              )}
               {!hasStarted ? (
                 <button
                   onClick={startMatchSimulation}
@@ -194,7 +208,9 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
                   <span>
                     {currentQuarter < 4
                       ? `进入第 ${currentQuarter + 1} 节`
-                      : '查看全场战报'}
+                      : userScore === oppScore
+                        ? currentQuarter === 4 ? '进入加时赛' : `进入第 ${currentQuarter - 3} 个加时`
+                        : '查看全场战报'}
                   </span>
                   <Play className="w-4 h-4 fill-black shrink-0" />
                 </button>
@@ -245,7 +261,7 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
                   场上比赛中 ({userRole} · {assignedMPG}分钟/场)
                 </div>
                 <div className="hidden sm:block text-[11px] text-emerald-300">
-                  第 {currentQuarter} 节进球、抢断与战术抉择将直接决定比赛胜负与个人数据。
+                  {currentQuarter > 4 ? `第 ${currentQuarter - 4} 个加时` : `第 ${currentQuarter} 节`}进球、抢断与战术抉择将直接决定比赛胜负与个人数据。
                 </div>
               </div>
             </div>
@@ -548,7 +564,7 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
               >
                 <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                   <span className="font-mono text-amber-400/80 text-[9px] sm:text-[10px] font-bold px-1 sm:px-1.5 py-0.5 bg-black/40 rounded border border-[#232834] shrink-0">
-                    Q{log.quarter} {log.time}
+                    {log.quarter > 4 ? `OT${log.quarter - 4}` : `Q${log.quarter}`} {log.time}
                   </span>
                   <span className="truncate">{log.text}</span>
                 </div>

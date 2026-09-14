@@ -2,7 +2,7 @@ import { useEffect,useRef,useState } from 'react';
 import { MatchBoxScore,MatchLog,PlayerProfile,Team } from '../types';
 import { getUserMinutesAndRole } from '../utils/leagueLogic';
 
-import { ScheduledQuarterEvent,TacticalOption,buildQuarterEvents,calculateBuzzerBeaterSuccessRate,calculateInteractiveGrade,createInteractiveMatchScorePlan,isPlayerOnCourt,resolveInteractiveFinalScore,shouldTriggerBuzzerBeater } from '../utils/matchEvents';
+import { OVERTIME_SECONDS,ScheduledQuarterEvent,TacticalOption,buildOvertimeEvents,buildQuarterEvents,calculateBuzzerBeaterSuccessRate,calculateInteractiveGrade,createInteractiveMatchScorePlan,isPlayerOnCourt,shouldTriggerBuzzerBeater } from '../utils/matchEvents';
 import { generateTacticalOptions } from '../utils/matchTactics';
 export interface MatchSimulatorProps {
   player: PlayerProfile;
@@ -161,6 +161,17 @@ export function useMatchSimulation({
     setIsSimulating(true);
   };
 
+  const startNextOvertime = () => {
+    const nextQuarter = Math.max(5, currentQuarter + 1);
+    const overtimeNumber = nextQuarter - 4;
+    setCurrentQuarter(nextQuarter);
+    setRemainingSeconds(OVERTIME_SECONDS);
+    setQuarterSimulated(false);
+    setQuarterQueue(buildOvertimeEvents(overtimeNumber, userTeam, oppTeam, player, assignedMPG));
+    updateQueueIndex(0);
+    setIsSimulating(true);
+  };
+
   // Next Quarter or Finish Game Handler
   const handleNextQuarterOrFinish = () => {
     if (currentQuarter < 4) {
@@ -185,9 +196,35 @@ export function useMatchSimulation({
       setQuarterQueue(events);
       updateQueueIndex(0);
       setIsSimulating(true);
+    } else if (userScoreRef.current === oppScoreRef.current) {
+      startNextOvertime();
     } else {
       finishGame();
     }
+  };
+
+  const debugJumpToFourthQuarterTie = () => {
+    const tiedScore = Math.max(96, userScoreRef.current, oppScoreRef.current);
+    userScoreRef.current = tiedScore;
+    oppScoreRef.current = tiedScore;
+    setUserScore(tiedScore);
+    setOppScore(tiedScore);
+    setHasStarted(true);
+    setIsSimulating(false);
+    setShowQuarterEvent(false);
+    setShowBuzzerBeaterModal(false);
+    setCurrentQuarter(4);
+    setRemainingSeconds(0);
+    setQuarterQueue([]);
+    updateQueueIndex(0);
+    setQuarterSimulated(true);
+    setLogs((prev) => [...prev, {
+      id: `debug_q4_tie_${Date.now()}`,
+      quarter: 4,
+      time: '00:00',
+      text: `本地调试：第四节结束，双方以 ${tiedScore} 平进入加时。`,
+      type: 'system',
+    }]);
   };
 
   // Smooth Second-by-Second Countdown Ticker Effect
@@ -558,20 +595,6 @@ export function useMatchSimulation({
 
   const finishGame = () => {
     const ratingGrade = calculateInteractiveGrade({ pts, reb, ast, stl, blk, fgm, fga, ftm, fta, turnovers });
-    const finalScore = resolveInteractiveFinalScore(
-      userScoreRef.current,
-      oppScoreRef.current,
-      scorePlan.finalUserScore > scorePlan.finalOppScore,
-    );
-    const finalLogs = finalScore.wentToOvertime
-      ? [...logs, {
-          id: `overtime_${Date.now()}`,
-          quarter: 5,
-          time: '00:00',
-          text: `双方常规时间战平，比赛进入加时并最终分出胜负。`,
-          type: 'system' as const,
-        }]
-      : logs;
 
     const boxScore: MatchBoxScore = {
       playerStats: {
@@ -590,12 +613,12 @@ export function useMatchSimulation({
         turnovers,
         ratingGrade,
       },
-      userTeamScore: finalScore.userScore,
-      opponentScore: finalScore.oppScore,
+      userTeamScore: userScoreRef.current,
+      opponentScore: oppScoreRef.current,
       userTeamId: userTeam.id,
       opponentTeamId: oppTeam.id,
       isPlayoffs,
-      logs: finalLogs,
+      logs,
       challengesCompleted: pts >= 20 ? ['20+ PTS'] : [],
       rewardSkillPoints: earnedSkillPoints,
       rewardMoney: 0,
@@ -649,6 +672,7 @@ export function useMatchSimulation({
     startMatchSimulation,
     handleNextQuarterOrFinish,
     quickSimulateCurrentQuarter,
+    debugJumpToFourthQuarterTie,
     handleTacticalChoiceOption,
     handleBuzzerBeaterChoice,
   };

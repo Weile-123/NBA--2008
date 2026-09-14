@@ -2,13 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   addQuarterFreeThrows,
+  buildOvertimeEvents,
   buildQuarterEvents,
   calculateInteractiveGrade,
   createInteractiveMatchScorePlan,
   reconcileQuarterRebounds,
   reconcileQuarterTeamScore,
-  resolveInteractiveFinalScore,
   shouldTriggerBuzzerBeater,
+  OVERTIME_SECONDS,
   type ScheduledQuarterEvent,
 } from '../src/utils/matchEvents';
 import type { Attributes, PlayerProfile, Team } from '../src/types';
@@ -93,16 +94,23 @@ test('buzzer-beater prompt appears only when the user is actually down one', () 
   assert.equal(shouldTriggerBuzzerBeater(false, 88, 89), false);
 });
 
-test('interactive final score sends a tie to overtime and never records it as a loss by equality', () => {
-  const userWin = resolveInteractiveFinalScore(88, 88, true);
-  const userLoss = resolveInteractiveFinalScore(88, 88, false);
-  assert.equal(userWin.wentToOvertime, true);
-  assert.ok(userWin.userScore > userWin.oppScore);
-  assert.equal(userLoss.wentToOvertime, true);
-  assert.ok(userLoss.userScore < userLoss.oppScore);
-  assert.deepEqual(resolveInteractiveFinalScore(91, 88, false), {
-    userScore: 91, oppScore: 88, wentToOvertime: false,
+test('overtime uses a five-minute clock and can finish tied for another overtime', () => {
+  const makeTeam = (id: string): Team => ({
+    id, name: id, city: id, abbrev: id, primaryColor: '#000', secondaryColor: '#fff', rating: 85,
+    conference: 'West', starPlayer: '球星', wins: 0, losses: 0, roster: [],
   });
+  const player = {
+    id: 'ot-player', name: '加时球员', ovr: 90, attributes: {}, attributeCaps: {},
+  } as PlayerProfile;
+  const events = buildOvertimeEvents(2, makeTeam('HOME'), makeTeam('AWAY'), player, 36, { user: 12, opp: 12 });
+
+  assert.equal(events[0].targetSeconds, OVERTIME_SECONDS);
+  assert.equal(events[0].timeStr, '05:00');
+  assert.ok(events.every((event) => event.quarter === 6 && event.targetSeconds <= OVERTIME_SECONDS));
+  assert.equal(events.reduce((sum, event) => sum + event.userPtsDelta, 0), 12);
+  assert.equal(events.reduce((sum, event) => sum + event.oppPtsDelta, 0), 12);
+  const overtimeMinutes = events.reduce((sum, event) => sum + (event.playerStatsDelta?.minutes || 0), 0);
+  assert.ok(Math.abs(overtimeMinutes - 5) < 0.001);
 });
 
 test('a 99-rebounding starting center produces elite rebound totals in interactive games', () => {
