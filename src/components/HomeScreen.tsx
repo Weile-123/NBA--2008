@@ -5,7 +5,6 @@ import {
   Bell,
   Flame,
   Globe,
-  Info,
   Loader2,
   MessageSquareText,
   Play,
@@ -147,7 +146,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-cyan-300/70 bg-gradient-to-r from-cyan-400/30 to-violet-400/20 px-2.5 py-1.5 text-[9px] font-black text-cyan-100 shadow-[0_0_14px_rgba(34,211,238,0.22)] transition-all hover:border-cyan-200 hover:bg-cyan-400/40 active:scale-95 sm:text-[10px]"
               aria-label="查看平行联盟模式介绍"
             >
-              <Info className="h-2.5 w-2.5 shrink-0" />
               新模式：玩法说明
             </button>
           )}
