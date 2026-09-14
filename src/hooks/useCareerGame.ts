@@ -1009,7 +1009,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     }
   };
 
-  const handleTriggerDestinyEvent = (event: DestinyEventDefinition) => {
+  const handleTriggerDestinyEvent = (event: DestinyEventDefinition, routeId?: string) => {
     if (!player || gameMode !== 'random_trade') return { success: false, message: '该玩法仅在平行时空开放' };
     const result = triggerDestinyEvent(
       event,
@@ -1019,6 +1019,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
       destinyEventRecords,
       player.id,
       player.name,
+      routeId,
     );
     if (!result.success || !result.record) return { success: false, message: result.message };
     setTeams(result.teams);

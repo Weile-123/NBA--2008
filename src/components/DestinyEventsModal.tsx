@@ -13,7 +13,7 @@ interface DestinyEventsModalProps {
   teams: Team[];
   leagueHistory?: GameState['leagueHistory'];
   records: Record<string, DestinyEventRecord>;
-  onTrigger: (event: DestinyEventDefinition) => { success: boolean; message: string };
+  onTrigger: (event: DestinyEventDefinition, routeId?: string) => { success: boolean; message: string };
   onClose: () => void;
 }
 
@@ -38,9 +38,9 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
   }), [evaluations, currentYear]);
   const selected = evaluations.find((item) => item.event.id === selectedId) || null;
 
-  const handleTrigger = () => {
+  const handleTrigger = (routeId?: string) => {
     if (!selected) return;
-    const response = onTrigger(selected.event);
+    const response = onTrigger(selected.event, routeId);
     setResult(response.message);
     if (response.success) setSelectedId(null);
   };
@@ -105,17 +105,31 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
             </div>
             <p className="mt-4 text-sm leading-relaxed text-slate-300">{selected.event.history}</p>
             <div className="mt-4 rounded-xl border border-[#2a3445] bg-[#0b1018] p-3">
-              <div className="mb-2 text-[10px] font-black tracking-wider text-slate-400">触发条件</div>
+              <div className="mb-2 flex items-center justify-between gap-2 text-[10px] font-black tracking-wider text-slate-400"><span>公开触发条件</span>{!selected.routeEvaluations.length && (selected.event.guide ? <span className="text-cyan-300">引导事件 · 无积分门槛</span> : <span className={selected.score >= selected.requiredScore ? 'text-emerald-300' : 'text-amber-300'}>契合度 {selected.score}/{selected.requiredScore}</span>)}</div>
               <div className="space-y-2">
-                {selected.checks.map((check) => <div key={check.label} className={`flex items-center gap-2 text-xs ${check.met ? 'text-emerald-300' : 'text-rose-300'}`}>{check.met ? <Check className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}<span>{check.label}</span></div>)}
+                {selected.checks.map((check) => <div key={check.label} className={`flex items-center gap-2 text-xs ${check.met ? 'text-emerald-300' : 'text-rose-300'}`}>{check.met ? <Check className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}<span>{check.label}{check.required ? '（必须）' : ''}</span></div>)}
                 <div className={`flex items-center gap-2 text-xs ${currentYear === selected.event.year ? 'text-emerald-300' : 'text-slate-400'}`}><Clock3 className="h-4 w-4" /><span>仅限 {selected.event.year}-{selected.event.year + 1} 赛季</span></div>
               </div>
             </div>
+            {selected.routeEvaluations.length > 0 && (
+              <div className="mt-4 space-y-2.5">
+                <div className="text-[10px] font-black tracking-wider text-slate-400">命运分支</div>
+                {selected.routeEvaluations.map((routeEvaluation) => (
+                  <div key={routeEvaluation.route.id} className={`rounded-xl border p-3 ${routeEvaluation.available ? 'border-amber-400/45 bg-amber-500/10' : 'border-slate-700 bg-slate-900/55'}`}>
+                    <div className="flex items-center justify-between gap-2"><span className="text-xs font-black text-white">{routeEvaluation.route.title}</span><span className={`text-[10px] font-black ${routeEvaluation.score >= routeEvaluation.requiredScore ? 'text-emerald-300' : 'text-amber-300'}`}>契合度 {routeEvaluation.score}/{routeEvaluation.requiredScore}</span></div>
+                    <div className="mt-2 space-y-1.5">{routeEvaluation.checks.map((check) => <div key={check.label} className={`flex items-center gap-1.5 text-[10px] ${check.met ? 'text-emerald-300' : 'text-rose-300'}`}>{check.met ? <Check className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}<span>{check.label}{check.required ? '（必须）' : ''}</span></div>)}</div>
+                    <div className="mt-2 rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-2 text-[10px] leading-relaxed text-cyan-100"><span className="font-black text-cyan-300">结果：</span>{routeEvaluation.route.result}</div>
+                    {routeEvaluation.available && selected.status !== 'triggered' && <button type="button" onClick={() => handleTrigger(routeEvaluation.route.id)} className="mt-2.5 w-full rounded-lg bg-amber-500 py-2 text-xs font-black text-black">触发“{routeEvaluation.route.title}”</button>}
+                  </div>
+                ))}
+              </div>
+            )}
+            {!selected.routeEvaluations.length && <div className="mt-4 rounded-xl border border-cyan-500/25 bg-cyan-500/[0.07] p-3 text-xs leading-relaxed text-cyan-100"><span className="font-black text-cyan-300">触发结果：</span>{selected.event.result}</div>}
             {selected.status === 'triggered' && <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs leading-relaxed text-emerald-200"><ShieldCheck className="mr-1 inline h-4 w-4" />{selected.record?.result || selected.event.result}</div>}
-            {selected.status === 'available' ? (
-              <button type="button" onClick={handleTrigger} className="mt-4 w-full rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 px-4 py-3 text-sm font-black text-black shadow-lg shadow-amber-500/20">触发命定事件</button>
+            {selected.status === 'available' && !selected.routeEvaluations.length ? (
+              <button type="button" onClick={() => handleTrigger()} className="mt-4 w-full rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 px-4 py-3 text-sm font-black text-black shadow-lg shadow-amber-500/20">触发命定事件</button>
             ) : (
-              <div className="mt-4 flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/70 px-4 py-3 text-xs font-bold text-slate-400"><LockKeyhole className="h-4 w-4" />{STATUS_META[selected.status].label}</div>
+              selected.status !== 'available' && <div className="mt-4 flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/70 px-4 py-3 text-xs font-bold text-slate-400"><LockKeyhole className="h-4 w-4" />{STATUS_META[selected.status].label}</div>
             )}
           </div>
         </div>
