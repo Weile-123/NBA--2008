@@ -18,13 +18,13 @@ import {
 } from 'lucide-react';
 import { GameMode, GAME_MODE_CONFIG } from '../gameMode';
 import { loadGlobalHallOfFame, retryPendingGlobalHallOfFameUpload } from '../lib/globalLeaderboard';
-import { getLatestSaveSlotMeta, hydrateGameStorage, SaveSlotId, SaveSlotMeta } from '../utils/storage';
+import { getSaveMeta, hydrateGameStorage, SaveMeta } from '../utils/storage';
 import { TeamLogo } from './TeamLogo';
 import { UpdateAnnouncementModal } from './UpdateAnnouncementModal';
 import { UserFeedbackModal } from './UserFeedbackModal';
 
 interface HomeScreenProps {
-  onLaunchMode: (mode: GameMode, action: 'new' | 'continue', slotId?: SaveSlotId) => void;
+  onLaunchMode: (mode: GameMode, action: 'new' | 'continue') => void;
   onOpenHallOfFame: () => void;
   onOpenGlobalHallOfFame?: () => void;
 }
@@ -110,9 +110,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     };
   }, []);
 
-  const savesByMode = useMemo<Record<GameMode, SaveSlotMeta>>(() => ({
-    classic: getLatestSaveSlotMeta('classic'),
-    random_trade: getLatestSaveSlotMeta('random_trade'),
+  const savesByMode = useMemo<Record<GameMode, SaveMeta>>(() => ({
+    classic: getSaveMeta('classic'),
+    random_trade: getSaveMeta('random_trade'),
   }), [saveRevision]);
 
   const renderModeCard = (mode: GameMode) => {
@@ -194,7 +194,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <button
               type="button"
               disabled={!modeSavesReady}
-              onClick={() => onLaunchMode(mode, hasSave ? 'continue' : 'new', meta.slotId)}
+              onClick={() => onLaunchMode(mode, hasSave ? 'continue' : 'new')}
               className={`flex min-w-0 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-1.5 py-2.5 text-[10px] font-black transition-transform active:scale-[0.98] disabled:cursor-wait disabled:opacity-50 sm:text-sm ${
                 isClassic
                   ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black'
@@ -333,7 +333,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 onClick={() => {
                   const targetMode = pendingNewMode;
                   setPendingNewMode(null);
-                  onLaunchMode(targetMode, 'new', savesByMode[targetMode].slotId);
+                  onLaunchMode(targetMode, 'new');
                 }}
                 className="rounded-xl bg-red-600 px-4 py-2 text-xs font-black text-white shadow-lg shadow-red-600/30 active:scale-95"
               >

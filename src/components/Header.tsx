@@ -35,9 +35,7 @@ interface HeaderProps {
   isPlayoffs: boolean;
   onOpenAttributes: () => void;
   onOpenSettings: () => void;
-  onOpenSaveManager?: () => void;
   onGoHome?: () => void;
-  onQuickSave?: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
 }

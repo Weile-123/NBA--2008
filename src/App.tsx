@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { getSaveSlotMeta, loadGameFromStorage, SaveSlotId } from './utils/storage';
+import { loadGameFromStorage } from './utils/storage';
 import { DEFAULT_GAME_MODE, GameMode } from './gameMode';
 
 import { Header } from './components/Header';
@@ -22,7 +22,6 @@ const RealTradesModal = lazy(() => import('./components/RealTradesModal').then((
 const RetirementFlowModal = lazy(() => import('./components/RetirementFlowModal').then((module) => ({ default: module.RetirementFlowModal })));
 const RookieDraftAndScoutModal = lazy(() => import('./components/RookieDraftAndScoutModal').then((module) => ({ default: module.RookieDraftAndScoutModal })));
 const RosterAndTransfers = lazy(() => import('./components/RosterAndTransfers').then((module) => ({ default: module.RosterAndTransfers })));
-const SaveSlotsModal = lazy(() => import('./components/SaveSlotsModal').then((module) => ({ default: module.SaveSlotsModal })));
 const SeasonDashboard = lazy(() => import('./components/SeasonDashboard').then((module) => ({ default: module.SeasonDashboard })));
 const SettingsModal = lazy(() => import('./components/SettingsModal').then((module) => ({ default: module.SettingsModal })));
 const SocialAndLife = lazy(() => import('./components/SocialAndLife').then((module) => ({ default: module.SocialAndLife })));
@@ -37,41 +36,31 @@ export default function App() {
   // the player explicitly chooses the matching mode's "continue" action.
   const [resumeOnMount, setResumeOnMount] = useState(false);
   const [launchAction, setLaunchAction] = useState<'home' | 'new' | 'continue'>('home');
-  const [launchSlotId, setLaunchSlotId] = useState<SaveSlotId>('slot_1');
-
-  const handleSelectGameMode = (nextMode: GameMode, action: 'new' | 'continue', slotId: SaveSlotId = 'slot_1') => {
+  const handleSelectGameMode = (nextMode: GameMode, action: 'new' | 'continue') => {
     setResumeOnMount(action === 'continue');
     setLaunchAction(action);
-    setLaunchSlotId(slotId);
     setGameMode(nextMode);
   };
 
-  return <div key={gameMode}><CareerApp gameMode={gameMode} resumeOnMount={resumeOnMount} launchAction={launchAction} launchSlotId={launchSlotId} onSelectGameMode={handleSelectGameMode} /></div>;
+  return <div key={gameMode}><CareerApp gameMode={gameMode} resumeOnMount={resumeOnMount} launchAction={launchAction} onSelectGameMode={handleSelectGameMode} /></div>;
 }
 
 function CareerApp({
   gameMode,
   resumeOnMount,
   launchAction,
-  launchSlotId,
   onSelectGameMode,
 }: {
   gameMode: GameMode;
   resumeOnMount: boolean;
   launchAction: 'home' | 'new' | 'continue';
-  launchSlotId: SaveSlotId;
-  onSelectGameMode: (mode: GameMode, action: 'new' | 'continue', slotId?: SaveSlotId) => void;
+  onSelectGameMode: (mode: GameMode, action: 'new' | 'continue') => void;
 }) {
   const {
-    handleOpenSaveSlots,
     phase,
     setPhase,
     prevPhase,
     setPrevPhase,
-    currentSaveSlot,
-    setCurrentSaveSlot,
-    isSaveSlotsOpen,
-    setIsSaveSlotsOpen,
     toastMsg,
     currentYear,
     currentSeasonWeek,
@@ -134,12 +123,8 @@ function CareerApp({
     handleSignNewContract,
     handleAgeDeclineRetire,
     handleAgeDeclineContinue,
-    getCurrentSavedData,
-    handleQuickSave,
     handleLoadSaveData,
-    handleManualSave,
     handleResetGame,
-    handleCurrentSlotDeleted,
     handlePlayerCreated,
     handleCompleteDraft,
     handleSignContract,
@@ -163,7 +148,7 @@ function CareerApp({
     handleInviteStar,
     currentTeam,
     oppTeam,
-  } = useCareerGame(gameMode, resumeOnMount, launchSlotId);
+  } = useCareerGame(gameMode, resumeOnMount);
 
   useEffect(() => {
     if (launchAction === 'new') setPhase('creation');
@@ -235,18 +220,17 @@ function CareerApp({
       {/* Title / Home Screen Phase */}
       {phase === 'home' && (
           <HomeScreen
-            onLaunchMode={(targetMode, action, slotId: SaveSlotId = 'slot_1') => {
+            onLaunchMode={(targetMode, action) => {
               if (targetMode !== gameMode) {
-                onSelectGameMode(targetMode, action, slotId);
+                onSelectGameMode(targetMode, action);
                 return;
               }
               if (action === 'continue') {
-                const saved = loadGameFromStorage(slotId, targetMode);
-                if (saved?.player) handleLoadSaveData(saved, slotId);
+                const saved = loadGameFromStorage(targetMode);
+                if (saved?.player) handleLoadSaveData(saved);
                 else if (player) setPhase('regular_season');
                 else setPhase('creation');
               } else {
-                setCurrentSaveSlot(slotId);
                 setPhase('creation');
               }
             }}
@@ -313,9 +297,7 @@ function CareerApp({
             isPlayoffs={isPlayoffs}
             onOpenAttributes={() => setActiveTab('attributes')}
             onOpenSettings={() => setShowSettingsModal(true)}
-            onOpenSaveManager={handleOpenSaveSlots}
             onGoHome={() => setPhase('home')}
-            onQuickSave={handleQuickSave}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
           />
@@ -543,12 +525,6 @@ function CareerApp({
           currentYear={currentYear}
           seasonWeek={currentSeasonWeek}
           lastSavedAt={lastSavedAt}
-          currentSlotId={currentSaveSlot}
-          onManualSave={handleManualSave}
-          onOpenSaveManager={() => {
-            setShowSettingsModal(false);
-            handleOpenSaveSlots();
-          }}
           onGoHome={() => {
             setShowSettingsModal(false);
             setPhase('home');
@@ -557,19 +533,6 @@ function CareerApp({
         />
       )}
 
-        {/* Save Slots & File Manager Modal */}
-        {isSaveSlotsOpen && (
-          <SaveSlotsModal
-            gameMode={gameMode}
-            isOpen={true}
-            onClose={() => setIsSaveSlotsOpen(false)}
-            currentSaveData={getCurrentSavedData()}
-            currentSlotId={currentSaveSlot}
-            onLoadSaveData={handleLoadSaveData}
-            onCurrentSlotDeleted={handleCurrentSlotDeleted}
-            onShowToast={showToast}
-          />
-        )}
       </Suspense>
 
       {/* Legendary Hall of Fame Page */}

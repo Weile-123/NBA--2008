@@ -16,7 +16,7 @@ export function normalizeBranding<T>(value: T): T {
       if (item === './logos/lal.svg') return './logos/lal.png';
       if (/\/(?:nba)\.(?:png|svg)(?:[?#]|$)/i.test(item)) return LEAGUE_LOGO;
       // IDs, paths and award enums must keep their original values for compatibility.
-      if (/^(?:id|type|key|handle|avatar|logo|logoUrl|slotId|currentTeamId|teamId)$/.test(key)) return item;
+      if (/^(?:id|type|key|handle|avatar|logo|logoUrl|currentTeamId|teamId)$/.test(key)) return item;
       if (/^[a-z0-9_]+$/i.test(item) && key !== 'name') return item;
       return brandText(item);
     }

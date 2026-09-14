@@ -8,7 +8,7 @@ import { mustRetireAtAge,shouldShowAgeDeclinePrompt,syncPlayerAgeDecay } from '.
 import { ContractOffer } from '../utils/contractLogic';
 import { calculateUserDraftPick } from '../utils/draftLogic';
 import { progressLeagueForNewSeason } from '../utils/progressionLogic';
-import { clearGameStorage,hydrateGameStorage,loadGameFromStorage,SavedData,saveGameToStorage,SaveSlotId } from '../utils/storage';
+import { clearGameStorage,hydrateGameStorage,loadGameFromStorage,SavedData } from '../utils/storage';
 import { useAutoSave } from './useAutoSave';
 import { usePlayerActions } from './usePlayerActions';
 import { calculateDisposableSalary } from '../utils/economy';
@@ -24,7 +24,7 @@ import type { YearDraftData } from '../data/draftData';
 import { generateParallelDraftData } from '../utils/randomDraftLogic';
 import { evaluateTeamStrategies, initializeTeamStrategies } from '../utils/teamStrategyLogic';
 
-export function useCareerGame(gameMode: GameMode, resumeOnMount = true, initialSaveSlot: SaveSlotId = 'slot_1') {
+export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   const [phase, setPhaseState] = useState<GameState['phase']>('home');
   const setPhase: Dispatch<SetStateAction<GameState['phase']>> = useCallback((nextPhase) => {
     // Keep the phase in the same synchronous React batch as year, roster and
@@ -34,8 +34,6 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true, initialS
     setPhaseState(nextPhase);
   }, []);
   const [prevPhase, setPrevPhase] = useState<GameState['phase']>('regular_season');
-  const [currentSaveSlot, setCurrentSaveSlot] = useState<SaveSlotId>(initialSaveSlot);
-  const [isSaveSlotsOpen, setIsSaveSlotsOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [currentYear, setCurrentYear] = useState(2008);
   const [currentSeasonWeek, setCurrentSeasonWeek] = useState(1);
@@ -479,11 +477,11 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true, initialS
   // Load saved game state on initial mount
   useEffect(() => {
     void hydrateGameStorage(gameMode).then(() => {
-      const saved = loadGameFromStorage(initialSaveSlot, gameMode);
+      const saved = loadGameFromStorage(gameMode);
       if (resumeOnMount && saved?.player) handleLoadSaveData(saved);
       setStorageReady(true);
     });
-  }, [gameMode, resumeOnMount, initialSaveSlot]);
+  }, [gameMode, resumeOnMount]);
 
   const saveSnapshot = useMemo<SavedData | null>(() => {
     if (!player) return null;
@@ -501,7 +499,6 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true, initialS
     return {
       version: 1,
       gameMode,
-      slotId: currentSaveSlot,
       updatedAt: nowStr,
       phase: activeSavePhase,
       currentYear,
@@ -537,48 +534,21 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true, initialS
         freeAgencyOffers,
       },
     };
-  }, [player, phase, gameMode, currentSaveSlot, currentYear, currentSeasonWeek, isPlayoffs, teams, schedule, tweets, careerHistory, leagueHistory, activeTab, executedTradeYears, seasonTradeHistory, parallelDraftHistory, activeInSeasonTradeOffers, declinePromptYear, isInteractiveMatch, usedOffseasonEventIds, offseasonMonth, offseasonCompletedPlans, offseasonEventMonths, offseasonPhase, isDraftCompleted, isContractCompleted, contractStep, renewalOffer, freeAgencyOffers]);
+  }, [player, phase, gameMode, currentYear, currentSeasonWeek, isPlayoffs, teams, schedule, tweets, careerHistory, leagueHistory, activeTab, executedTradeYears, seasonTradeHistory, parallelDraftHistory, activeInSeasonTradeOffers, declinePromptYear, isInteractiveMatch, usedOffseasonEventIds, offseasonMonth, offseasonCompletedPlans, offseasonEventMonths, offseasonPhase, isDraftCompleted, isContractCompleted, contractStep, renewalOffer, freeAgencyOffers]);
 
   const autoSave = useAutoSave(
     saveSnapshot,
     (time) => setLastSavedAt(new Date(time).toLocaleTimeString('zh-CN')),
     isRegularSeasonAutoSimulating,
   );
-  const getCurrentSavedData = () => saveSnapshot ? { ...saveSnapshot, updatedAt: new Date().toISOString() } : null;
-  const handleOpenSaveSlots = () => {
-    autoSave.flush();
-    setIsSaveSlotsOpen(true);
-  };
   useLayoutEffect(() => {
     if (phase === 'home') autoSave.flush();
   }, [phase, autoSave]);
 
-  const handleQuickSave = () => {
-    const data = getCurrentSavedData();
-    if (!data || !data.player) {
-      showToast('⚠️ 当前没有可保存的球员状态，请先建立或载入生涯');
-      return;
-    }
-    const nowStr = new Date().toISOString();
-    data.updatedAt = nowStr;
-    data.slotId = currentSaveSlot;
-    const success = saveGameToStorage(data, currentSaveSlot, gameMode);
-    if (success) autoSave.cancel();
-    if (success) {
-      setLastSavedAt(new Date(nowStr).toLocaleTimeString('zh-CN'));
-      const slotNames: Record<string, string> = { slot_1: '存档 1', slot_2: '存档 2', slot_3: '存档 3', slot_4: '存档 4' };
-      showToast(`💾 进度已写入 [${slotNames[currentSaveSlot] || '当前存档'}]！[${data.player.name} · ${nowStr}]`);
-    } else {
-      showToast('❌ 保存失败：浏览器本地存储错误');
-    }
-  };
-
-  const handleLoadSaveData = (data: SavedData, loadedSlotId?: SaveSlotId) => {
+  const handleLoadSaveData = (data: SavedData) => {
     if (!data || !data.player) return;
     autoSave.flush();
     autoSave.cancel();
-    const activeSlot = loadedSlotId || data.slotId || 'slot_1';
-    setCurrentSaveSlot(activeSlot);
     setCurrentYear(data.currentYear || 2008);
     const playedCount = (data.schedule || []).filter((s) => s.isPlayed).length;
     let loadedWeek = data.currentSeasonWeek || 1;
@@ -646,10 +616,6 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true, initialS
     setPhase(targetPhase);
   };
 
-  const handleManualSave = () => {
-    handleQuickSave();
-  };
-
   const handleResetGame = () => {
     autoSave.cancel();
     clearGameStorage(gameMode);
@@ -671,12 +637,6 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true, initialS
     setShowSettingsModal(false);
     setDeclinePromptYear(null);
     setShowAgeDeclineModal(false);
-  };
-
-  const handleCurrentSlotDeleted = () => {
-    handleResetGame();
-    setPhase('home');
-    showToast('⚠️ 当前正在游玩的存档已被删除，已自动返回首页大厅');
   };
 
   // Player creation handler
@@ -1096,15 +1056,10 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true, initialS
 
   const historicalSeason = HISTORICAL_SEASONS.find((h) => h.year === currentYear) || HISTORICAL_SEASONS[0];
   return {
-    handleOpenSaveSlots,
     phase,
     setPhase,
     prevPhase,
     setPrevPhase,
-    currentSaveSlot,
-    setCurrentSaveSlot,
-    isSaveSlotsOpen,
-    setIsSaveSlotsOpen,
     toastMsg,
     currentYear,
     currentSeasonWeek,
@@ -1167,12 +1122,8 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true, initialS
     handleSignNewContract,
     handleAgeDeclineRetire,
     handleAgeDeclineContinue,
-    getCurrentSavedData,
-    handleQuickSave,
     handleLoadSaveData,
-    handleManualSave,
     handleResetGame,
-    handleCurrentSlotDeleted,
     handlePlayerCreated,
     handleCompleteDraft,
     handleSignContract,

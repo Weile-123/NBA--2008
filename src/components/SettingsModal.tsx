@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
-import { Settings, Save, CheckCircle2, X, ShieldCheck, User, FolderOpen, Home } from 'lucide-react';
+import React from 'react';
+import { Settings, X, ShieldCheck, User, Home } from 'lucide-react';
 import { PlayerProfile, Team } from '../types';
-import { SaveSlotId, SAVE_SLOTS_CONFIG } from '../utils/storage';
 
 interface SettingsModalProps {
   player: PlayerProfile | null;
@@ -9,8 +8,6 @@ interface SettingsModalProps {
   currentYear: number;
   seasonWeek: number;
   lastSavedAt: string | null;
-  currentSlotId?: SaveSlotId;
-  onOpenSaveManager?: () => void;
   onGoHome?: () => void;
   onClose: () => void;
 }
@@ -21,13 +18,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   currentYear,
   seasonWeek,
   lastSavedAt,
-  currentSlotId = 'slot_1',
-  onOpenSaveManager,
   onGoHome,
   onClose,
 }) => {
-  const currentSlotName = SAVE_SLOTS_CONFIG.find((s) => s.id === currentSlotId)?.name || '存档 1';
-
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-[#11141b] border border-[#232834] rounded-2xl max-w-md w-full overflow-hidden shadow-2xl relative text-slate-200 animate-in fade-in zoom-in-95 duration-150">
