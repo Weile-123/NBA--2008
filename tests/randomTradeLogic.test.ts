@@ -88,6 +88,62 @@ test('full parallel league performs 14 to 20 moves but only displays major deals
   assert.equal(result.modalData?.hiddenTransactions, (result.modalData?.totalTransactions || 0) - (result.modalData?.executedTrades.length || 0));
 });
 
+test('a 92 OVR star cannot be swapped one-for-one for an 81 OVR prospect', () => {
+  const teams = makeLeague(30);
+  teams[0].strategy = 'contender';
+  teams[1].strategy = 'rebuilding';
+  teams[0].roster[0] = {
+    ...teams[0].roster[0],
+    id: 'gasol',
+    name: '保罗·加索尔',
+    position: 'PF',
+    ovr: 92,
+    age: 29,
+    peakOvr: 92,
+  };
+  teams[1].roster[0] = {
+    ...teams[1].roster[0],
+    id: 'love',
+    name: '凯文·乐福',
+    position: 'PF',
+    ovr: 81,
+    age: 21,
+    peakOvr: 92,
+  };
+
+  for (let seed = 1; seed <= 40; seed += 1) {
+    const result = executeRandomTradesForSeason(teams, 2009, {
+      random: seededRandom(seed),
+      minTrades: 20,
+      maxTrades: 20,
+    });
+    const invalidSwap = (result.modalData?.executedTrades || []).some((trade) => {
+      const names = [trade.playerA?.name, trade.playerB?.name];
+      return names.includes('保罗·加索尔') && names.includes('凯文·乐福');
+    });
+    assert.equal(invalidSwap, false, `invalid superstar swap generated with seed ${seed}`);
+  }
+});
+
+test('the defending champion protects every 90-plus player and makes at most one trade', () => {
+  const teams = makeLeague(30);
+  teams[0].strategy = 'contender';
+  teams[0].roster[0] = { ...teams[0].roster[0], id: 'champ_star_1', name: '冠军核心A', ovr: 94, age: 28, peakOvr: 94 };
+  teams[0].roster[1] = { ...teams[0].roster[1], id: 'champ_star_2', name: '冠军核心B', ovr: 90, age: 27, peakOvr: 92 };
+  const originalIds = new Set(teams[0].roster.map((player) => player.id));
+
+  const result = executeRandomTradesForSeason(teams, 2009, {
+    random: seededRandom(2026),
+    minTrades: 20,
+    maxTrades: 20,
+    defendingChampionTeamId: teams[0].id,
+  });
+  const championRoster = result.updatedTeams[0].roster;
+  assert.equal(championRoster.some((player) => player.id === 'champ_star_1'), true);
+  assert.equal(championRoster.some((player) => player.id === 'champ_star_2'), true);
+  assert.ok(championRoster.filter((player) => !originalIds.has(player.id)).length <= 1);
+});
+
 test('team direction responds to sustained results without skipping across all tiers', () => {
   const teams = makeLeague();
   teams[0].strategy = 'rebuilding';

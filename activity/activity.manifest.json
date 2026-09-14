@@ -1,0 +1,38 @@
+{
+  "metaActivityId": "app_a1c57bc9c2",
+  "alias": "app_a1c57bc9c2",
+  "envId": "app-a1c57bc9c2-d5glgsllk7b7bd845",
+  "status": "verified",
+  "publicBaseUrl": "https://app-a1c57bc9c2-d5glgsllk7b7bd845-1252166086.ap-shanghai.app.tcloudbase.com",
+  "resources": {
+    "tables": [
+      "public.leaderboard_entries"
+    ],
+    "functions": [
+      "activity_api"
+    ],
+    "routes": [
+      "/api/health",
+      "/api/leaderboard",
+      "/api/leaderboard/me",
+      "/api/leaderboard/submit"
+    ],
+    "migrations": [
+      "20260914180000_split_leaderboard_by_game_mode",
+      "20260914190000_read_leaderboard_by_game_mode",
+      "20260914234000_deduplicate_legendary_careers"
+    ]
+  },
+  "verification": {
+    "ok": true,
+    "verifiedAt": "2026-09-14T23:36:35+08:00",
+    "health": "passed",
+    "publicClassicRead": "passed",
+    "legacyDefaultCompatibility": "passed",
+    "anonymousWriteProtection": "passed",
+    "parallelAuthenticatedRoundTrip": "passed",
+    "crossModeIsolation": "passed",
+    "duplicateCareerFiltering": "passed",
+    "temporaryRowsCleaned": true
+  }
+}

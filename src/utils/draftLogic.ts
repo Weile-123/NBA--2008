@@ -2,6 +2,16 @@ import { Team, RosterPlayer, PlayerProfile, Position } from '../types';
 import { getHistoricalDraftData, DraftPickItem, YearDraftData } from '../data/draftData';
 import { calculateTeamPowerRating } from './leagueLogic';
 
+/** The team selected during creation is authoritative for the user's first draft. */
+export function resolveUserDraftTeam(
+  teams: Team[],
+  player: Pick<PlayerProfile, 'favoriteTeamId' | 'currentTeamId'>,
+  fallbackTeamId?: string,
+): Team {
+  const requestedTeamId = player.favoriteTeamId || fallbackTeamId || player.currentTeamId;
+  return teams.find((team) => team.id === requestedTeamId) || teams[0];
+}
+
 /**
  * Dynamically calculates realistic user draft pick based on player overall rating (OVR).
  * 85+ OVR -> high probability for #1 pick

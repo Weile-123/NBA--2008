@@ -1,32 +1,31 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { loadGameFromStorage } from './utils/storage';
 import { DEFAULT_GAME_MODE, GameMode } from './gameMode';
 
 import { Header } from './components/Header';
 import { HomeScreen } from './components/HomeScreen';
-
-const AgeDeclineModal = lazy(() => import('./components/AgeDeclineModal').then((module) => ({ default: module.AgeDeclineModal })));
-const AttributesPanel = lazy(() => import('./components/AttributesPanel').then((module) => ({ default: module.AttributesPanel })));
-const ContractSigningModal = lazy(() => import('./components/ContractSigningModal').then((module) => ({ default: module.ContractSigningModal })));
-const CreationModal = lazy(() => import('./components/CreationModal').then((module) => ({ default: module.CreationModal })));
-const DraftNightModal = lazy(() => import('./components/DraftNightModal').then((module) => ({ default: module.DraftNightModal })));
-const DraftWaitingAnimationModal = lazy(() => import('./components/DraftWaitingAnimationModal').then((module) => ({ default: module.DraftWaitingAnimationModal })));
-const DestinyEventsModal = lazy(() => import('./components/DestinyEventsModal').then((module) => ({ default: module.DestinyEventsModal })));
-const HallOfFame = lazy(() => import('./components/HallOfFame').then((module) => ({ default: module.HallOfFame })));
-const LeagueStandings = lazy(() => import('./components/LeagueStandings').then((module) => ({ default: module.LeagueStandings })));
-const LegendaryHallOfFameModal = lazy(() => import('./components/LegendaryHallOfFameModal').then((module) => ({ default: module.LegendaryHallOfFameModal })));
-const MatchSimulator = lazy(() => import('./components/MatchSimulator').then((module) => ({ default: module.MatchSimulator })));
-const MilestoneModal = lazy(() => import('./components/MilestoneModal').then((module) => ({ default: module.MilestoneModal })));
-const MilestonesView = lazy(() => import('./components/MilestonesView').then((module) => ({ default: module.MilestonesView })));
-const PostMatchModal = lazy(() => import('./components/PostMatchModal').then((module) => ({ default: module.PostMatchModal })));
-const RealTradesModal = lazy(() => import('./components/RealTradesModal').then((module) => ({ default: module.RealTradesModal })));
-const RetirementFlowModal = lazy(() => import('./components/RetirementFlowModal').then((module) => ({ default: module.RetirementFlowModal })));
-const RookieDraftAndScoutModal = lazy(() => import('./components/RookieDraftAndScoutModal').then((module) => ({ default: module.RookieDraftAndScoutModal })));
-const RosterAndTransfers = lazy(() => import('./components/RosterAndTransfers').then((module) => ({ default: module.RosterAndTransfers })));
-const SeasonDashboard = lazy(() => import('./components/SeasonDashboard').then((module) => ({ default: module.SeasonDashboard })));
-const SettingsModal = lazy(() => import('./components/SettingsModal').then((module) => ({ default: module.SettingsModal })));
-const SocialAndLife = lazy(() => import('./components/SocialAndLife').then((module) => ({ default: module.SocialAndLife })));
-const TimelinePage = lazy(() => import('./components/TimelinePage').then((module) => ({ default: module.TimelinePage })));
+import { AgeDeclineModal } from './components/AgeDeclineModal';
+import { AttributesPanel } from './components/AttributesPanel';
+import { ContractSigningModal } from './components/ContractSigningModal';
+import { CreationModal } from './components/CreationModal';
+import { DraftNightModal } from './components/DraftNightModal';
+import { DraftWaitingAnimationModal } from './components/DraftWaitingAnimationModal';
+import { DestinyEventsModal } from './components/DestinyEventsModal';
+import { HallOfFame } from './components/HallOfFame';
+import { LeagueStandings } from './components/LeagueStandings';
+import { LegendaryHallOfFameModal } from './components/LegendaryHallOfFameModal';
+import { MatchSimulator } from './components/MatchSimulator';
+import { MilestoneModal } from './components/MilestoneModal';
+import { MilestonesView } from './components/MilestonesView';
+import { PostMatchModal } from './components/PostMatchModal';
+import { RealTradesModal } from './components/RealTradesModal';
+import { RetirementFlowModal } from './components/RetirementFlowModal';
+import { RookieDraftAndScoutModal } from './components/RookieDraftAndScoutModal';
+import { RosterAndTransfers } from './components/RosterAndTransfers';
+import { SeasonDashboard } from './components/SeasonDashboard';
+import { SettingsModal } from './components/SettingsModal';
+import { SocialAndLife } from './components/SocialAndLife';
+import { TimelinePage } from './components/TimelinePage';
 
 import { useCareerGame } from './hooks/useCareerGame';
 import { mustRetireAtAge } from './utils/calc2k';
@@ -158,50 +157,6 @@ function CareerApp({
     if (launchAction === 'new') setPhase('creation');
   }, [launchAction, setPhase]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const warmModules = async (loaders: Array<() => Promise<unknown>>) => {
-      for (const load of loaders) {
-        if (cancelled) return;
-        try { await load(); } catch { /* The normal Suspense boundary remains the fallback. */ }
-      }
-    };
-
-    // Warm the chunks used by the linear career flow before the player reaches
-    // them. This preserves code splitting while preventing first-entry page
-    // replacement flashes in slower embedded WebViews.
-    const careerFlowTimer = window.setTimeout(() => {
-      void warmModules([
-        () => import('./components/SeasonDashboard'),
-        () => import('./components/CreationModal'),
-        () => import('./components/RookieDraftAndScoutModal'),
-        () => import('./components/DraftNightModal'),
-        () => import('./components/ContractSigningModal'),
-        () => import('./components/MatchSimulator'),
-        () => import('./components/PostMatchModal'),
-      ]);
-    }, 300);
-
-    const navigationTimer = window.setTimeout(() => {
-      void warmModules([
-        () => import('./components/LeagueStandings'),
-        () => import('./components/AttributesPanel'),
-        () => import('./components/RosterAndTransfers'),
-        () => import('./components/SocialAndLife'),
-        () => import('./components/TimelinePage'),
-        () => import('./components/MilestonesView'),
-        () => import('./components/HallOfFame'),
-        () => import('./components/RetirementFlowModal'),
-      ]);
-    }, 4500);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(careerFlowTimer);
-      window.clearTimeout(navigationTimer);
-    };
-  }, []);
-
   return (
     <div className={`min-h-full bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 ${isRegularSeasonAutoSimulating ? 'app-auto-simulating' : ''}`}>
       {/* Draft Waiting Animation Modal */}
@@ -275,7 +230,19 @@ function CareerApp({
 
         {/* 2008 Draft Night Phase */}
         {phase === 'draft' && player && (
-          <DraftNightModal player={player} teams={teams} onComplete={handleCompleteDraft} />
+          <DraftNightModal
+            player={player}
+            teams={teams}
+            currentYear={2008}
+            onComplete={(updatedTeams, teamId, pick, selectedJerseyNum) => {
+              if (updatedTeams) setTeams(updatedTeams);
+              handleCompleteDraft(
+                teamId || player.favoriteTeamId || player.currentTeamId,
+                pick || player.draftPick || 1,
+                selectedJerseyNum,
+              );
+            }}
+          />
         )}
 
         {/* Contract Signing Phase */}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PlayerProfile, Team, Position } from '../types';
 import { TeamLogo } from './TeamLogo';
+import { resolveUserDraftTeam } from '../utils/draftLogic';
 import { gameConfetti as confetti } from '../utils/gameConfetti';
 import { Award, Sparkles, CheckCircle2, ChevronRight, Zap, Target, Shield, Flame, Radio } from 'lucide-react';
 
@@ -134,8 +135,7 @@ export const RookieDraftAndScoutModal: React.FC<RookieDraftAndScoutModalProps> =
   const [spotlightRevealed, setSpotlightRevealed] = useState(false);
 
   // Target team chosen during character creation
-  const targetTeamId = player.favoriteTeamId || player.currentTeamId || 'lal';
-  const draftTeam = teams.find((t) => t.id === targetTeamId) || teams[0];
+  const draftTeam = resolveUserDraftTeam(teams, player, 'lal');
 
   const pick = player.draftPick || 1;
   const getPickOrdinal = (n: number) => {

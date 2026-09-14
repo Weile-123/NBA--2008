@@ -9,6 +9,7 @@ export interface RandomTradeOptions {
   userPlayerId?: string;
   userPlayerName?: string;
   userTeamId?: string;
+  defendingChampionTeamId?: string;
 }
 
 const keyOf = (player: RosterPlayer) => player.id || player.name;
@@ -45,7 +46,49 @@ function refreshTeam(team: Team): void {
 interface Pair { playerA: RosterPlayer; playerB: RosterPlayer; score: number; category: 'blockbuster' | 'starter' | 'rotation' }
 
 function eligible(team: Team, year: number, moved: Set<string>, options: RandomTradeOptions): RosterPlayer[] {
-  return team.roster.filter((p) => p.ovr >= 66 && (p.tradeProtectionUntilYear || 0) < year && !isUser(p, options) && !moved.has(keyOf(p)));
+  return team.roster.filter((p) =>
+    p.ovr >= 66 &&
+    (p.tradeProtectionUntilYear || 0) < year &&
+    !isUser(p, options) &&
+    !moved.has(keyOf(p)) &&
+    !(team.id === options.defendingChampionTeamId && p.ovr >= 90),
+  );
+}
+
+function ratingAfterSwap(team: Team, outgoing: RosterPlayer, incoming: RosterPlayer): number {
+  const roster = team.roster.map((player) => player === outgoing ? incoming : player);
+  return calculateTeamPowerRating({ ...team, roster });
+}
+
+function acceptsDirection(
+  strategy: TeamStrategy,
+  outgoing: RosterPlayer,
+  incoming: RosterPlayer,
+  oldRating: number,
+  newRating: number,
+): boolean {
+  const ratingDelta = newRating - oldRating;
+  const valueDelta = valueOf(incoming) - valueOf(outgoing);
+  const currentOvrDelta = incoming.ovr - outgoing.ovr;
+
+  if (strategy === 'contender') return ratingDelta >= -1 && currentOvrDelta >= -4;
+  if (strategy === 'playoff') return ratingDelta >= -2 && currentOvrDelta >= -5 && valueDelta >= -3;
+  if (strategy === 'rebuilding') return valueDelta >= -1.5;
+  return ratingDelta >= -2 && valueDelta >= -2;
+}
+
+function directionUtility(
+  strategy: TeamStrategy,
+  outgoing: RosterPlayer,
+  incoming: RosterPlayer,
+  ratingDelta: number,
+): number {
+  const valueDelta = valueOf(incoming) - valueOf(outgoing);
+  const currentOvrDelta = incoming.ovr - outgoing.ovr;
+  if (strategy === 'contender') return ratingDelta * 5 + currentOvrDelta * 1.5;
+  if (strategy === 'playoff') return ratingDelta * 4 + currentOvrDelta + valueDelta * 0.5;
+  if (strategy === 'rebuilding') return valueDelta * 2 + (28 - (incoming.age || 27)) * 0.4;
+  return ratingDelta * 2.5 + valueDelta;
 }
 
 function findPair(teamA: Team, teamB: Team, year: number, moved: Set<string>, options: RandomTradeOptions, random: () => number, allowBlockbuster: boolean, requireBlockbuster = false): Pair | null {
@@ -59,13 +102,20 @@ function findPair(teamA: Team, teamB: Team, year: number, moved: Set<string>, op
       const valueGap = Math.abs(aValue - bValue);
       const isBlockbuster = Math.max(playerA.ovr, playerB.ovr) >= 89;
       if (requireBlockbuster && !isBlockbuster) continue;
-      if (isBlockbuster ? (!allowBlockbuster || valueGap > 11) : valueGap > 5.5) continue;
+      if (isBlockbuster ? (!allowBlockbuster || valueGap > 5 || Math.abs(playerA.ovr - playerB.ovr) > 4) : valueGap > 5.5) continue;
+
+      const oldRatingA = calculateTeamPowerRating(teamA);
+      const oldRatingB = calculateTeamPowerRating(teamB);
+      const newRatingA = ratingAfterSwap(teamA, playerA, playerB);
+      const newRatingB = ratingAfterSwap(teamB, playerB, playerA);
+      if (!acceptsDirection(strategyA, playerA, playerB, oldRatingA, newRatingA)) continue;
+      if (!acceptsDirection(strategyB, playerB, playerA, oldRatingB, newRatingB)) continue;
 
       // Rebuilding teams prefer youth/upside; contenders prefer immediate OVR and positional need.
       const fit = (positionNeed(teamA, playerB.position, playerA) - positionNeed(teamA, playerA.position, playerA)) +
         (positionNeed(teamB, playerA.position, playerB) - positionNeed(teamB, playerB.position, playerB));
-      const directionA = strategyA === 'rebuilding' ? (28 - (playerB.age || 27)) * 1.6 + ((playerB.peakOvr || playerB.ovr) - playerB.ovr) : playerB.ovr - playerA.ovr;
-      const directionB = strategyB === 'rebuilding' ? (28 - (playerA.age || 27)) * 1.6 + ((playerA.peakOvr || playerA.ovr) - playerA.ovr) : playerA.ovr - playerB.ovr;
+      const directionA = directionUtility(strategyA, playerA, playerB, newRatingA - oldRatingA);
+      const directionB = directionUtility(strategyB, playerB, playerA, newRatingB - oldRatingB);
       const complementary = (strategyA === 'rebuilding' && (strategyB === 'contender' || strategyB === 'playoff')) ||
         (strategyB === 'rebuilding' && (strategyA === 'contender' || strategyA === 'playoff')) ? 12 : 0;
       const score = fit + directionA + directionB + complementary - valueGap * 1.8 + random() * 8 + (isBlockbuster ? 8 : 0);
@@ -156,10 +206,13 @@ export function executeRandomTradesForSeason(currentTeams: Team[], year: number,
   const trades: ExecutedTradeDetail[] = [];
   let blockbusterCount = 0;
   const blockbusterRoll = random();
-  const blockbusterTarget = blockbusterRoll < 0.15 ? 2 : blockbusterRoll < 0.65 ? 1 : 0;
+  const blockbusterTarget = blockbusterRoll < 0.08 ? 2 : blockbusterRoll < 0.38 ? 1 : 0;
 
   for (let attempt = 0; attempt < 1600 && trades.length < target; attempt += 1) {
-    const available = teams.filter((t) => (counts.get(t.id) || 0) < 3);
+    const available = teams.filter((t) => {
+      const limit = t.id === options.defendingChampionTeamId ? 1 : 3;
+      return (counts.get(t.id) || 0) < limit;
+    });
     if (available.length < 2) break;
     const leastUsed = Math.min(...available.map((t) => counts.get(t.id) || 0));
     const preferred = available.filter((t) => (counts.get(t.id) || 0) === leastUsed);
@@ -168,7 +221,7 @@ export function executeRandomTradesForSeason(currentTeams: Team[], year: number,
     const teamB = opponents[Math.floor(random() * opponents.length)];
     if (!teamB) continue;
     const seekBlockbuster = blockbusterCount < blockbusterTarget && attempt < 600;
-    const allowBlockbuster = seekBlockbuster || (blockbusterCount < 2 && random() < 0.12);
+    const allowBlockbuster = seekBlockbuster;
     const pair = findPair(teamA, teamB, year, moved, options, random, allowBlockbuster, seekBlockbuster);
     if (!pair) continue;
     const indexA = teamA.roster.indexOf(pair.playerA);

@@ -4,7 +4,7 @@ import { gameConfetti as confetti } from '../utils/gameConfetti';
 import { Award, CheckCircle2, ChevronRight, Sparkles } from 'lucide-react';
 import { TeamLogo } from './TeamLogo';
 import { getHistoricalDraftData, YearDraftData } from '../data/draftData';
-import { applyDraftRookiesToTeams } from '../utils/draftLogic';
+import { applyDraftRookiesToTeams, resolveUserDraftTeam } from '../utils/draftLogic';
 import { generateParallelDraftData } from '../utils/randomDraftLogic';
 
 interface DraftNightModalProps {
@@ -42,8 +42,7 @@ export const DraftNightModal: React.FC<DraftNightModalProps> = ({
   );
 
   // Target team
-  const targetTeamId = player.favoriteTeamId || player.currentTeamId || 'lal';
-  const draftTeam = teams.find((t) => t.id === targetTeamId) || teams[0];
+  const draftTeam = resolveUserDraftTeam(teams, player, 'lal');
 
   React.useEffect(() => {
     if (!draftData || !draftData.draftPicks || draftData.draftPicks.length === 0) {

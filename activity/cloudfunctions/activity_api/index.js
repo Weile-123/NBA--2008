@@ -50,6 +50,23 @@ function isEligibleLeaderboardRow(row) {
   return Number.isInteger(retireAge) && retireAge <= MAX_CAREER_AGE;
 }
 
+function deduplicateLeaderboardRows(rows) {
+  const seenCareerIds = new Set();
+  const result = [];
+  for (const row of rows) {
+    if (!isEligibleLeaderboardRow(row)) continue;
+    const careerId = typeof row?.record?.id === 'string' ? row.record.id.trim() : '';
+    // Historical account identifiers may have changed while the same local
+    // career was re-synced. Keep the highest-ranked occurrence returned by SQL
+    // so old published clients never receive duplicate React keys.
+    if (careerId && seenCareerIds.has(careerId)) continue;
+    if (careerId) seenCareerIds.add(careerId);
+    result.push(row);
+    if (result.length >= MAX_LEGENDS) break;
+  }
+  return result;
+}
+
 async function leaderboard(gameMode) {
   const cached = cachedBoards.get(gameMode);
   if (cached && Date.now() < cached.until) return cached.rows;
@@ -70,7 +87,7 @@ async function leaderboard(gameMode) {
   let candidates = [];
   try { candidates = raw ? JSON.parse(raw) : []; } catch { /* Keep the public error generic. */ }
   if (!response.ok || !Array.isArray(candidates)) throw error('传奇榜暂时无法读取', 500);
-  const boardRows = candidates.filter(isEligibleLeaderboardRow).slice(0, MAX_LEGENDS);
+  const boardRows = deduplicateLeaderboardRows(candidates);
   cachedBoards.set(gameMode, { rows: boardRows, until: Date.now() + 5000 });
   return boardRows;
 }

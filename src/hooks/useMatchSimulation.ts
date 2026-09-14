@@ -203,30 +203,6 @@ export function useMatchSimulation({
     }
   };
 
-  const debugJumpToFourthQuarterTie = () => {
-    const tiedScore = Math.max(96, userScoreRef.current, oppScoreRef.current);
-    userScoreRef.current = tiedScore;
-    oppScoreRef.current = tiedScore;
-    setUserScore(tiedScore);
-    setOppScore(tiedScore);
-    setHasStarted(true);
-    setIsSimulating(false);
-    setShowQuarterEvent(false);
-    setShowBuzzerBeaterModal(false);
-    setCurrentQuarter(4);
-    setRemainingSeconds(0);
-    setQuarterQueue([]);
-    updateQueueIndex(0);
-    setQuarterSimulated(true);
-    setLogs((prev) => [...prev, {
-      id: `debug_q4_tie_${Date.now()}`,
-      quarter: 4,
-      time: '00:00',
-      text: `本地调试：第四节结束，双方以 ${tiedScore} 平进入加时。`,
-      type: 'system',
-    }]);
-  };
-
   // Smooth Second-by-Second Countdown Ticker Effect
   useEffect(() => {
     if (!hasStarted || !isSimulating || showQuarterEvent || quarterSimulated) {
@@ -672,7 +648,6 @@ export function useMatchSimulation({
     startMatchSimulation,
     handleNextQuarterOrFinish,
     quickSimulateCurrentQuarter,
-    debugJumpToFourthQuarterTie,
     handleTacticalChoiceOption,
     handleBuzzerBeaterChoice,
   };

@@ -4,7 +4,7 @@ import { calculateTeamPowerRating } from '../utils/leagueLogic';
 export type DestinyEventCategory = '决定' | '重磅交易' | '自由市场' | '联盟大事';
 
 export interface DestinyEventCondition {
-  type: 'player_exists' | 'player_on_team' | 'player_without_title' | 'player_without_title_in_previous_seasons' | 'players_exist' | 'team_strategy_in' | 'team_previous_wins_at_least' | 'team_max_elite_players' | 'player_team_previous_wins_at_most' | 'player_team_previous_season_without_title' | 'player_has_higher_rated_teammates' | 'event_completed';
+  type: 'player_on_team' | 'player_without_title' | 'player_without_title_in_previous_seasons' | 'team_strategy_in' | 'team_previous_wins_at_least' | 'team_max_elite_players' | 'player_team_previous_wins_at_most' | 'player_team_previous_season_without_title' | 'player_has_higher_rated_teammates' | 'event_completed' | 'event_route_not_selected';
   playerNames?: string[];
   teamId?: string;
   eventId?: string;
@@ -83,12 +83,6 @@ export interface DestinyRouteEvaluation {
   available: boolean;
 }
 
-const exists = (playerName: string): DestinyEventCondition => ({
-  type: 'player_exists', playerNames: [playerName], required: true, label: `${playerName}仍在联盟中`,
-});
-const allExist = (...playerNames: string[]): DestinyEventCondition => ({
-  type: 'players_exist', playerNames, required: true, label: `${playerNames.join('、')}均在联盟中`,
-});
 const onTeam = (playerName: string, teamId: string, teamName: string): DestinyEventCondition => ({
   type: 'player_on_team', playerNames: [playerName], teamId, points: 2, label: `${playerName}效力于${teamName}（+2）`,
 });
@@ -103,6 +97,9 @@ const withoutTitleInPreviousSeasons = (playerName: string, seasons: number): Des
 });
 const eventCompleted = (eventId: string, eventTitle: string, routeId?: string, routeTitle?: string): DestinyEventCondition => ({
   type: 'event_completed', eventId, routeId, required: true, label: routeId ? `已完成“${eventTitle}”的“${routeTitle}”分支` : `已完成“${eventTitle}”`,
+});
+const eventRouteNotSelected = (eventId: string, eventTitle: string, routeId: string, routeTitle: string): DestinyEventCondition => ({
+  type: 'event_route_not_selected', eventId, routeId, required: true, label: `“${eventTitle}”未选择“${routeTitle}”分支`,
 });
 const strategyIn = (teamId: string, teamName: string, strategies: DestinyEventCondition['strategies'], points = 1): DestinyEventCondition => ({
   type: 'team_strategy_in', teamId, strategies, points, label: `${teamName}球队方向为${strategies?.map((item) => ({ contender: '争冠', playoff: '季后赛竞争', retooling: '观望调整', rebuilding: '重建' })[item]).join('或')}（+${points}）`,
@@ -119,26 +116,29 @@ const playerTeamMaxWins = (playerName: string, value: number, points = 1): Desti
 const playerTeamPreviousSeasonWithoutTitle = (playerName: string, points = 1): DestinyEventCondition => ({
   type: 'player_team_previous_season_without_title', playerNames: [playerName], points, label: `${playerName}所在球队上赛季未夺冠（+${points}）`,
 });
+const requiredPlayerTeamPreviousSeasonWithoutTitle = (playerName: string): DestinyEventCondition => ({
+  type: 'player_team_previous_season_without_title', playerNames: [playerName], required: true, label: `${playerName}所在球队上赛季未夺冠`,
+});
 const higherRatedTeammates = (playerName: string, value: number, points = 1): DestinyEventCondition => ({
   type: 'player_has_higher_rated_teammates', playerNames: [playerName], value, points, label: `${playerName}队内至少有${value}名综评更高的队友（+${points}）`,
 });
 
-export const DESTINY_EVENTS: DestinyEventDefinition[] = [
+const DESTINY_EVENT_DEFINITIONS: DestinyEventDefinition[] = [
   {
     id: 'decision_1', year: 2010, title: '决定一：南海岸集结', category: '决定', protectionYears: 3,
     history: '2010 年夏天，勒布朗·詹姆斯宣布离开克里夫兰，与德维恩·韦德、克里斯·波什在迈阿密联手。',
     result: '勒布朗·詹姆斯与克里斯·波什加盟迈阿密，三位核心进入三年稳定期。',
-    conditions: [exists('勒布朗·詹姆斯'), withoutTitle('勒布朗·詹姆斯')],
+    conditions: [withoutTitle('勒布朗·詹姆斯')],
     moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'mia' }, { playerName: '克里斯·波什', destinationTeamId: 'mia' }],
     routes: [
       {
         id: 'south_beach', title: '南海岸三巨头', result: '勒布朗·詹姆斯与克里斯·波什加盟迈阿密，三位核心进入三年稳定期。', requiredScore: 4,
-        conditions: [allExist('德维恩·韦德', '克里斯·波什'), onTeam('德维恩·韦德', 'mia', '迈阿密'), strategyIn('mia', '迈阿密', ['contender', 'playoff']), playerTeamMaxWins('勒布朗·詹姆斯', 59)],
+        conditions: [onTeam('德维恩·韦德', 'mia', '迈阿密'), strategyIn('mia', '迈阿密', ['contender', 'playoff']), playerTeamMaxWins('勒布朗·詹姆斯', 59)],
         moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'mia' }, { playerName: '克里斯·波什', destinationTeamId: 'mia' }],
       },
       {
         id: 'windy_city', title: '风城新王', result: '勒布朗·詹姆斯加盟芝加哥，与德里克·罗斯组成新的争冠核心。', requiredScore: 4,
-        conditions: [exists('德里克·罗斯'), onTeam('德里克·罗斯', 'chi', '芝加哥'), strategyIn('chi', '芝加哥', ['contender', 'playoff']), minWins('chi', '芝加哥', 45)],
+        conditions: [onTeam('德里克·罗斯', 'chi', '芝加哥'), strategyIn('chi', '芝加哥', ['contender', 'playoff']), minWins('chi', '芝加哥', 45)],
         moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'chi' }],
       },
       {
@@ -152,48 +152,74 @@ export const DESTINY_EVENTS: DestinyEventDefinition[] = [
     id: 'melo_new_york', year: 2011, title: '甜瓜奔赴纽约', category: '重磅交易', protectionYears: 2,
     history: '卡梅隆·安东尼在生涯巅峰期离开丹佛，纽约迎来久违的超级得分手。',
     result: '卡梅隆·安东尼加盟纽约，成为麦迪逊广场花园的新核心。',
-    guide: true, conditions: [exists('卡梅隆·安东尼')], moves: [{ playerName: '卡梅隆·安东尼', destinationTeamId: 'nyk' }],
+    guide: true,
+    conditions: [eventRouteNotSelected('decision_1', '决定一', 'broadway', '百老汇巨星')],
+    moves: [{ playerName: '卡梅隆·安东尼', destinationTeamId: 'nyk' }],
+  },
+  {
+    id: 'cp3_lakers', year: 2011, title: '保罗加盟湖人：被叫停的交易', category: '重磅交易', protectionYears: 2,
+    history: '2011 年，湖人曾达成得到克里斯·保罗的三方交易，但这笔交易最终被联盟叫停。',
+    result: '交易在平行时空顺利完成，克里斯·保罗加盟洛杉矶湖人，与科比组成顶级后场。',
+    conditions: [
+      requiredOnTeam('科比·布莱恩特', 'lal', '洛杉矶湖人'),
+      withoutTitle('克里斯·保罗'),
+      strategyIn('lal', '洛杉矶湖人', ['contender', 'playoff'], 2),
+      minWins('lal', '洛杉矶湖人', 45),
+      maxElite('lal', '洛杉矶湖人', 2, 88),
+      playerTeamMaxWins('克里斯·保罗', 50),
+    ],
+    moves: [{ playerName: '克里斯·保罗', destinationTeamId: 'lal' }],
+    requiredScore: 3,
+    skipDefaultScoring: true,
   },
   {
     id: 'harden_houston', year: 2012, title: '大胡子独当一面', category: '重磅交易', protectionYears: 3,
     history: '雷霆年轻第六人詹姆斯·哈登被送往休斯敦，从此成长为持球大核心。',
     result: '詹姆斯·哈登加盟休斯敦并获得建队核心地位。',
-    conditions: [exists('詹姆斯·哈登')], moves: [{ playerName: '詹姆斯·哈登', destinationTeamId: 'hou' }],
+    conditions: [], moves: [{ playerName: '詹姆斯·哈登', destinationTeamId: 'hou' }],
   },
   {
     id: 'howard_houston', year: 2013, title: '魔兽空降休斯敦', category: '自由市场', protectionYears: 2,
     history: '德怀特·霍华德离开洛杉矶，选择前往休斯敦开启新的争冠窗口。',
     result: '德怀特·霍华德加盟休斯敦，球队内线实力得到提升。',
-    conditions: [exists('德怀特·霍华德')], moves: [{ playerName: '德怀特·霍华德', destinationTeamId: 'hou' }],
+    conditions: [
+      eventCompleted('harden_houston', '大胡子独当一面'),
+      maxElite('hou', '休斯敦', 2, 88),
+      playerTeamMaxWins('德怀特·霍华德', 55),
+    ],
+    moves: [{ playerName: '德怀特·霍华德', destinationTeamId: 'hou' }],
+    requiredScore: 2,
+    skipDefaultScoring: true,
   },
   {
     id: 'decision_2', year: 2014, title: '决定二：回到故乡', category: '决定', protectionYears: 3,
     history: '勒布朗·詹姆斯宣布回归克里夫兰，要为家乡带回一座冠军奖杯。',
     result: '勒布朗·詹姆斯回归克里夫兰，重新成为球队核心。',
-    conditions: [exists('勒布朗·詹姆斯'), eventCompleted('decision_1', '决定一')], moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'cle' }],
+    conditions: [eventCompleted('decision_1', '决定一')], moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'cle' }],
+    requiredScore: 2,
   },
   {
     id: 'love_cleveland', year: 2014, title: '三巨头最后一块拼图', category: '重磅交易', protectionYears: 2,
     history: '克里夫兰以年轻资产换来凯文·乐福，组建新的争冠三巨头。',
     result: '凯文·乐福加盟克里夫兰，与球队核心共同冲击冠军。',
-    conditions: [exists('凯文·乐福'), requiredOnTeam('凯里·欧文', 'cle', '克里夫兰'), onTeam('勒布朗·詹姆斯', 'cle', '克里夫兰')], moves: [{ playerName: '凯文·乐福', destinationTeamId: 'cle' }],
+    conditions: [eventCompleted('decision_2', '决定二'), requiredOnTeam('凯里·欧文', 'cle', '克里夫兰'), requiredOnTeam('勒布朗·詹姆斯', 'cle', '克里夫兰')], moves: [{ playerName: '凯文·乐福', destinationTeamId: 'cle' }],
   },
   {
     id: 'aldridge_spurs', year: 2015, title: '马刺迎来全明星内线', category: '自由市场', protectionYears: 2,
     history: '拉马库斯·阿尔德里奇选择圣安东尼奥，延续球队的争冠周期。',
     result: '拉马库斯·阿尔德里奇加盟圣安东尼奥。',
-    conditions: [exists('拉马库斯·阿尔德里奇')], moves: [{ playerName: '拉马库斯·阿尔德里奇', destinationTeamId: 'sas' }],
+    conditions: [], moves: [{ playerName: '拉马库斯·阿尔德里奇', destinationTeamId: 'sas' }],
   },
   {
     id: 'durant_warriors', year: 2016, title: '杜兰特的抉择', category: '决定', protectionYears: 3,
     history: '凯文·杜兰特加盟金州，与斯蒂芬·库里领衔的冠军班底组成历史级阵容。',
     result: '凯文·杜兰特加盟金州，杜兰特与库里进入三年稳定期。',
-    conditions: [exists('凯文·杜兰特'), withoutTitle('凯文·杜兰特')],
+    conditions: [withoutTitle('凯文·杜兰特')],
     moves: [{ playerName: '凯文·杜兰特', destinationTeamId: 'gsw' }],
     routes: [
       {
         id: 'bay_area', title: '死神降临湾区', result: '凯文·杜兰特加盟金州，与斯蒂芬·库里组成历史级双核。', requiredScore: 3,
-        conditions: [exists('斯蒂芬·库里'), onTeam('斯蒂芬·库里', 'gsw', '金州'), strategyIn('gsw', '金州', ['contender', 'playoff']), minWins('gsw', '金州', 55)],
+        conditions: [onTeam('斯蒂芬·库里', 'gsw', '金州'), strategyIn('gsw', '金州', ['contender', 'playoff']), minWins('gsw', '金州', 55)],
         moves: [{ playerName: '凯文·杜兰特', destinationTeamId: 'gsw' }],
       },
       {
@@ -203,7 +229,7 @@ export const DESTINY_EVENTS: DestinyEventDefinition[] = [
       },
       {
         id: 'thunder_return', title: '雷霆最后一舞', result: '凯文·杜兰特留守俄克拉荷马，与威斯布鲁克继续冲击冠军。', requiredScore: 3,
-        conditions: [exists('拉塞尔·威斯布鲁克'), onTeam('拉塞尔·威斯布鲁克', 'okc', '俄克拉荷马'), strategyIn('okc', '俄克拉荷马', ['contender', 'playoff'])],
+        conditions: [onTeam('拉塞尔·威斯布鲁克', 'okc', '俄克拉荷马'), strategyIn('okc', '俄克拉荷马', ['contender', 'playoff'])],
         moves: [{ playerName: '凯文·杜兰特', destinationTeamId: 'okc' }],
       },
     ],
@@ -212,19 +238,19 @@ export const DESTINY_EVENTS: DestinyEventDefinition[] = [
     id: 'cp3_houston', year: 2017, title: '灯泡组合成军', category: '重磅交易', protectionYears: 2,
     history: '克里斯·保罗转投休斯敦，与詹姆斯·哈登组成联盟顶级后场。',
     result: '克里斯·保罗加盟休斯敦，与哈登共同进入争冠窗口。',
-    conditions: [allExist('克里斯·保罗', '詹姆斯·哈登'), eventCompleted('harden_houston', '大胡子独当一面'), onTeam('詹姆斯·哈登', 'hou', '休斯敦')], moves: [{ playerName: '克里斯·保罗', destinationTeamId: 'hou' }],
+    conditions: [eventCompleted('harden_houston', '大胡子独当一面'), onTeam('詹姆斯·哈登', 'hou', '休斯敦')], moves: [{ playerName: '克里斯·保罗', destinationTeamId: 'hou' }],
   },
   {
     id: 'kyrie_boston', year: 2017, title: '欧文接掌绿军', category: '重磅交易', protectionYears: 2,
     history: '凯里·欧文离开克里夫兰，前往波士顿寻求独自带队的机会。',
     result: '凯里·欧文加盟波士顿，成为球队新的后场核心。',
-    conditions: [exists('凯里·欧文')], moves: [{ playerName: '凯里·欧文', destinationTeamId: 'bos' }],
+    conditions: [], moves: [{ playerName: '凯里·欧文', destinationTeamId: 'bos' }],
   },
   {
     id: 'lebron_lakers', year: 2018, title: '詹姆斯的下一站', category: '决定', protectionYears: 3,
     history: '勒布朗·詹姆斯加盟洛杉矶，将自己的生涯带到新的舞台。',
     result: '勒布朗·詹姆斯加盟洛杉矶湖人，开启三年稳定期。',
-    conditions: [exists('勒布朗·詹姆斯'), withoutTitleInPreviousSeasons('勒布朗·詹姆斯', 2)], moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'lal' }],
+    conditions: [withoutTitleInPreviousSeasons('勒布朗·詹姆斯', 2)], moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'lal' }],
     routes: [
       {
         id: 'hollywood', title: '天选之子西游', result: '勒布朗·詹姆斯加盟洛杉矶湖人，开启新的争冠篇章。', requiredScore: 3,
@@ -233,7 +259,7 @@ export const DESTINY_EVENTS: DestinyEventDefinition[] = [
       },
       {
         id: 'process', title: '加入费城过程', result: '勒布朗·詹姆斯加盟费城，与乔尔·恩比德组成全新的东部争冠核心。', requiredScore: 4,
-        conditions: [exists('乔尔·恩比德'), onTeam('乔尔·恩比德', 'phi', '费城'), strategyIn('phi', '费城', ['contender', 'playoff']), minWins('phi', '费城', 45)],
+        conditions: [onTeam('乔尔·恩比德', 'phi', '费城'), strategyIn('phi', '费城', ['contender', 'playoff']), minWins('phi', '费城', 45)],
         moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'phi' }],
       },
       {
@@ -247,31 +273,35 @@ export const DESTINY_EVENTS: DestinyEventDefinition[] = [
     id: 'kawhi_toronto', year: 2018, title: '北境豪赌', category: '重磅交易', protectionYears: 2,
     history: '多伦多以核心阵容为筹码换来科怀·伦纳德，押注一次争冠机会。',
     result: '科怀·伦纳德加盟多伦多，北境进入争冠模式。',
-    conditions: [exists('科怀·伦纳德')], moves: [{ playerName: '科怀·伦纳德', destinationTeamId: 'tor' }],
+    conditions: [], moves: [{ playerName: '科怀·伦纳德', destinationTeamId: 'tor' }],
   },
   {
     id: 'ad_lakers', year: 2019, title: '浓眉加盟湖人', category: '重磅交易', protectionYears: 3,
     history: '安东尼·戴维斯前往洛杉矶，与勒布朗·詹姆斯组成顶级锋线组合。',
     result: '安东尼·戴维斯加盟洛杉矶湖人，两位核心进入三年稳定期。',
-    conditions: [allExist('安东尼·戴维斯', '勒布朗·詹姆斯'), eventCompleted('lebron_lakers', '詹姆斯的下一站', 'hollywood', '天选之子西游'), onTeam('勒布朗·詹姆斯', 'lal', '洛杉矶湖人')], moves: [{ playerName: '安东尼·戴维斯', destinationTeamId: 'lal' }],
+    conditions: [eventCompleted('lebron_lakers', '詹姆斯的下一站', 'hollywood', '天选之子西游')], moves: [{ playerName: '安东尼·戴维斯', destinationTeamId: 'lal' }],
   },
   {
     id: 'kawhi_pg_clippers', year: 2019, title: '洛城双翼集结', category: '决定', protectionYears: 3,
     history: '科怀·伦纳德选择快船，球队同步交易得到保罗·乔治。',
     result: '科怀·伦纳德与保罗·乔治加盟洛杉矶快船。',
-    conditions: [allExist('科怀·伦纳德', '保罗·乔治')], moves: [{ playerName: '科怀·伦纳德', destinationTeamId: 'lac' }, { playerName: '保罗·乔治', destinationTeamId: 'lac' }],
+    conditions: [], moves: [{ playerName: '科怀·伦纳德', destinationTeamId: 'lac' }, { playerName: '保罗·乔治', destinationTeamId: 'lac' }],
   },
   {
     id: 'westbrook_houston', year: 2019, title: '昔日兄弟再聚首', category: '重磅交易', protectionYears: 2,
     history: '拉塞尔·威斯布鲁克与詹姆斯·哈登在休斯敦重聚。',
     result: '拉塞尔·威斯布鲁克加盟休斯敦。',
-    conditions: [allExist('拉塞尔·威斯布鲁克', '詹姆斯·哈登'), onTeam('詹姆斯·哈登', 'hou', '休斯敦')], moves: [{ playerName: '拉塞尔·威斯布鲁克', destinationTeamId: 'hou' }],
+    conditions: [onTeam('詹姆斯·哈登', 'hou', '休斯敦')], moves: [{ playerName: '拉塞尔·威斯布鲁克', destinationTeamId: 'hou' }],
   },
   {
     id: 'durant_kyrie_brooklyn', year: 2019, title: '双星汇聚布鲁克林', category: '自由市场', protectionYears: 3,
     history: '凯文·杜兰特与凯里·欧文相约布鲁克林，篮网由此迎来新的争冠核心。',
     result: '凯文·杜兰特与凯里·欧文加盟布鲁克林，双星获得三年交易保护。',
-    conditions: [allExist('凯文·杜兰特', '凯里·欧文'), eventCompleted('durant_warriors', '杜兰特的抉择')],
+    conditions: [
+      eventCompleted('durant_warriors', '杜兰特的抉择'),
+      requiredPlayerTeamPreviousSeasonWithoutTitle('凯文·杜兰特'),
+      requiredPlayerTeamPreviousSeasonWithoutTitle('凯里·欧文'),
+    ],
     moves: [{ playerName: '凯文·杜兰特', destinationTeamId: 'bkn' }, { playerName: '凯里·欧文', destinationTeamId: 'bkn' }],
     requiredScore: 0,
     skipDefaultScoring: true,
@@ -280,14 +310,13 @@ export const DESTINY_EVENTS: DestinyEventDefinition[] = [
     id: 'holiday_bucks', year: 2020, title: '雄鹿补上冠军后卫', category: '重磅交易', protectionYears: 2,
     history: '密尔沃基得到朱·霍勒迪，为核心阵容补上攻防兼备的后场。',
     result: '朱·霍勒迪加盟密尔沃基。',
-    conditions: [exists('朱·霍勒迪')], moves: [{ playerName: '朱·霍勒迪', destinationTeamId: 'mil' }],
+    conditions: [], moves: [{ playerName: '朱·霍勒迪', destinationTeamId: 'mil' }],
   },
   {
     id: 'harden_brooklyn', year: 2021, title: '布鲁克林超级三巨头', category: '重磅交易', protectionYears: 2,
     history: '詹姆斯·哈登前往布鲁克林，与杜兰特、欧文组成豪华进攻阵容。',
     result: '詹姆斯·哈登加盟布鲁克林，核心成员获得两年稳定期。',
     conditions: [
-      allExist('詹姆斯·哈登', '凯文·杜兰特', '凯里·欧文'),
       eventCompleted('durant_kyrie_brooklyn', '双星汇聚布鲁克林'),
       onTeam('凯文·杜兰特', 'bkn', '布鲁克林'),
       onTeam('凯里·欧文', 'bkn', '布鲁克林'),
@@ -302,45 +331,51 @@ export const DESTINY_EVENTS: DestinyEventDefinition[] = [
     id: 'westbrook_lakers', year: 2021, title: '三双王来到洛杉矶', category: '重磅交易', protectionYears: 2,
     history: '洛杉矶湖人交易得到拉塞尔·威斯布鲁克，组建经验丰富的明星阵容。',
     result: '拉塞尔·威斯布鲁克加盟洛杉矶湖人。',
-    conditions: [exists('拉塞尔·威斯布鲁克')], moves: [{ playerName: '拉塞尔·威斯布鲁克', destinationTeamId: 'lal' }],
+    conditions: [], moves: [{ playerName: '拉塞尔·威斯布鲁克', destinationTeamId: 'lal' }],
   },
   {
     id: 'gobert_wolves', year: 2022, title: '双塔实验启动', category: '重磅交易', protectionYears: 2,
     history: '明尼苏达付出大量筹码得到鲁迪·戈贝尔，组建双塔阵容。',
     result: '鲁迪·戈贝尔加盟明尼苏达。',
-    conditions: [exists('鲁迪·戈贝尔')], moves: [{ playerName: '鲁迪·戈贝尔', destinationTeamId: 'min' }],
+    conditions: [], moves: [{ playerName: '鲁迪·戈贝尔', destinationTeamId: 'min' }],
   },
   {
     id: 'mitchell_cleveland', year: 2022, title: '米切尔空降骑士', category: '重磅交易', protectionYears: 2,
     history: '克里夫兰交易得到多诺万·米切尔，年轻阵容迎来明星得分手。',
     result: '多诺万·米切尔加盟克里夫兰。',
-    conditions: [exists('多诺万·米切尔')], moves: [{ playerName: '多诺万·米切尔', destinationTeamId: 'cle' }],
+    conditions: [], moves: [{ playerName: '多诺万·米切尔', destinationTeamId: 'cle' }],
   },
   {
     id: 'durant_phoenix', year: 2023, title: '太阳组成豪华进攻组', category: '重磅交易', protectionYears: 2,
     history: '菲尼克斯交易得到凯文·杜兰特，向总冠军发起冲击。',
     result: '凯文·杜兰特加盟菲尼克斯太阳。',
-    conditions: [exists('凯文·杜兰特')], moves: [{ playerName: '凯文·杜兰特', destinationTeamId: 'phx' }],
+    conditions: [], moves: [{ playerName: '凯文·杜兰特', destinationTeamId: 'phx' }],
   },
   {
     id: 'lillard_bucks', year: 2023, title: '利拉德联手字母哥', category: '重磅交易', protectionYears: 2,
     history: '达米安·利拉德离开波特兰，加盟密尔沃基追逐冠军。',
     result: '达米安·利拉德加盟密尔沃基。',
-    conditions: [exists('达米安·利拉德')], moves: [{ playerName: '达米安·利拉德', destinationTeamId: 'mil' }],
+    conditions: [requiredOnTeam('扬尼斯·阿德托昆博', 'mil', '密尔沃基雄鹿')],
+    moves: [{ playerName: '达米安·利拉德', destinationTeamId: 'mil' }],
   },
   {
     id: 'harden_clippers', year: 2023, title: '哈登回到家乡', category: '重磅交易', protectionYears: 2,
     history: '詹姆斯·哈登加盟洛杉矶快船，与多位明星队友并肩作战。',
     result: '詹姆斯·哈登加盟洛杉矶快船。',
-    conditions: [exists('詹姆斯·哈登')], moves: [{ playerName: '詹姆斯·哈登', destinationTeamId: 'lac' }],
+    conditions: [], moves: [{ playerName: '詹姆斯·哈登', destinationTeamId: 'lac' }],
   },
   {
     id: 'kawhi_extension', year: 2024, title: '快船确定长期核心', category: '联盟大事', protectionYears: 2,
     history: '科怀·伦纳德与洛杉矶快船延续合作，球队确定未来方向。',
     result: '科怀·伦纳德留在洛杉矶快船并获得两年交易保护。',
-    conditions: [exists('科怀·伦纳德')], moves: [{ playerName: '科怀·伦纳德', destinationTeamId: 'lac' }],
+    conditions: [], moves: [{ playerName: '科怀·伦纳德', destinationTeamId: 'lac' }],
   },
 ];
+
+export const DESTINY_EVENTS: DestinyEventDefinition[] = DESTINY_EVENT_DEFINITIONS.map((event) => ({
+  ...event,
+  history: event.history.startsWith('现实中：') ? event.history : `现实中：${event.history}`,
+}));
 
 function findPlayer(teams: Team[], name: string): { team: Team; player: RosterPlayer } | null {
   for (const team of teams) {
@@ -371,9 +406,7 @@ function checkCondition(
 ): DestinyConditionCheck {
   const names = condition.playerNames || [];
   let met = false;
-  if (condition.type === 'player_exists') met = !!findPlayer(teams, names[0]);
-  else if (condition.type === 'players_exist') met = names.every((name) => !!findPlayer(teams, name));
-  else if (condition.type === 'player_on_team') met = findPlayer(teams, names[0])?.team.id === condition.teamId;
+  if (condition.type === 'player_on_team') met = findPlayer(teams, names[0])?.team.id === condition.teamId;
   else if (condition.type === 'player_without_title') met = !playerWonTitle(names[0], leagueHistory);
   else if (condition.type === 'player_without_title_in_previous_seasons') {
     const seasonCount = condition.value || 0;
@@ -399,6 +432,9 @@ function checkCondition(
   } else if (condition.type === 'event_completed') {
     const record = condition.eventId ? records[condition.eventId] : undefined;
     met = !!record && (!condition.routeId || record.routeId === condition.routeId);
+  } else if (condition.type === 'event_route_not_selected') {
+    const record = condition.eventId ? records[condition.eventId] : undefined;
+    met = !record || record.routeId !== condition.routeId;
   }
   return { label: condition.label, met, required: condition.required === true, points: condition.required ? 0 : (condition.points || 0) };
 }
@@ -430,18 +466,19 @@ export function evaluateDestinyEvent(
   const routeEvaluations = (event.routes || []).map((route) => {
     const routeChecks = route.conditions.map((condition) => checkCondition(condition, teams, leagueHistory, records, currentYear));
     const routeRequiredMet = routeChecks.filter((check) => check.required).every((check) => check.met);
+    const routePlayersAvailable = route.moves.every((move) => !!findPlayer(teams, move.playerName));
     const routeScore = routeChecks.reduce((sum, check) => sum + (check.met ? check.points : 0), 0);
     return {
       route,
       checks: routeChecks,
       score: routeScore,
       requiredScore: route.requiredScore,
-      available: currentYear === event.year && requiredMet && routeRequiredMet && routeScore >= route.requiredScore,
+      available: currentYear === event.year && requiredMet && routeRequiredMet && routePlayersAvailable && routeScore >= route.requiredScore,
     };
   });
   const conditionsMet = routeEvaluations.length
     ? routeEvaluations.some((route) => route.available)
-    : requiredMet && score >= requiredScore;
+    : requiredMet && (event.moves || []).every((move) => !!findPlayer(teams, move.playerName)) && score >= requiredScore;
   const status: DestinyEventStatus = record
     ? 'triggered'
     : currentYear < event.year
@@ -461,6 +498,15 @@ export function getDestinyEventEvaluations(
   records: Record<string, DestinyEventRecord> = {},
 ): DestinyEventEvaluation[] {
   return DESTINY_EVENTS.map((event) => evaluateDestinyEvent(event, currentYear, teams, leagueHistory, records));
+}
+
+export function getDestinyEventEntrySummary(evaluations: DestinyEventEvaluation[], currentYear: number): string {
+  const available = evaluations.find((item) => item.status === 'available');
+  if (available) return available.event.title;
+  const currentEvents = evaluations.filter((item) => item.event.year === currentYear);
+  if (currentEvents.some((item) => item.status === 'triggered')) return '本赛季命定事件已完成';
+  if (currentEvents.length > 0) return '本赛季事件条件尚未满足';
+  return '查看历史时间线与未来事件';
 }
 
 function refreshTeam(team: Team): void {

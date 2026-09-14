@@ -7,6 +7,7 @@ const FUNCTION_ROOT = path.join(__dirname, 'cloudfunctions');
 const MIGRATIONS = [
   ['20260914180000', 'split_leaderboard_by_game_mode'],
   ['20260914190000', 'read_leaderboard_by_game_mode'],
+  ['20260914234000', 'deduplicate_legendary_careers'],
 ];
 const API_BASE = process.env.ACTIVITY_API_BASE || 'https://app-a1c57bc9c2-d5glgsllk7b7bd845-1252166086.ap-shanghai.app.tcloudbase.com/api';
 
@@ -22,6 +23,18 @@ function assertSuccess(label, result) {
   }
   process.stdout.write(`✓ ${label}\n`);
   return parsed;
+}
+
+function duplicateCareerIds(rows) {
+  const seen = new Set();
+  const duplicates = new Set();
+  for (const row of rows) {
+    const careerId = typeof row?.record?.id === 'string' ? row.record.id.trim() : '';
+    if (!careerId) continue;
+    if (seen.has(careerId)) duplicates.add(careerId);
+    seen.add(careerId);
+  }
+  return duplicates;
 }
 
 async function call(client, label, name, args, timeout = 120000) {
@@ -108,6 +121,9 @@ async function verifyCloud(client) {
   }
   if (JSON.stringify(leaderboardBody.data) !== JSON.stringify(classicBoard.data)) {
     throw new Error('旧版缺省排行榜不再等同于经典模式');
+  }
+  if (duplicateCareerIds(classicBoard.data).size > 0 || duplicateCareerIds(parallelBoard.data).size > 0) {
+    throw new Error('排行榜仍返回重复生涯记录');
   }
   process.stdout.write(`✓ 双模式榜单隔离（经典 ${classicBoard.data.length} 条，平行 ${parallelBoard.data.length} 条）\n`);
 

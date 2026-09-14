@@ -27,6 +27,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { RetiredPlayerRecord } from '../types';
+import { sanitizeRetirementTimeline } from '../utils/retirementTimeline';
 import { getHallOfFameLegends, deleteHallOfFameLegend, saveHallOfFameLegend } from '../utils/storage';
 import { loadGlobalHallOfFame, GlobalHallOfFameRank, syncLocalBestAndLoadMyRank } from '../lib/globalLeaderboard';
 import { TeamLogo } from './TeamLogo';
@@ -153,9 +154,15 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
     let allNbaFirsts = l.careerAccolades?.allNbaFirsts || 0;
     let allNbaSeconds = l.careerAccolades?.allNbaSeconds || 0;
     let allNbaThirds = l.careerAccolades?.allNbaThirds || 0;
+    // Characters enter the league at 19 and cannot begin another season at 43.
+    // Older builds sometimes appended the already-advanced offseason year as a
+    // fake "平稳表现赛季". Trim only the impossible overflow; GOAT stays intact.
+    const repairedTimeline = sanitizeRetirementTimeline(l);
+    const sanitizedTimeline = repairedTimeline.timeline;
+
     // Recalculate dpoys from season timeline if available to correct legacy records where All-Defensive teams inflated DPOY count
-    if (l.timeline && l.timeline.length > 0) {
-      dpoys = l.timeline.reduce((count, season) => {
+    if (sanitizedTimeline.length > 0) {
+      dpoys = sanitizedTimeline.reduce((count, season) => {
         const hasDpoy = (season.accolades || []).some(
           (acc) =>
             (acc.includes('最佳防守球员') || acc.includes('DPOY')) &&
@@ -164,7 +171,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
         );
         return hasDpoy ? count + 1 : count;
       }, 0);
-      const seasonTiers = l.timeline.map((season) => {
+      const seasonTiers = sanitizedTimeline.map((season) => {
         const accolades = season.accolades || [];
         if (accolades.some((acc) => acc.includes('最佳阵容一阵') && !acc.includes('防守'))) return 1;
         if (accolades.some((acc) => acc.includes('最佳阵容二阵') && !acc.includes('防守'))) return 2;
@@ -178,6 +185,8 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
 
     return {
       ...l,
+      seasonsPlayed: repairedTimeline.seasonsPlayed,
+      endYear: repairedTimeline.endYear,
       avgPpg: Number(Number(l.avgPpg || 0).toFixed(1)),
       avgRpg: Number(Number(l.avgRpg || 0).toFixed(1)),
       avgApg: Number(Number(l.avgApg || 0).toFixed(1)),
@@ -188,7 +197,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
         allNbaSeconds,
         allNbaThirds,
       },
-      timeline: (l.timeline || []).map((t) => ({
+      timeline: sanitizedTimeline.map((t) => ({
         ...t,
         ppg: Number(Number(t.ppg || 0).toFixed(1)),
         rpg: Number(Number(t.rpg || 0).toFixed(1)),
@@ -199,6 +208,22 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
 
   const resetModalScroll = () => scheduleRootScrollToTop();
   const hasLocalRetirement = getHallOfFameLegends(leaderboardGameMode).length > 0;
+
+  const switchLeaderboardGameMode = (gameMode: GameMode) => {
+    if (gameMode === leaderboardGameMode) return;
+    // Clear the previous board in the click event itself. Waiting for the
+    // request effect leaves one paint where classic rows can leak into the
+    // parallel loading state on slower mobile WebViews.
+    setSelectedLegend(null);
+    setLegends([]);
+    setMyGlobalRank(null);
+    setMyGlobalRankError(null);
+    setGlobalError(null);
+    setIsTimeoutGlobal(false);
+    if (tabMode === 'global') setIsLoadingGlobal(true);
+    setLeaderboardGameMode(gameMode);
+    resetModalScroll();
+  };
 
   // Sync initialMode when modal opens
   useEffect(() => {
@@ -237,6 +262,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
       setMyGlobalRankError(null);
       setLocalSyncNotice(null);
     } else {
+      setLegends([]);
       setIsLoadingGlobal(true);
       setIsTimeoutGlobal(false);
       setGlobalError(null);
@@ -393,10 +419,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
               <div className="flex items-center gap-1 bg-[#0b0e17] p-1 rounded-xl border border-amber-500/20 w-full sm:w-auto">
                 <button
                   type="button"
-                  onClick={() => {
-                    setLeaderboardGameMode('classic');
-                    resetModalScroll();
-                  }}
+                  onClick={() => switchLeaderboardGameMode('classic')}
                   className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     leaderboardGameMode === 'classic'
                       ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black shadow-md shadow-amber-500/20'
@@ -408,10 +431,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setLeaderboardGameMode('random_trade');
-                    resetModalScroll();
-                  }}
+                  onClick={() => switchLeaderboardGameMode('random_trade')}
                   className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     leaderboardGameMode === 'random_trade'
                         ? 'bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 font-black shadow-md shadow-cyan-500/20'
@@ -643,16 +663,17 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
                     <span>解锁命定事件</span>
                   </h3>
                   {selectedLegend.unlockedDestinyEvents?.length ? (
-                    <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       {selectedLegend.unlockedDestinyEvents.map((event) => (
-                        <div key={event.eventId} className="rounded-xl border border-cyan-400/25 bg-gradient-to-br from-cyan-500/[0.08] to-violet-500/[0.08] p-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <span className="text-xs font-black leading-snug text-white">{event.title}</span>
-                            <span className="shrink-0 font-mono text-[9px] font-black text-cyan-300">{event.year}-{event.year + 1}</span>
-                          </div>
-                          {event.routeTitle && <div className="mt-1 text-[10px] font-bold text-violet-300">分支：{event.routeTitle}</div>}
-                          <p className="mt-1.5 text-[10px] leading-relaxed text-slate-400">{event.result}</p>
-                        </div>
+                        <span
+                          key={event.eventId}
+                          title={event.result}
+                          className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-cyan-400/30 bg-gradient-to-r from-cyan-500/10 to-violet-500/10 px-2.5 py-1.5 text-[10px] font-bold text-slate-100 shadow-sm sm:text-[11px]"
+                        >
+                          <span className="shrink-0 font-mono text-[9px] font-black text-cyan-300">{event.year}</span>
+                          <span className="min-w-0 truncate font-black">{event.title}</span>
+                          {event.routeTitle && <span className="shrink-0 text-violet-300">· {event.routeTitle}</span>}
+                        </span>
                       ))}
                     </div>
                   ) : (
@@ -887,7 +908,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
                 <div className="grid grid-cols-1 gap-3 sm:gap-3.5">
                   {sortedLegends.map((legend, index) => (
                     <div
-                      key={legend.id}
+                      key={`${leaderboardGameMode}:${legend.id}:${index}`}
                       onClick={() => {
                         setSelectedLegend(legend);
                         resetModalScroll();

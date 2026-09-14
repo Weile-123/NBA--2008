@@ -61,10 +61,20 @@ export async function loadGlobalHallOfFame(gameMode: GameMode = DEFAULT_GAME_MOD
   if (!window.ColorboxAI?.cloud?.request) return [];
   const response = ensureSuccess(await window.ColorboxAI.cloud.request({ url: `${API_BASE}/leaderboard?gameMode=${encodeURIComponent(gameMode)}`, method: 'GET', envId: ENV_ID, auth: false }));
   const rows = Array.isArray(response.data) ? response.data as Array<{ record?: RetiredPlayerRecord }> : [];
-  return rows
-    .map((row) => row.record)
-    .filter((record): record is RetiredPlayerRecord => !!record && record.retireAge <= MAX_CAREER_AGE)
-    .map((record) => ({ ...normalizeRetiredPlayerPeak(record), gameMode: record.gameMode || gameMode }));
+  const seenCareerIds = new Set<string>();
+  const records: RetiredPlayerRecord[] = [];
+  for (const row of rows) {
+    const record = row.record;
+    if (!record || record.retireAge > MAX_CAREER_AGE) continue;
+    // A legacy career can exist under more than one historical account key.
+    // Repeated React keys corrupt the DOM when detail/list views remount, so a
+    // single career must appear only once in the rendered top-50 list.
+    const careerId = typeof record.id === 'string' ? record.id.trim() : '';
+    if (careerId && seenCareerIds.has(careerId)) continue;
+    if (careerId) seenCareerIds.add(careerId);
+    records.push({ ...normalizeRetiredPlayerPeak(record), gameMode });
+  }
+  return records;
 }
 
 export async function loadMyGlobalHallOfFameRank(gameMode: GameMode = DEFAULT_GAME_MODE): Promise<GlobalHallOfFameRank | null> {
@@ -81,7 +91,7 @@ export async function loadMyGlobalHallOfFameRank(gameMode: GameMode = DEFAULT_GA
     rank: Number(row.rank),
     score: Number(row.score),
     displayName: typeof row.displayName === 'string' ? row.displayName : row.record.player.name,
-    record: { ...normalizeRetiredPlayerPeak(row.record), gameMode: row.record.gameMode || gameMode },
+    record: { ...normalizeRetiredPlayerPeak(row.record), gameMode },
     updatedAt: typeof row.updatedAt === 'string' ? row.updatedAt : undefined,
   };
 }

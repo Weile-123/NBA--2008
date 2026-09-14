@@ -31,6 +31,18 @@ interface HomeScreenProps {
 
 const MODES: GameMode[] = ['classic', 'random_trade'];
 
+interface BannerLegendState {
+  name: string;
+  score: number | null;
+  loading: boolean;
+  timeout: boolean;
+}
+
+const INITIAL_BANNER_LEGENDS: Record<GameMode, BannerLegendState> = {
+  classic: { name: '', score: null, loading: true, timeout: false },
+  random_trade: { name: '', score: null, loading: true, timeout: false },
+};
+
 function formatSavedAt(value?: string): string {
   if (!value) return '';
   const date = new Date(value);
@@ -50,10 +62,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenGlobalHallOfFame,
 }) => {
   const parallelInfoScrollRef = useRef<HTMLDivElement>(null);
-  const [topLegendName, setTopLegendName] = useState('');
-  const [topLegendScore, setTopLegendScore] = useState<number | null>(null);
-  const [isBannerLoading, setIsBannerLoading] = useState(true);
-  const [isBannerTimeout, setIsBannerTimeout] = useState(false);
+  const [bannerLegends, setBannerLegends] = useState<Record<GameMode, BannerLegendState>>(INITIAL_BANNER_LEGENDS);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
   const [saveRevision, setSaveRevision] = useState(0);
@@ -73,41 +82,48 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
   useEffect(() => {
     let isMounted = true;
-    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    const retryTimers: Partial<Record<GameMode, ReturnType<typeof setTimeout>>> = {};
 
-    const loadTopLegend = () => {
+    const loadTopLegend = (mode: GameMode) => {
       if (!isMounted) return;
-      void Promise.allSettled(MODES.map((mode) => retryPendingGlobalHallOfFameUpload(mode)))
+      void retryPendingGlobalHallOfFameUpload(mode)
         .catch((error) => console.warn('全网传奇榜待上传记录暂未同步', error))
-        .finally(() => loadGlobalHallOfFame()
+        .finally(() => loadGlobalHallOfFame(mode)
           .then((records) => {
             if (!isMounted) return;
             const first = records?.[0];
-            setTopLegendName(first?.player?.name || '');
-            setTopLegendScore(first?.goatScore || null);
-            setIsBannerLoading(false);
-            setIsBannerTimeout(false);
+            setBannerLegends((current) => ({
+              ...current,
+              [mode]: {
+                name: first?.player?.name || '',
+                score: first?.goatScore ?? null,
+                loading: false,
+                timeout: false,
+              },
+            }));
           })
           .catch((error: Error) => {
             if (!isMounted) return;
             const timedOut = error?.name === 'GlobalHofTimeoutError' || error?.message?.includes('timed out');
             if (timedOut) {
-              setIsBannerLoading(true);
-              setIsBannerTimeout(true);
-              retryTimer = setTimeout(loadTopLegend, 3500);
+              setBannerLegends((current) => ({
+                ...current,
+                [mode]: { ...current[mode], loading: true, timeout: true },
+              }));
+              retryTimers[mode] = setTimeout(() => loadTopLegend(mode), 3500);
             } else {
-              setTopLegendName('');
-              setTopLegendScore(null);
-              setIsBannerLoading(false);
-              setIsBannerTimeout(false);
+              setBannerLegends((current) => ({
+                ...current,
+                [mode]: { name: '', score: null, loading: false, timeout: false },
+              }));
             }
           }));
     };
 
-    loadTopLegend();
+    MODES.forEach(loadTopLegend);
     return () => {
       isMounted = false;
-      if (retryTimer) clearTimeout(retryTimer);
+      Object.values(retryTimers).forEach((timer) => timer && clearTimeout(timer));
     };
   }, []);
 
@@ -236,15 +252,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </div>
           <div className="relative flex-1 overflow-hidden whitespace-nowrap pl-3">
             <div className="animate-ticker flex items-center gap-12 font-medium">
-              {[1, 2, 3, 4].map((item) => (
-                <span key={item} className="flex items-center gap-2">
-                  {isBannerLoading ? (
-                    <><Loader2 className="h-3.5 w-3.5 animate-spin" />{isBannerTimeout ? '排行榜连接超时，正在重试…' : '正在同步全网传奇榜…'}</>
-                  ) : topLegendName ? (
-                    <>恭喜【<b className="text-amber-300">{topLegendName}</b>】登顶传奇榜！ <em className="font-mono text-[10px] not-italic text-amber-300">GOAT {topLegendScore}</em></>
-                  ) : '全网传奇榜等待首位传奇球员入榜'}
-                </span>
-              ))}
+              {[1, 2, 3, 4].flatMap((round) => MODES.map((mode) => {
+                const legend = bannerLegends[mode];
+                const isClassic = mode === 'classic';
+                const modeName = isClassic ? '经典模式' : '平行联盟';
+                return (
+                  <span key={`${round}-${mode}`} className="flex items-center gap-2">
+                    {legend.loading ? (
+                      <><Loader2 className="h-3.5 w-3.5 animate-spin" />{legend.timeout ? `${modeName}榜连接超时，正在重试…` : `正在同步${modeName}传奇榜…`}</>
+                    ) : legend.name ? (
+                      <>恭喜【<b className={isClassic ? 'text-amber-300' : 'text-cyan-300'}>{legend.name}</b>】登顶{modeName}传奇榜！ <em className={`font-mono text-[10px] not-italic ${isClassic ? 'text-amber-300' : 'text-cyan-300'}`}>GOAT {legend.score}</em></>
+                    ) : `${modeName}传奇榜等待首位传奇球员入榜`}
+                  </span>
+                );
+              }))}
             </div>
           </div>
         </div>

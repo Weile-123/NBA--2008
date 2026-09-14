@@ -8,10 +8,7 @@ import { gameConfetti as confetti } from '../utils/gameConfetti';
 import { getUserPlayoffStatus, settleInteractivePlayoffGame } from '../utils/playoffMatch';
 import type { GameMode } from '../gameMode';
 import { getSeasonSimulationPowerRating } from '../utils/parallelSeasonBalance';
-
-const MatchSimulator = React.lazy(() =>
-  import('./MatchSimulator').then((module) => ({ default: module.MatchSimulator }))
-);
+import { MatchSimulator } from './MatchSimulator';
 
 export interface PlayoffSeries {
   id: string;

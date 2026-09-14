@@ -9,6 +9,7 @@ interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
+  recoveryMessage: string | null;
 }
 
 export class ErrorBoundary extends React.Component<Props, State> {
@@ -22,11 +23,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
       hasError: false,
       error: null,
       errorInfo: null,
+      recoveryMessage: null,
     };
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error, errorInfo: null };
+    return { hasError: true, error, errorInfo: null, recoveryMessage: null };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -34,7 +36,21 @@ export class ErrorBoundary extends React.Component<Props, State> {
     this.setState({ errorInfo });
   }
 
-  private handleReload = () => {
+  private handleRecovery = async () => {
+    if (window.ColorboxAI?.closeWebview) {
+      try {
+        const response = await window.ColorboxAI.closeWebview({ channel: 'bridge' });
+        if (response?.code !== 200) {
+          this.setState({ recoveryMessage: response?.message || '暂时无法退出页面，请手动关闭后重新进入游戏。' });
+        }
+      } catch {
+        this.setState({ recoveryMessage: '暂时无法退出页面，请手动关闭后重新进入游戏。' });
+      }
+      return;
+    }
+
+    // Browser preview fallback. The Hupu App path above never navigates to a
+    // release-specific resource URL, which avoids exposing a raw 404 response.
     window.location.reload();
   };
 
@@ -50,7 +66,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
             <div className="space-y-2">
               <h2 className="text-xl font-bold text-white">页面遇到了运行错误</h2>
               <p className="text-xs text-slate-400">
-                抱歉，组件渲染出现异常。这可能是由于存档数据异常或系统崩溃引起的。
+                抱歉，页面资源加载或组件渲染出现异常。你的本地存档不会因此被删除。
               </p>
             </div>
 
@@ -60,13 +76,17 @@ export class ErrorBoundary extends React.Component<Props, State> {
               </div>
             )}
 
+            {this.state.recoveryMessage && (
+              <p className="text-xs text-amber-300">{this.state.recoveryMessage}</p>
+            )}
+
             <div className="pt-2">
               <button
-                onClick={this.handleReload}
+                onClick={this.handleRecovery}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition shadow-lg shadow-amber-500/20"
               >
                 <RefreshCw className="w-4 h-4" />
-                安全重新加载
+                {window.ColorboxAI?.closeWebview ? '退出并重新进入' : '安全重新加载'}
               </button>
             </div>
           </div>

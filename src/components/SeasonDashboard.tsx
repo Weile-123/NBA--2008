@@ -13,7 +13,7 @@ import { mustRetireAtAge } from '../utils/calc2k';
 import type { SeasonAwards } from '../utils/awardsLogic';
 import type { GameMode } from '../gameMode';
 import type { YearDraftData } from '../data/draftData';
-import { getDestinyEventEvaluations, type DestinyEventRecord } from '../data/destinyEvents';
+import { getDestinyEventEntrySummary, getDestinyEventEvaluations, type DestinyEventRecord } from '../data/destinyEvents';
 
 // The heavy 82-card ticker is replaced by a compact progress view while this
 // loop runs, so we can simulate faster and still yield between games for taps.
@@ -125,7 +125,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
     ? getDestinyEventEvaluations(currentYear, teams, leagueHistory, destinyEventRecords)
     : [];
   const availableDestinyEvents = destinyEvaluations.filter((item) => item.status === 'available');
-  const currentDestinyEvents = destinyEvaluations.filter((item) => item.event.year === currentYear);
+  const destinyEventEntrySummary = getDestinyEventEntrySummary(destinyEvaluations, currentYear);
 
   const handleAwardsSettled = React.useCallback((settledAwards: SeasonAwards) => {
     settledSeasonAwardsRef.current = settledAwards;
@@ -399,7 +399,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
                 {availableDestinyEvents.length > 0 && <span className="animate-pulse rounded-full bg-rose-500 px-2 py-0.5 text-[9px] font-black text-white">{availableDestinyEvents.length} 个可触发</span>}
               </div>
               <p className="mt-1 truncate text-[11px] text-slate-400">
-                {availableDestinyEvents[0]?.event.title || (currentDestinyEvents.length ? '本赛季事件条件尚未满足' : '查看历史时间线与未来事件')}
+                {destinyEventEntrySummary}
               </p>
             </div>
             <ChevronRight className={`h-5 w-5 shrink-0 ${availableDestinyEvents.length ? 'text-amber-300' : 'text-cyan-300'}`} />

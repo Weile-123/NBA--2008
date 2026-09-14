@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { PlayerProfile, Team, MatchBoxScore } from '../types';
 import { generatePressQuestion, PressConferenceOption } from '../utils/proceduralEngine';
-import { Award, Zap, Flame, MessageSquare, Twitter, Sparkles, CheckCircle2, TrendingUp, Trophy } from 'lucide-react';
+import { Zap, MessageSquare, Sparkles } from 'lucide-react';
 import { TeamLogo } from './TeamLogo';
 
 interface PostMatchModalProps {
@@ -59,6 +59,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
 
   const nextTotalXp = currentXp + xpEarned;
   const isLevelUp = nextTotalXp >= maxXp;
+  const xpProgress = Math.min(100, Math.max(0, (nextTotalXp / Math.max(1, maxXp)) * 100));
 
   const [pressQuestion] = useState(generatePressQuestion(playerStats.pts, isWin));
   const [selectedPressOpt, setSelectedPressOpt] = useState<PressConferenceOption | null>(null);
@@ -81,10 +82,10 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-[#11141b] border border-[#232834] rounded-xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-4 my-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/85 p-2.5 sm:p-4 backdrop-blur-md">
+      <div className="flex max-h-[calc(100vh-1.25rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-[#232834] bg-[#11141b] shadow-2xl sm:max-h-[calc(100vh-2rem)]">
         {/* Match Result Banner */}
-        <div className="text-center">
+        <header className="shrink-0 border-b border-[#232834] bg-[#11141b] px-4 py-3 text-center sm:px-6 sm:py-4">
           <div className="inline-block px-3 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold uppercase mb-1">
             赛后数据与总结
           </div>
@@ -118,7 +119,9 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
               />
             </div>
           </div>
-        </div>
+        </header>
+
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
 
         {/* Buzzer Beater Reward Banner */}
         {boxScore.isBuzzerBeaterWin && (
@@ -165,26 +168,25 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
           </div>
         </div>
 
-        {/* XP Progress & Level Up Notification (Requirement 5) */}
+        {/* XP Progress & Level Up Notification */}
         <div className="bg-[#0d1017] p-4 rounded-xl border border-amber-500/30 space-y-2">
           <div className="flex items-center justify-between text-xs font-bold">
             <span className="text-amber-300 flex items-center gap-1.5">
-              <Zap className="w-4 h-4 text-amber-400" /> 本场比赛经验值收益
+              <Zap className="w-4 h-4 text-amber-400" /> 成长进度
             </span>
-            <span className="text-amber-400 font-mono">+{xpEarned} XP</span>
+            <span className="text-amber-400 font-mono">{Math.round(xpProgress)}%</span>
           </div>
 
           {/* XP Bar */}
           <div className="w-full h-3 bg-[#11141b] rounded-full overflow-hidden border border-[#232834] relative">
             <div
               className="h-full bg-gradient-to-r from-amber-500 to-emerald-400 transition-all duration-500"
-              style={{ width: `${Math.min(100, (nextTotalXp / maxXp) * 100)}%` }}
+              style={{ width: `${xpProgress}%` }}
             />
           </div>
 
-          <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono">
-            <span>当前经验值: {nextTotalXp} / {maxXp} XP</span>
-            <span>等级: Lv.{player.level || 1}</span>
+          <div className="flex justify-end text-[10px] text-slate-400 font-mono">
+            <span>当前等级：Lv.{player.level || 1}</span>
           </div>
 
           {/* Milestone SP Reward */}
@@ -247,13 +249,17 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
           )}
         </div>
 
+        </div>
+
         {/* Finish button */}
-        <button
-          onClick={handleFinish}
-          className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-black font-black italic rounded-xl text-xs uppercase tracking-tight shadow-xl transition-transform active:scale-95"
-        >
-          领取代言与经验收益 · 返回赛季大厅 →
-        </button>
+        <footer className="shrink-0 border-t border-[#232834] bg-[#11141b] px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:pb-4">
+          <button
+            onClick={handleFinish}
+            className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-black font-black italic rounded-xl text-xs uppercase tracking-tight shadow-xl transition-transform active:scale-95"
+          >
+            完成赛后结算 · 返回赛季大厅 →
+          </button>
+        </footer>
       </div>
     </div>
   );

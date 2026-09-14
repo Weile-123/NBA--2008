@@ -37,6 +37,7 @@ import {
 import { gameConfetti as confetti } from '../utils/gameConfetti';
 import { DEFAULT_GAME_MODE, GameMode } from '../gameMode';
 import { DESTINY_EVENTS, type DestinyEventRecord } from '../data/destinyEvents';
+import { resolveCompletedCareerEndYear } from '../utils/retirementTimeline';
 
 interface RetirementFlowModalProps {
   gameMode?: GameMode;
@@ -73,15 +74,22 @@ interface JerseyRetirementInfo {
   reasons: string[];
 }
 
-// Helper to build timeline entries for all years from draftYear to currentYear
-function buildFullCareerTimeline(
+// Build completed career seasons only. The game advances currentYear as soon as
+// the offseason opens, so blindly including currentYear creates a fake, unplayed
+// final season in retirement records.
+export function buildFullCareerTimeline(
   player: PlayerProfile,
   careerHistory: GameState['careerHistory'] = [],
   leagueHistory: GameState['leagueHistory'] = [],
   currentYear: number
 ): TimelineSeason[] {
   const startYear = player.draftYear || 2008;
-  const endYear = currentYear;
+  const endYear = resolveCompletedCareerEndYear(
+    startYear,
+    currentYear,
+    careerHistory.map((season) => season.year),
+    leagueHistory.map((season) => season.year),
+  );
   const fullTimeline: TimelineSeason[] = [];
 
   for (let yr = startYear; yr <= endYear; yr++) {
@@ -280,6 +288,7 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
   const saveLegendToHof = async () => {
     try {
       const timeline = buildFullCareerTimeline(player, careerHistory, leagueHistory, currentYear);
+      const completedEndYear = timeline[timeline.length - 1]?.year ?? (player.draftYear || currentYear);
       const jerseyRetirements = calculateJerseyRetirements(player, timeline, leagueHistory);
       const goatResult = calculateGoatScore(player);
       const goatScore = goatResult.score;
@@ -353,7 +362,7 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
         goatScore,
         seasonsPlayed: timeline.length,
         startYear: player.draftYear || 2008,
-        endYear: currentYear,
+        endYear: completedEndYear,
         totalGames: player.careerStats.games,
         totalPoints: player.careerStats.pts,
         totalRebounds: player.careerStats.reb,

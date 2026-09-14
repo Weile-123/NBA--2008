@@ -76,6 +76,49 @@ export interface EvaluatedPlayer {
   rookieScore: number;
 }
 
+type AllNbaPositionGroup = 'guard' | 'forward' | 'center';
+
+function getAllNbaPositionGroup(position: Position): AllNbaPositionGroup {
+  if (position === 'PG' || position === 'SG') return 'guard';
+  if (position === 'SF' || position === 'PF') return 'forward';
+  return 'center';
+}
+
+/** Select two guards, two forwards and one center from an already ranked pool. */
+export function selectAllNbaFive(
+  rankedPool: EvaluatedPlayer[],
+  mandatoryPlayer?: EvaluatedPlayer,
+): EvaluatedPlayer[] {
+  const selected: EvaluatedPlayer[] = [];
+  if (mandatoryPlayer && rankedPool.some((player) => player.id === mandatoryPlayer.id)) {
+    selected.push(mandatoryPlayer);
+  }
+
+  const quotas: Array<[AllNbaPositionGroup, number]> = [
+    ['guard', 2],
+    ['forward', 2],
+    ['center', 1],
+  ];
+  for (const [group, quota] of quotas) {
+    while (selected.filter((player) => getAllNbaPositionGroup(player.position) === group).length < quota) {
+      const next = rankedPool.find((player) => (
+        getAllNbaPositionGroup(player.position) === group
+        && !selected.some((picked) => picked.id === player.id)
+      ));
+      if (!next) break;
+      selected.push(next);
+    }
+  }
+
+  // A malformed or very small roster should still render a five-player team.
+  while (selected.length < 5) {
+    const next = rankedPool.find((player) => !selected.some((picked) => picked.id === player.id));
+    if (!next) break;
+    selected.push(next);
+  }
+  return selected.slice(0, 5);
+}
+
 /**
  * Hash string to derive a stable pseudo-random float between 0.80 and 1.20
  */
@@ -590,32 +633,17 @@ export function calculateSeasonAwards(
   // Position order comparator helper
   const posOrder: Record<Position, number> = { PG: 1, SG: 2, SF: 3, PF: 4, C: 5 };
 
-  // 5. 最佳阵容 (All-NBA 1st, 2nd, 3rd) - 1 player per position (PG, SG, SF, PF, C)
+  // 5. 最佳阵容 (All-NBA 1st, 2nd, 3rd) - 2 guards, 2 forwards, 1 center
   const sortedAllNba = [...allPlayers].sort((a, b) => b.allNbaScore - a.allNbaScore);
   const selectedAllNbaIds = new Set<string>();
   const mvpPlayerCandidate = allPlayers.find((p) => p.id === mvp.id || p.name === mvp.name);
 
   const pickAllNbaTeam = (teamIndex: 1 | 2 | 3, label: string): AllTeamSelection => {
     const pool = sortedAllNba.filter((p) => !selectedAllNbaIds.has(p.id));
-    const selected: EvaluatedPlayer[] = [];
-    const positions: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
-
-    // MVP MUST be included in All-NBA 1st Team
-    if (teamIndex === 1 && mvpPlayerCandidate && !selectedAllNbaIds.has(mvpPlayerCandidate.id)) {
-      selected.push(mvpPlayerCandidate);
-    }
-
-    for (const pos of positions) {
-      if (selected.some((s) => s.position === pos)) continue;
-      const bestForPos = pool.find((p) => p.position === pos && !selected.some((s) => s.id === p.id));
-      if (bestForPos) selected.push(bestForPos);
-    }
-
-    while (selected.length < 5) {
-      const next = pool.find((p) => !selected.some((s) => s.id === p.id));
-      if (next) selected.push(next);
-      else break;
-    }
+    const mandatoryPlayer = teamIndex === 1 && mvpPlayerCandidate && !selectedAllNbaIds.has(mvpPlayerCandidate.id)
+      ? mvpPlayerCandidate
+      : undefined;
+    const selected = selectAllNbaFive(pool, mandatoryPlayer);
 
     selected.sort((a, b) => posOrder[a.position] - posOrder[b.position]);
 

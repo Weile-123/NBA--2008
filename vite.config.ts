@@ -19,44 +19,15 @@ export default defineConfig(() => {
       // Readable output avoids scanner-only review while gzip still removes
       // whitespace during delivery.
       minify: false,
-      // Lazy chunks load only after their UI is opened. Disabling generated
-      // preload dependency lists also keeps release scanners from mistaking
-      // Vite's assetsURL helper for a user-controlled remote resource loader.
+      // Keep the release as one JavaScript resource. Embedded WebViews can stay
+      // open across a deployment; a single entry prevents an old page from
+      // requesting hashed dependency chunks that the new release no longer has.
       modulePreload: false,
       sourcemap: true,
-      chunkSizeWarningLimit: 500,
+      chunkSizeWarningLimit: 3000,
       rollupOptions: {
         output: {
-          manualChunks(id) {
-            const normalizedId = id.replace(/\\/g, '/');
-            if (normalizedId.includes('/src/data/nbaData2008.ts')) {
-              return 'data-league-2008';
-            }
-            if (normalizedId.includes('/src/data/realTradesData.ts')) {
-              return 'data-real-trades';
-            }
-            if (normalizedId.includes('/src/data/draftData.ts') || normalizedId.includes('/src/data/drafts/')) {
-              return 'data-historical-drafts';
-            }
-            if (normalizedId.includes('/src/data/')) {
-              return 'data-career-events';
-            }
-            if (id.includes('node_modules')) {
-              if (id.includes('lucide-react')) {
-                return 'vendor-icons';
-              }
-              if (id.includes('react') || id.includes('react-dom')) {
-                return 'vendor-react';
-              }
-              if (id.includes('motion')) {
-                return 'vendor-motion';
-              }
-              if (id.includes('firebase')) {
-                return 'vendor-firebase';
-              }
-              return 'vendor';
-            }
-          },
+          inlineDynamicImports: true,
         },
       },
     },

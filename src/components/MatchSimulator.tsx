@@ -14,8 +14,6 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
   currentYear = 2008,
   onFinishMatch,
 }) => {
-  const showLocalDebugControls = typeof window !== 'undefined'
-    && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   const buzzerRates = {
     '3pt': Math.round(calculateBuzzerBeaterSuccessRate(player, '3pt') * 100),
     mid: Math.round(calculateBuzzerBeaterSuccessRate(player, 'mid') * 100),
@@ -64,7 +62,6 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
     startMatchSimulation,
     handleNextQuarterOrFinish,
     quickSimulateCurrentQuarter,
-    debugJumpToFourthQuarterTie,
     handleTacticalChoiceOption,
     handleBuzzerBeaterChoice,
   } = useMatchSimulation({ player, userTeam, oppTeam, isInteractive, isPlayoffs, currentYear, onFinishMatch });
@@ -182,16 +179,6 @@ export const MatchSimulator: React.FC<MatchSimulatorProps> = ({
 
             {/* ACTION / CONTROL BUTTONS */}
             <div className="flex flex-wrap items-center justify-center gap-2">
-              {showLocalDebugControls && isInteractive && (
-                <button
-                  type="button"
-                  onClick={debugJumpToFourthQuarterTie}
-                  className="rounded-xl border border-fuchsia-500/45 bg-fuchsia-500/10 px-3 py-1.5 text-[10px] font-black text-fuchsia-300 hover:bg-fuchsia-500/20"
-                  title="仅本地开发环境显示"
-                >
-                  调试：第四节平局
-                </button>
-              )}
               {!hasStarted ? (
                 <button
                   onClick={startMatchSimulation}

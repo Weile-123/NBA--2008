@@ -122,6 +122,11 @@ export interface TradeModalData {
   executedTrades: ExecutedTradeDetail[];
 }
 
+export interface HistoricalTradeOptions {
+  userPlayerId?: string;
+  userPlayerName?: string;
+}
+
 export const HISTORICAL_REAL_TRADES: Record<number, SeasonTradesConfig> = {
   2009: {
     year: 2009,
@@ -3807,12 +3812,11 @@ function findTeamById(teams: Team[], teamId?: string): Team | undefined {
  */
 export function executeHistoricalTradesForSeason(
   currentTeams: Team[],
-  year: number
+  year: number,
+  options: HistoricalTradeOptions = {},
 ): { updatedTeams: Team[]; modalData: TradeModalData | null } {
   const config = HISTORICAL_REAL_TRADES[year];
-  if (!config || !config.trades || config.trades.length === 0) {
-    return { updatedTeams: currentTeams, modalData: null };
-  }
+  const configuredTrades = config?.trades || [];
 
   // Deep clone teams to avoid mutating original state directly
   const teams: Team[] = JSON.parse(JSON.stringify(currentTeams));
@@ -3849,7 +3853,7 @@ export function executeHistoricalTradesForSeason(
 
   const executedDetails: ExecutedTradeDetail[] = [];
 
-  for (const trade of config.trades) {
+  for (const trade of configuredTrades) {
     const tradeType = trade.type || 'swap';
 
     if (tradeType === 'league_change' && trade.leagueChangeDetail) {
@@ -4065,8 +4069,27 @@ export function executeHistoricalTradesForSeason(
     }
   }
 
+  // Historical tables only list notable real-world retirements. Players who
+  // are not explicitly listed must still leave the league at age 43, but their
+  // routine exits stay out of the visible transaction report.
+  let hasSilentRetirement = false;
+  for (const team of teams) {
+    const retainedRoster = team.roster.filter((rosterPlayer) => {
+      const isUser =
+        (!!options.userPlayerId && rosterPlayer.id === options.userPlayerId) ||
+        (!!options.userPlayerName && rosterPlayer.name === options.userPlayerName);
+      const shouldRetireSilently = !isUser && (rosterPlayer.age || 0) >= 43;
+      if (shouldRetireSilently) hasSilentRetirement = true;
+      return !shouldRetireSilently;
+    });
+    if (retainedRoster.length !== team.roster.length) {
+      team.roster = retainedRoster;
+      updateTeamStarPlayers(team);
+    }
+  }
+
   if (executedDetails.length === 0) {
-    return { updatedTeams: currentTeams, modalData: null };
+    return { updatedTeams: hasSilentRetirement ? teams : currentTeams, modalData: null };
   }
 
   // Sort executed details so 'retire' trades are always placed at the bottom
@@ -4080,7 +4103,7 @@ export function executeHistoricalTradesForSeason(
 
   const modalData: TradeModalData = {
     year,
-    seasonName: config.seasonName,
+    seasonName: config?.seasonName || `${year}-${year + 1} 赛季`,
     executedTrades: executedDetails,
   };
 

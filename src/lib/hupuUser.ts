@@ -38,6 +38,7 @@ declare global {
       vatask?: {
         completeRewardVideo?: () => Promise<{ code?: number; message?: string; data?: { rewarded?: boolean } }>;
       };
+      closeWebview?: (options: { channel: 'bridge' }) => Promise<{ code?: number; message?: string }>;
     };
   }
 }

@@ -77,6 +77,9 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
 
         <div className="relative min-h-0 flex-1 overflow-hidden">
         <div ref={listScrollRef} className="absolute inset-0 overflow-y-auto p-3 pr-5 sm:p-4">
+          <div className="mb-3 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.06] px-3 py-2.5 text-[11px] leading-relaxed text-slate-300">
+            命定事件取材于现实中真实发生或曾有可能发生的联盟事件。当前置条件达成后，你可以决定是否触发，并在关键事件中选择时间线的走向。
+          </div>
           <div className="mb-3 text-xs text-slate-400">
             当前赛季：<strong className="font-mono text-cyan-300">{currentYear}-{currentYear + 1}</strong>
           </div>

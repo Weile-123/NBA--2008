@@ -66,6 +66,22 @@ test('hides legacy global records above the mandatory retirement age', async () 
   assert.deepEqual(records.map((item) => item.id), ['valid']);
 });
 
+test('deduplicates a legacy career id before rendering the global leaderboard', async () => {
+  setCloudResponse({
+    statusCode: 200,
+    code: 0,
+    data: [
+      { record: { ...record, id: 'duplicated-career', retireAge: 43, goatScore: 15000 } },
+      { record: { ...record, id: 'duplicated-career', retireAge: 43, goatScore: 15000 } },
+      { record: { ...record, id: 'unique-career', retireAge: 43, goatScore: 14000 } },
+    ],
+  });
+
+  const records = await loadGlobalHallOfFame('classic');
+  assert.deepEqual(records.map((item) => item.id), ['duplicated-career', 'unique-career']);
+  assert.equal(records.every((item) => item.gameMode === 'classic'), true);
+});
+
 test('does not expose an over-age legacy record as my current rank', async () => {
   setCloudResponse({
     statusCode: 200,

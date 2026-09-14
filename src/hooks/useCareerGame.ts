@@ -6,7 +6,7 @@ import { GameState,MatchBoxScore,PlayerProfile,RosterPlayer,Team } from '../type
 import { calculateSeasonAwards, type SeasonAwards } from '../utils/awardsLogic';
 import { mustRetireAtAge,shouldShowAgeDeclinePrompt,syncPlayerAgeDecay } from '../utils/calc2k';
 import { ContractOffer } from '../utils/contractLogic';
-import { calculateUserDraftPick } from '../utils/draftLogic';
+import { calculateUserDraftPick, resolveUserDraftTeam } from '../utils/draftLogic';
 import { progressLeagueForNewSeason } from '../utils/progressionLogic';
 import { clearGameStorage,hydrateGameStorage,loadGameFromStorage,SavedData } from '../utils/storage';
 import { useAutoSave } from './useAutoSave';
@@ -415,17 +415,23 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
               userPlayerId: player.id,
               userPlayerName: player.name,
               userTeamId: player.currentTeamId,
+              defendingChampionTeamId: leagueHistory.find((season) => season.year === currentYear - 1)?.championId,
             })
-          : executeHistoricalTradesForSeason(teams, currentYear);
-        if (modalData && modalData.executedTrades.length > 0) {
+          : executeHistoricalTradesForSeason(teams, currentYear, {
+              userPlayerId: player.id,
+              userPlayerName: player.name,
+            });
+        if (updatedTeams !== teams) {
           setTeams(updatedTeams);
+        }
+        setExecutedTradeYears((prev) => prev.includes(currentYear) ? prev : [...prev, currentYear]);
+        if (modalData && modalData.executedTrades.length > 0) {
           setTradeModalData(modalData);
           setSeasonTradeHistory((prev) => ({ ...prev, [currentYear]: modalData }));
-          setExecutedTradeYears((prev) => [...prev, currentYear]);
         }
       }
     }
-  }, [phase, currentYear, executedTradeYears, player, teams, gameMode]);
+  }, [phase, currentYear, executedTradeYears, player, teams, gameMode, leagueHistory]);
 
   const lastGamePhaseRef = useRef<GameState['phase']>('regular_season');
 
@@ -700,8 +706,8 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
       roster: t.roster.map((r) => ({ ...r })),
     }));
 
-    const userTeamId = newPlayer.favoriteTeamId || newPlayer.currentTeamId || 'lal';
-    const assignedTeam = initialTeams.find((t) => t.id === userTeamId) || initialTeams[0];
+    const assignedTeam = resolveUserDraftTeam(initialTeams, newPlayer, 'lal');
+    const userTeamId = assignedTeam.id;
 
     const updatedPlayer: PlayerProfile = syncPlayerAgeDecay({
       ...newPlayer,
@@ -797,11 +803,16 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   const handleCompleteDraft = (teamId: string, pick: number, selectedJerseyNum?: number) => {
     if (!player) return;
 
-    const assignedTeam = teams.find((t) => t.id === teamId) || teams[0];
+    // The creation choice is authoritative for the user's 2008 draft in both
+    // modes. This also protects legacy saves that may reopen the old draft step
+    // with a stale or mismatched callback team id.
+    const assignedTeam = resolveUserDraftTeam(teams, player, teamId);
+    const assignedTeamId = assignedTeam.id;
 
     const updatedPlayer: PlayerProfile = {
       ...player,
-      currentTeamId: teamId,
+      currentTeamId: assignedTeamId,
+      favoriteTeamId: assignedTeamId,
       draftPick: pick,
       jerseyNum: selectedJerseyNum !== undefined ? selectedJerseyNum : player.jerseyNum || 24,
     };
@@ -810,7 +821,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
 
     // Generate 82-game schedule with opponent teams
     const newSchedule = Array.from({ length: 82 }, (_, i) => {
-      const opp = teams.filter((t) => t.id !== teamId)[i % (teams.length - 1)];
+      const opp = teams.filter((t) => t.id !== assignedTeamId)[i % (teams.length - 1)];
       return {
         gameNumber: i + 1,
         week: i + 1,
@@ -936,13 +947,17 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
             userPlayerId: player.id,
             userPlayerName: player.name,
             userTeamId: player.currentTeamId,
+            defendingChampionTeamId: leagueHistory.find((season) => season.year === currentYear - 1)?.championId,
           })
-        : executeHistoricalTradesForSeason(resetTeams, currentYear);
+        : executeHistoricalTradesForSeason(resetTeams, currentYear, {
+            userPlayerId: player.id,
+            userPlayerName: player.name,
+          });
+      resetTeams = teamsAfterTrades;
+      setExecutedTradeYears((prev) => prev.includes(currentYear) ? prev : [...prev, currentYear]);
       if (modalData && modalData.executedTrades.length > 0) {
-        resetTeams = teamsAfterTrades;
         setTradeModalData(modalData);
         setSeasonTradeHistory((prev) => ({ ...prev, [currentYear]: modalData }));
-        setExecutedTradeYears((prev) => [...prev, currentYear]);
       }
     }
 
@@ -993,7 +1008,10 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
       else showToast('本赛季平行联盟交易尚未生成');
       return;
     }
-    let { modalData } = executeHistoricalTradesForSeason(teams, currentYear);
+    let { modalData } = executeHistoricalTradesForSeason(teams, currentYear, {
+      userPlayerId: player?.id,
+      userPlayerName: player?.name,
+    });
     if (!modalData && currentYear === 2008) {
       modalData = {
         year: 2008,
