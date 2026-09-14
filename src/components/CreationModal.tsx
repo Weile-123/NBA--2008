@@ -128,6 +128,37 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
   const [showAllAttrsModal, setShowAllAttrsModal] = useState(false);
   const [teamConfFilter, setTeamConfFilter] = useState<'ALL' | 'East' | 'West'>('ALL');
   const [teamSearchQuery, setTeamSearchQuery] = useState('');
+  const customizationScrollRef = useRef<HTMLDivElement>(null);
+  const [customizationScrollbar, setCustomizationScrollbar] = useState({ visible: false, top: 0, height: 44 });
+
+  const syncCustomizationScrollbar = useCallback(() => {
+    const element = customizationScrollRef.current;
+    if (!element) return;
+    const { clientHeight, scrollHeight, scrollTop } = element;
+    if (scrollHeight <= clientHeight + 1) {
+      setCustomizationScrollbar({ visible: false, top: 0, height: clientHeight });
+      return;
+    }
+    const thumbHeight = Math.max(44, Math.round((clientHeight / scrollHeight) * clientHeight));
+    const travel = Math.max(0, clientHeight - thumbHeight);
+    const thumbTop = Math.round((scrollTop / Math.max(1, scrollHeight - clientHeight)) * travel);
+    setCustomizationScrollbar({ visible: true, top: thumbTop, height: thumbHeight });
+  }, []);
+
+  useEffect(() => {
+    if (step !== 'customize') return;
+    const element = customizationScrollRef.current;
+    if (!element) return;
+    const frame = window.requestAnimationFrame(syncCustomizationScrollbar);
+    const resizeObserver = typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(syncCustomizationScrollbar);
+    resizeObserver?.observe(element);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      resizeObserver?.disconnect();
+    };
+  }, [step, position, selectedArchId, heightCm, weightKg, favoriteTeamId, syncCustomizationScrollbar]);
 
   // Start / Restart Simulation
   const handleStartSimulation = (e: React.FormEvent) => {
@@ -323,7 +354,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto text-slate-200">
-      <div className={`bg-[#11141b] border border-[#232834] rounded-2xl max-w-3xl w-full p-5 sm:p-7 shadow-2xl relative my-auto max-h-[92svh] ${step === 'identity' || step === 'customize' ? 'overflow-hidden flex min-h-0 flex-col' : 'overflow-y-auto'}`}>
+      <div className={`bg-[#11141b] border border-[#232834] rounded-2xl max-w-3xl w-full p-5 sm:p-7 shadow-2xl relative my-auto max-h-[92svh] ${step === 'customize' ? 'h-[92svh] overflow-hidden flex min-h-0 flex-col' : step === 'identity' ? 'overflow-hidden flex min-h-0 flex-col' : 'overflow-y-auto'}`}>
         {/* TOP HEADER NAVIGATION BAR */}
         {onBackToHome && (
           <div className="shrink-0 flex items-center justify-between mb-4 pb-3 border-b border-[#232834]">
@@ -741,7 +772,12 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1">
+            <div className="relative min-h-0 flex-1 overflow-hidden">
+            <div
+              ref={customizationScrollRef}
+              onScroll={syncCustomizationScrollbar}
+              className="absolute inset-0 space-y-4 overflow-y-auto overscroll-contain pr-3 sm:pr-1"
+            >
               {/* Section 1: Favorite draft team */}
               <div className="bg-[#0d1017] p-3.5 rounded-xl border border-amber-500/50 space-y-3 shadow-[0_0_20px_rgba(245,158,11,0.08)]">
                 <div>
@@ -934,6 +970,15 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                 ))}
               </div>
               </div>
+            </div>
+            {customizationScrollbar.visible && (
+              <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 z-20 w-2 rounded-full border border-slate-700 bg-[#090c12] sm:hidden">
+                <div
+                  className="absolute left-0.5 right-0.5 rounded-full bg-amber-500 shadow-[0_0_7px_rgba(245,158,11,0.75)]"
+                  style={{ top: customizationScrollbar.top, height: customizationScrollbar.height }}
+                />
+              </div>
+            )}
             </div>
 
             {/* Fixed bottom actions */}
