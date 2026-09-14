@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Position, Team } from '../src/types';
-import { DESTINY_EVENTS, evaluateDestinyEvent, getVisibleDestinyEventEvaluations, triggerDestinyEvent } from '../src/data/destinyEvents';
+import { DESTINY_EVENTS, evaluateDestinyEvent, triggerDestinyEvent } from '../src/data/destinyEvents';
 import { executeRandomTradesForSeason } from '../src/utils/randomTradeLogic';
 import { getSeasonSimulationPowerRating } from '../src/utils/parallelSeasonBalance';
 
@@ -59,14 +59,6 @@ test('future routes cannot become available or be triggered early', () => {
   assert.equal(evaluation.status, 'upcoming');
   assert.equal(evaluation.routeEvaluations.some((route) => route.available), false);
   assert.equal(triggerDestinyEvent(event, 2009, teams).success, false);
-});
-
-test('destiny event list reveals only the current season and next four seasons', () => {
-  const teams = [makeTeam('cle', '克里夫兰', [{ id: 'lebron', name: '勒布朗·詹姆斯', ovr: 96 }])];
-  const visible = getVisibleDestinyEventEvaluations(2010, teams);
-  assert.ok(visible.length > 0);
-  assert.ok(visible.every(({ event }) => event.year >= 2010 && event.year <= 2014));
-  assert.equal(visible.some(({ event }) => event.year === 2015), false);
 });
 
 test('parallel pre-decision Cavaliers receive a small simulation-only penalty', () => {

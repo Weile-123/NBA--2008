@@ -423,19 +423,6 @@ export function getDestinyEventEvaluations(
   return DESTINY_EVENTS.map((event) => evaluateDestinyEvent(event, currentYear, teams, leagueHistory, records));
 }
 
-export const DESTINY_EVENT_VISIBLE_SEASONS = 5;
-
-export function getVisibleDestinyEventEvaluations(
-  currentYear: number,
-  teams: Team[],
-  leagueHistory: GameState['leagueHistory'] = [],
-  records: Record<string, DestinyEventRecord> = {},
-): DestinyEventEvaluation[] {
-  const finalVisibleYear = currentYear + DESTINY_EVENT_VISIBLE_SEASONS - 1;
-  return getDestinyEventEvaluations(currentYear, teams, leagueHistory, records)
-    .filter(({ event }) => event.year >= currentYear && event.year <= finalVisibleYear);
-}
-
 function refreshTeam(team: Team): void {
   team.roster.sort((a, b) => b.ovr - a.ovr);
   team.roster.forEach((player, index) => {

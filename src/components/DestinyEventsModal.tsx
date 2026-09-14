@@ -2,8 +2,7 @@ import { useMemo, useState } from 'react';
 import { Check, ChevronRight, Clock3, Sparkles, X, XCircle } from 'lucide-react';
 import type { GameState, Team } from '../types';
 import {
-  DESTINY_EVENT_VISIBLE_SEASONS,
-  getVisibleDestinyEventEvaluations,
+  getDestinyEventEvaluations,
   type DestinyEventDefinition,
   type DestinyEventRecord,
   type DestinyEventStatus,
@@ -29,13 +28,22 @@ const STATUS_META: Record<DestinyEventStatus, { label: string; className: string
 export function DestinyEventsModal({ currentYear, teams, leagueHistory, records, onTrigger, onClose }: DestinyEventsModalProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const evaluations = useMemo(
-    () => getVisibleDestinyEventEvaluations(currentYear, teams, leagueHistory, records),
+    () => getDestinyEventEvaluations(currentYear, teams, leagueHistory, records),
     [currentYear, teams, leagueHistory, records],
   );
-  const ordered = useMemo(() => [...evaluations].sort((a, b) => (
-    a.event.year - b.event.year || Number(b.status === 'available') - Number(a.status === 'available')
-  )), [evaluations]);
+  const ordered = useMemo(() => [...evaluations].sort((a, b) => {
+    const timeGroup = (year: number) => year === currentYear ? 0 : year > currentYear ? 1 : 2;
+    const groupDifference = timeGroup(a.event.year) - timeGroup(b.event.year);
+    if (groupDifference !== 0) return groupDifference;
+    if (a.event.year !== b.event.year) {
+      return a.event.year > currentYear ? a.event.year - b.event.year : b.event.year - a.event.year;
+    }
+    const statusPriority: Record<DestinyEventStatus, number> = { available: 0, triggered: 1, unavailable: 2, upcoming: 3, expired: 4 };
+    return statusPriority[a.status] - statusPriority[b.status];
+  }), [evaluations, currentYear]);
+  const displayedEvents = showAll ? ordered : ordered.slice(0, 5);
   const selected = evaluations.find((item) => item.event.id === selectedId) || null;
 
   const handleTrigger = (routeId?: string) => {
@@ -58,18 +66,17 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
         <header className="flex items-center justify-between border-b border-[#293140] px-4 py-3.5">
           <div>
             <h2 className="flex items-center gap-2 text-lg font-black text-white"><Sparkles className="h-4 w-4 text-amber-400" />命定事件</h2>
-            <p className="mt-1 text-[11px] text-slate-400">只显示当前起 {DESTINY_EVENT_VISIBLE_SEASONS} 个赛季，事件仅能在指定赛季触发。</p>
+            <p className="mt-1 text-[11px] text-slate-400">事件仅能在指定赛季触发。</p>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg bg-slate-800 p-2 text-slate-400" aria-label="关闭"><X className="h-5 w-5" /></button>
         </header>
 
         <div className="overflow-y-auto p-3 sm:p-4">
-          <div className="mb-3 flex items-center justify-between text-xs">
-            <span className="text-slate-400">当前赛季</span>
-            <strong className="font-mono text-cyan-300">{currentYear}-{currentYear + 1}</strong>
+          <div className="mb-3 text-xs text-slate-400">
+            当前赛季：<strong className="font-mono text-cyan-300">{currentYear}-{currentYear + 1}</strong>
           </div>
           <div className="space-y-2">
-            {ordered.map((item) => {
+            {displayedEvents.map((item) => {
               const meta = STATUS_META[item.status];
               return (
                 <button type="button" key={item.event.id} onClick={() => setSelectedId(item.event.id)} className={`flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition active:scale-[0.99] ${item.status === 'available' ? 'border-amber-400/55 bg-amber-500/10' : 'border-[#283141] bg-[#111722]'}`}>
@@ -84,6 +91,11 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
               );
             })}
           </div>
+          {ordered.length > 5 && (
+            <button type="button" onClick={() => setShowAll((value) => !value)} className="mt-3 w-full rounded-xl border border-slate-700 bg-slate-900/70 py-2.5 text-xs font-black text-slate-300">
+              {showAll ? '收起事件' : `展开其余 ${ordered.length - 5} 个事件`}
+            </button>
+          )}
         </div>
       </section>
 
