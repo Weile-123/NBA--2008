@@ -155,29 +155,6 @@ export const DESTINY_EVENTS: DestinyEventDefinition[] = [
     guide: true, conditions: [exists('卡梅隆·安东尼')], moves: [{ playerName: '卡梅隆·安东尼', destinationTeamId: 'nyk' }],
   },
   {
-    id: 'lakers_f4', year: 2012, title: '紫金F4集结', category: '重磅交易', protectionYears: 2,
-    history: '2012 年夏天，洛杉矶湖人引入史蒂夫·纳什与德怀特·霍华德，尝试让四位明星共同冲击冠军。',
-    result: '科比·布莱恩特、史蒂夫·纳什、保罗·加索尔与德怀特·霍华德组成四星阵容。',
-    conditions: [allExist('科比·布莱恩特', '史蒂夫·纳什', '保罗·加索尔', '德怀特·霍华德')],
-    routes: [
-      {
-        id: 'purple_gold', title: '紫金四星豪赌', result: '科比·布莱恩特、史蒂夫·纳什、保罗·加索尔与德怀特·霍华德齐聚洛杉矶湖人。', requiredScore: 3,
-        conditions: [requiredOnTeam('科比·布莱恩特', 'lal', '洛杉矶湖人'), onTeam('保罗·加索尔', 'lal', '洛杉矶湖人'), strategyIn('lal', '洛杉矶湖人', ['contender', 'playoff']), minWins('lal', '洛杉矶湖人', 45)],
-        moves: ['科比·布莱恩特', '史蒂夫·纳什', '保罗·加索尔', '德怀特·霍华德'].map((playerName) => ({ playerName, destinationTeamId: 'lal' })),
-      },
-      {
-        id: 'magic_galaxy', title: '魔术银河战舰', result: '科比·布莱恩特、史蒂夫·纳什与保罗·加索尔前往奥兰多，与德怀特·霍华德组成四星阵容。', requiredScore: 3,
-        conditions: [requiredOnTeam('德怀特·霍华德', 'orl', '奥兰多'), strategyIn('orl', '奥兰多', ['contender', 'playoff'], 2), maxElite('orl', '奥兰多', 2), playerTeamMaxWins('科比·布莱恩特', 55)],
-        moves: ['科比·布莱恩特', '史蒂夫·纳什', '保罗·加索尔', '德怀特·霍华德'].map((playerName) => ({ playerName, destinationTeamId: 'orl' })),
-      },
-      {
-        id: 'phoenix_twilight', title: '凤凰城最后一舞', result: '科比·布莱恩特、保罗·加索尔与德怀特·霍华德前往菲尼克斯，与史蒂夫·纳什展开最后一次争冠冲刺。', requiredScore: 3,
-        conditions: [requiredOnTeam('史蒂夫·纳什', 'phx', '菲尼克斯'), strategyIn('phx', '菲尼克斯', ['contender', 'playoff', 'retooling'], 2), maxElite('phx', '菲尼克斯', 2), playerTeamMaxWins('科比·布莱恩特', 55)],
-        moves: ['科比·布莱恩特', '史蒂夫·纳什', '保罗·加索尔', '德怀特·霍华德'].map((playerName) => ({ playerName, destinationTeamId: 'phx' })),
-      },
-    ],
-  },
-  {
     id: 'harden_houston', year: 2012, title: '大胡子独当一面', category: '重磅交易', protectionYears: 3,
     history: '雷霆年轻第六人詹姆斯·哈登被送往休斯敦，从此成长为持球大核心。',
     result: '詹姆斯·哈登加盟休斯敦并获得建队核心地位。',

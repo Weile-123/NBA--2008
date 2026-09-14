@@ -61,28 +61,6 @@ test('future routes cannot become available or be triggered early', () => {
   assert.equal(triggerDestinyEvent(event, 2009, teams).success, false);
 });
 
-test('the Lakers F4 event offers three routes and gathers all four stars', () => {
-  const event = DESTINY_EVENTS.find((candidate) => candidate.id === 'lakers_f4')!;
-  const lakers = makeTeam('lal', '洛杉矶湖人', [
-    { id: 'kobe', name: '科比·布莱恩特', ovr: 95 },
-    { id: 'gasol', name: '保罗·加索尔', ovr: 89 },
-  ]);
-  lakers.strategy = 'contender';
-  lakers.previousSeasonWins = 50;
-  const teams = [
-    lakers,
-    makeTeam('orl', '奥兰多', [{ id: 'howard', name: '德怀特·霍华德', ovr: 94 }]),
-    makeTeam('phx', '菲尼克斯', [{ id: 'nash', name: '史蒂夫·纳什', ovr: 90 }]),
-  ];
-  const evaluation = evaluateDestinyEvent(event, 2012, teams);
-  assert.equal(evaluation.routeEvaluations.length, 3);
-  assert.equal(evaluation.routeEvaluations.find((route) => route.route.id === 'purple_gold')?.available, true);
-  const triggered = triggerDestinyEvent(event, 2012, teams, [], {}, undefined, undefined, 'purple_gold');
-  assert.equal(triggered.success, true);
-  const lakersRoster = triggered.teams.find((team) => team.id === 'lal')!.roster.map((player) => player.name);
-  for (const name of ['科比·布莱恩特', '史蒂夫·纳什', '保罗·加索尔', '德怀特·霍华德']) assert.ok(lakersRoster.includes(name));
-});
-
 test('linked destiny events require their preceding event or exact branch', () => {
   const lebron = { id: 'lebron', name: '勒布朗·詹姆斯', ovr: 96 };
   const cleveland = makeTeam('cle', '克里夫兰', [lebron]);
@@ -133,8 +111,8 @@ test('later event conditions use championship history and the rebuilt Brooklyn c
   assert.equal(evaluation.status, 'available');
 });
 
-test('removed league-wide events no longer appear in the destiny catalog', () => {
-  for (const id of ['lockout_2011', 'small_ball_revolution', 'bubble_2020']) {
+test('removed events no longer appear in the destiny catalog', () => {
+  for (const id of ['lockout_2011', 'small_ball_revolution', 'bubble_2020', 'lakers_f4']) {
     assert.equal(DESTINY_EVENTS.some((event) => event.id === id), false);
   }
 });
