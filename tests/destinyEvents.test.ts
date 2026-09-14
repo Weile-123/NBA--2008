@@ -30,7 +30,7 @@ function makeTeam(id: string, name: string, specialPlayers: Array<{ id: string; 
   };
 }
 
-test('destiny event is available only in its exact season with all conditions met', () => {
+test('destiny event is available only in its exact season and a prior title does not lock decision one', () => {
   const event = DESTINY_EVENTS.find((candidate) => candidate.id === 'decision_1')!;
   const teams = [
     makeTeam('cle', '克里夫兰', [{ id: 'lebron', name: '勒布朗·詹姆斯', ovr: 96 }]),
@@ -43,7 +43,21 @@ test('destiny event is available only in its exact season with all conditions me
   assert.equal(evaluateDestinyEvent(event, 2011, teams).status, 'expired');
   assert.equal(evaluateDestinyEvent(event, 2010, teams, [{
     year: 2009, seasonStr: '2009-10', champion: '克里夫兰', championId: 'cle', mvp: '其他人', fmvp: '其他人', dpoy: '其他人', roy: '其他人', championRosterPlayerNames: ['勒布朗·詹姆斯'],
-  }]).status, 'unavailable');
+  }]).status, 'available');
+});
+
+test('future routes cannot become available or be triggered early', () => {
+  const event = DESTINY_EVENTS.find((candidate) => candidate.id === 'decision_1')!;
+  const teams = [
+    makeTeam('cle', '克里夫兰', [{ id: 'lebron', name: '勒布朗·詹姆斯', ovr: 96 }]),
+    makeTeam('mia', '迈阿密', [{ id: 'wade', name: '德维恩·韦德', ovr: 94 }]),
+    makeTeam('tor', '多伦多', [{ id: 'bosh', name: '克里斯·波什', ovr: 89 }]),
+  ];
+  teams[1].strategy = 'playoff';
+  const evaluation = evaluateDestinyEvent(event, 2009, teams);
+  assert.equal(evaluation.status, 'upcoming');
+  assert.equal(evaluation.routeEvaluations.some((route) => route.available), false);
+  assert.equal(triggerDestinyEvent(event, 2009, teams).success, false);
 });
 
 test('triggering a destiny event preserves roster sizes and the user player', () => {

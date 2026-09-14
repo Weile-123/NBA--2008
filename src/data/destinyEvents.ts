@@ -92,7 +92,6 @@ const onTeam = (playerName: string, teamId: string, teamName: string): DestinyEv
 const withoutTitle = (playerName: string): DestinyEventCondition => ({
   type: 'player_without_title', playerNames: [playerName], required: true, label: `${playerName}此前尚未夺冠`,
 });
-
 const strategyIn = (teamId: string, teamName: string, strategies: DestinyEventCondition['strategies'], points = 1): DestinyEventCondition => ({
   type: 'team_strategy_in', teamId, strategies, points, label: `${teamName}球队方向为${strategies?.map((item) => ({ contender: '争冠', playoff: '季后赛竞争', retooling: '观望调整', rebuilding: '重建' })[item]).join('或')}（+${points}）`,
 });
@@ -114,7 +113,7 @@ export const DESTINY_EVENTS: DestinyEventDefinition[] = [
     id: 'decision_1', year: 2010, title: '决定一：南海岸集结', category: '决定', protectionYears: 3,
     history: '2010 年夏天，勒布朗·詹姆斯宣布离开克里夫兰，与德维恩·韦德、克里斯·波什在迈阿密联手。',
     result: '勒布朗·詹姆斯与克里斯·波什加盟迈阿密，三位核心进入三年稳定期。',
-    conditions: [exists('勒布朗·詹姆斯'), withoutTitle('勒布朗·詹姆斯')],
+    conditions: [exists('勒布朗·詹姆斯')],
     moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'mia' }, { playerName: '克里斯·波什', destinationTeamId: 'mia' }],
     routes: [
       {
@@ -392,7 +391,13 @@ export function evaluateDestinyEvent(
     const routeChecks = route.conditions.map((condition) => checkCondition(condition, teams, leagueHistory));
     const routeRequiredMet = routeChecks.filter((check) => check.required).every((check) => check.met);
     const routeScore = routeChecks.reduce((sum, check) => sum + (check.met ? check.points : 0), 0);
-    return { route, checks: routeChecks, score: routeScore, requiredScore: route.requiredScore, available: requiredMet && routeRequiredMet && routeScore >= route.requiredScore };
+    return {
+      route,
+      checks: routeChecks,
+      score: routeScore,
+      requiredScore: route.requiredScore,
+      available: currentYear === event.year && requiredMet && routeRequiredMet && routeScore >= route.requiredScore,
+    };
   });
   const conditionsMet = routeEvaluations.length
     ? routeEvaluations.some((route) => route.available)

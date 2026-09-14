@@ -114,14 +114,17 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
             {selected.routeEvaluations.length > 0 && (
               <div className="mt-4 space-y-2.5">
                 <div className="text-[10px] font-black tracking-wider text-slate-400">命运分支</div>
-                {selected.routeEvaluations.map((routeEvaluation) => (
-                  <div key={routeEvaluation.route.id} className={`rounded-xl border p-3 ${routeEvaluation.available ? 'border-amber-400/45 bg-amber-500/10' : 'border-slate-700 bg-slate-900/55'}`}>
-                    <div className="flex items-center justify-between gap-2"><span className="text-xs font-black text-white">{routeEvaluation.route.title}</span><span className={`text-[10px] font-black ${routeEvaluation.score >= routeEvaluation.requiredScore ? 'text-emerald-300' : 'text-amber-300'}`}>契合度 {routeEvaluation.score}/{routeEvaluation.requiredScore}</span></div>
-                    <div className="mt-2 space-y-1.5">{routeEvaluation.checks.map((check) => <div key={check.label} className={`flex items-center gap-1.5 text-[10px] ${check.met ? 'text-emerald-300' : 'text-rose-300'}`}>{check.met ? <Check className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}<span>{check.label}{check.required ? '（必须）' : ''}</span></div>)}</div>
-                    <div className="mt-2 rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-2 text-[10px] leading-relaxed text-cyan-100"><span className="font-black text-cyan-300">结果：</span>{routeEvaluation.route.result}</div>
-                    {routeEvaluation.available && selected.status !== 'triggered' && <button type="button" onClick={() => handleTrigger(routeEvaluation.route.id)} className="mt-2.5 w-full rounded-lg bg-amber-500 py-2 text-xs font-black text-black">触发“{routeEvaluation.route.title}”</button>}
-                  </div>
-                ))}
+                {selected.routeEvaluations.map((routeEvaluation) => {
+                  const canTriggerRoute = selected.status === 'available' && routeEvaluation.available;
+                  return (
+                    <div key={routeEvaluation.route.id} className={`rounded-xl border p-3 ${canTriggerRoute ? 'border-amber-400/45 bg-amber-500/10' : 'border-slate-700 bg-slate-900/55'}`}>
+                      <div className="flex items-center justify-between gap-2"><span className="text-xs font-black text-white">{routeEvaluation.route.title}</span><span className={`text-[10px] font-black ${routeEvaluation.score >= routeEvaluation.requiredScore ? 'text-emerald-300' : 'text-amber-300'}`}>契合度 {routeEvaluation.score}/{routeEvaluation.requiredScore}</span></div>
+                      <div className="mt-2 space-y-1.5">{routeEvaluation.checks.map((check) => <div key={check.label} className={`flex items-center gap-1.5 text-[10px] ${check.met ? 'text-emerald-300' : 'text-rose-300'}`}>{check.met ? <Check className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}<span>{check.label}{check.required ? '（必须）' : ''}</span></div>)}</div>
+                      <div className="mt-2 rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-2 text-[10px] leading-relaxed text-cyan-100"><span className="font-black text-cyan-300">结果：</span>{routeEvaluation.route.result}</div>
+                      {canTriggerRoute && <button type="button" onClick={() => handleTrigger(routeEvaluation.route.id)} className="mt-2.5 w-full rounded-lg bg-amber-500 py-2 text-xs font-black text-black">触发“{routeEvaluation.route.title}”</button>}
+                    </div>
+                  );
+                })}
               </div>
             )}
             {!selected.routeEvaluations.length && <div className="mt-4 rounded-xl border border-cyan-500/25 bg-cyan-500/[0.07] p-3 text-xs leading-relaxed text-cyan-100"><span className="font-black text-cyan-300">触发结果：</span>{selected.event.result}</div>}
