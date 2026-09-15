@@ -5,7 +5,6 @@ import {
   Bell,
   Flame,
   Globe,
-  Loader2,
   MessageSquareText,
   Play,
   PlusCircle,
@@ -250,22 +249,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <Trophy className="h-4 w-4 shrink-0 text-amber-400" />
             <span>全网公告</span>
           </div>
-          <div className="relative flex-1 overflow-hidden whitespace-nowrap pl-3">
-            <div className="animate-ticker flex items-center gap-12 font-medium">
-              {[1, 2, 3, 4].flatMap((round) => MODES.map((mode) => {
+          <div className="h-5 min-w-0 flex-1 overflow-hidden pl-3 text-left">
+            <div className="announcement-vertical-track font-medium">
+              {[...MODES, MODES[0]].map((mode, index) => {
                 const legend = bannerLegends[mode];
                 const isClassic = mode === 'classic';
-                const modeName = isClassic ? '经典模式' : '平行联盟';
+                const modeName = isClassic ? '经典' : '平行';
+                const leaderName = legend.loading ? '同步中…' : legend.name || '暂无';
                 return (
-                  <span key={`${round}-${mode}`} className="flex items-center gap-2">
-                    {legend.loading ? (
-                      <><Loader2 className="h-3.5 w-3.5 animate-spin" />{legend.timeout ? `${modeName}榜连接超时，正在重试…` : `正在同步${modeName}传奇榜…`}</>
-                    ) : legend.name ? (
-                      <>恭喜【<b className={isClassic ? 'text-amber-300' : 'text-cyan-300'}>{legend.name}</b>】登顶{modeName}传奇榜！ <em className={`font-mono text-[10px] not-italic ${isClassic ? 'text-amber-300' : 'text-cyan-300'}`}>GOAT {legend.score}</em></>
-                    ) : `${modeName}传奇榜等待首位传奇球员入榜`}
-                  </span>
+                  <div key={`${mode}-${index}`} className="announcement-vertical-item" aria-hidden={index === MODES.length}>
+                    <span className="truncate">
+                      {modeName}传奇榜TOP1：【<b className={isClassic ? 'text-amber-300' : 'text-cyan-300'}>{leaderName}</b>】
+                    </span>
+                  </div>
                 );
-              }))}
+              })}
             </div>
           </div>
         </div>

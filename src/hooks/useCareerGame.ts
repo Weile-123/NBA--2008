@@ -15,7 +15,7 @@ import { calculateDisposableSalary } from '../utils/economy';
 import { useSeasonSimulation } from './useSeasonSimulation';
 
 import { detectNewMilestones,MilestoneTrigger } from '../data/milestonesData';
-import { executeHistoricalTradesForSeason,TradeModalData } from '../data/realTradesData';
+import { applyHistoricalTeamIdentityUpdates, executeHistoricalTradesForSeason,TradeModalData } from '../data/realTradesData';
 import { executeRandomTradesForSeason, inviteStarToTeam } from '../utils/randomTradeLogic';
 import { Accolade } from '../types';
 import { scheduleRootScrollToTop } from '../utils/scroll';
@@ -201,22 +201,23 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     setUsedOffseasonEventIds((prev) => new Set([...prev, eventId]));
   };
 
-  const handleEnterOffseason = (championTeam?: Team, passedFmvpName?: string, settledSeasonAwards?: SeasonAwards) => {
+  const handleEnterOffseason = (championTeam?: Team, passedFmvpName?: string, settledSeasonAwards?: SeasonAwards, settledPlayer?: PlayerProfile) => {
+    const transitionPlayer = settledPlayer || player;
     isLeavingRegularSeasonRef.current = true;
     setShowAgeDeclineModal(false);
     setIsPlayoffs(false);
     setShowDraftWaitingAnimation(true);
 
     // --- RECORD LEAGUE & CAREER HISTORY BEFORE INCREMENTING YEAR ---
-    if (player) {
-      const userTeam = teams.find((t) => t.id === player.currentTeamId) || teams[0];
+    if (transitionPlayer) {
+      const userTeam = teams.find((t) => t.id === transitionPlayer.currentTeamId) || teams[0];
       const seasonStr = `${currentYear}-${(currentYear + 1).toString().slice(-2)} 赛季`;
       
       // Calculate user accolades for this year from computedAwards
       // Reuse the exact regular-season result shown to the player. Recomputing
       // here can make the history page disagree with the settlement screen if
       // any roster or team object changed during the playoffs.
-      const computedAwards = settledSeasonAwards ?? calculateSeasonAwards(teams, player, currentYear);
+      const computedAwards = settledSeasonAwards ?? calculateSeasonAwards(teams, transitionPlayer, currentYear);
       const accoladesEarned: string[] = [];
       if (computedAwards.mvp.isUser) accoladesEarned.push('常规赛 MVP');
       if (computedAwards.scoringLeader.isUser) accoladesEarned.push('常规赛得分王');
@@ -239,13 +240,13 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
         computedAwards.dpoy.isUser ||
         computedAwards.sixthMan.isUser ||
         !!allNbaSelection ||
-        (player.careerStats.games > 0 && player.careerStats.pts / player.careerStats.games >= 16) ||
-        player.ovr >= 82;
+        (transitionPlayer.careerStats.games > 0 && transitionPlayer.careerStats.pts / transitionPlayer.careerStats.games >= 16) ||
+        transitionPlayer.ovr >= 82;
       if (isUserAllStar) accoladesEarned.push('联盟 全明星');
       
       // Check if user's team won championship and if player won FMVP
-      const isChamp = championTeam && championTeam.id === player.currentTeamId;
-      const isFmvp = passedFmvpName === player.name || (player.accolades || []).some((a) => a.year === currentYear && a.type === 'FMVP');
+      const isChamp = championTeam && championTeam.id === transitionPlayer.currentTeamId;
+      const isFmvp = passedFmvpName === transitionPlayer.name || (transitionPlayer.accolades || []).some((a) => a.year === currentYear && a.type === 'FMVP');
       if (isChamp) {
         accoladesEarned.push('联盟总冠军');
       }
@@ -254,18 +255,18 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
       }
       
       // Calculate career stats for this year
-      const games = player.seasonStats?.games || 0;
-      const ppg = games > 0 ? Math.round((player.seasonStats.pts / games) * 10) / 10 : 0;
-      const rpg = games > 0 ? Math.round((player.seasonStats.reb / games) * 10) / 10 : 0;
-      const apg = games > 0 ? Math.round((player.seasonStats.ast / games) * 10) / 10 : 0;
-      const spg = games > 0 ? Math.round((player.seasonStats.stl / games) * 10) / 10 : 0;
-      const bpg = games > 0 ? Math.round((player.seasonStats.blk / games) * 10) / 10 : 0;
-      const fgPct = player.seasonStats?.fga > 0 ? Math.round((player.seasonStats.fgm / player.seasonStats.fga) * 1000) / 10 : 45.0;
+      const games = transitionPlayer.seasonStats?.games || 0;
+      const ppg = games > 0 ? Math.round((transitionPlayer.seasonStats.pts / games) * 10) / 10 : 0;
+      const rpg = games > 0 ? Math.round((transitionPlayer.seasonStats.reb / games) * 10) / 10 : 0;
+      const apg = games > 0 ? Math.round((transitionPlayer.seasonStats.ast / games) * 10) / 10 : 0;
+      const spg = games > 0 ? Math.round((transitionPlayer.seasonStats.stl / games) * 10) / 10 : 0;
+      const bpg = games > 0 ? Math.round((transitionPlayer.seasonStats.blk / games) * 10) / 10 : 0;
+      const fgPct = transitionPlayer.seasonStats?.fga > 0 ? Math.round((transitionPlayer.seasonStats.fgm / transitionPlayer.seasonStats.fga) * 1000) / 10 : 45.0;
 
       const newHistoryItem = {
         year: currentYear,
         seasonStr,
-        teamId: player.currentTeamId,
+        teamId: transitionPlayer.currentTeamId,
         teamName: userTeam.name,
         wins: userTeam.wins,
         losses: userTeam.losses,
@@ -275,7 +276,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
         spg,
         bpg,
         fgPct,
-        ovr: player.ovr,
+        ovr: transitionPlayer.ovr,
         accoladesEarned,
       };
 
@@ -287,8 +288,8 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
       // Determine FMVP Winner
       let fmvpName = passedFmvpName || '待定';
       if (!passedFmvpName && championTeam) {
-        if (championTeam.id === player.currentTeamId) {
-          fmvpName = player.name;
+        if (championTeam.id === transitionPlayer.currentTeamId) {
+          fmvpName = transitionPlayer.name;
         } else {
           // get highest OVR player of the champion team as FMVP
           const sortedRoster = [...championTeam.roster].sort((a, b) => b.ovr - a.ovr);
@@ -343,7 +344,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     setFreeAgencyOffers([]);
 
     // Update contract remaining years (decrement by 1)
-    if (player) {
+    if (transitionPlayer) {
       setPlayer((latestPlayer) => {
         if (!latestPlayer) return latestPlayer;
         const updatedYearsLeft = Math.max(0, (latestPlayer.contract?.yearsLeft || 1) - 1);
@@ -598,7 +599,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     }
     setCurrentSeasonWeek(loadedWeek);
     setIsPlayoffs(data.isPlayoffs || false);
-    setTeams(data.teams || NBA_TEAMS_2008);
+    setTeams(applyHistoricalTeamIdentityUpdates(data.teams || NBA_TEAMS_2008, data.currentYear || 2008));
     const loadedPlayer = syncPlayerAgeDecay(data.player);
     setPlayer(loadedPlayer);
     setSchedule(data.schedule || []);

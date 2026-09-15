@@ -47,7 +47,7 @@ interface SeasonDashboardProps {
   onRest: () => void;
   onAdvanceWeek: () => void;
   onEnterPlayoffs?: () => void;
-  onEnterOffseason?: (championTeam?: Team, fmvpName?: string, seasonAwards?: SeasonAwards) => void;
+  onEnterOffseason?: (championTeam?: Team, fmvpName?: string, seasonAwards?: SeasonAwards, settledPlayer?: PlayerProfile) => void;
   onNextSeason?: () => void;
   onUpdatePlayer?: (player: PlayerProfile) => void;
   onUpdateTeams?: (teams: Team[]) => void;
@@ -125,7 +125,9 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
     ? getDestinyEventEvaluations(currentYear, teams, leagueHistory, destinyEventRecords, player.destinyEventAdUnlocks)
     : [];
   const isDestinyDeadlinePassed = currentGame > DESTINY_EVENT_DEADLINE_GAME;
-  const availableDestinyEvents = destinyEvaluations.filter((item) => item.status === 'available' && !isDestinyDeadlinePassed);
+  const unresolvedDestinyEvents = destinyEvaluations.filter((item) =>
+    item.event.year === currentYear && (item.status === 'available' || item.status === 'unavailable')
+  );
   const destinyEventEntrySummary = isDestinyDeadlinePassed
     ? '交易截止日已过，本赛季未处理事件已失效'
     : getDestinyEventEntrySummary(destinyEvaluations, currentYear);
@@ -323,9 +325,9 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
         player={player}
         currentYear={currentYear}
         onUpdatePlayer={onUpdatePlayer}
-        onFinishPlayoffs={(championTeam, fmvpName) => {
+        onFinishPlayoffs={(championTeam, fmvpName, settledPlayer) => {
           if (onEnterOffseason) {
-            onEnterOffseason(championTeam, fmvpName, settledSeasonAwardsRef.current || undefined);
+            onEnterOffseason(championTeam, fmvpName, settledSeasonAwardsRef.current || undefined, settledPlayer);
           } else if (onNextSeason) {
             onNextSeason();
           }
@@ -391,21 +393,21 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
             setIsAutoSimulating(false);
             onOpenDestinyEvents();
           }}
-          className={`relative w-full overflow-hidden rounded-2xl border p-3.5 text-left transition active:scale-[0.99] ${availableDestinyEvents.length ? 'border-amber-400/70 bg-gradient-to-r from-amber-500/20 via-[#171822] to-cyan-500/15 shadow-[0_0_28px_rgba(245,158,11,0.16)]' : 'border-cyan-500/30 bg-gradient-to-r from-cyan-500/10 to-[#111722]'}`}
+          className={`relative w-full overflow-hidden rounded-2xl border p-3.5 text-left transition active:scale-[0.99] ${unresolvedDestinyEvents.length ? 'border-amber-400/70 bg-gradient-to-r from-amber-500/20 via-[#171822] to-cyan-500/15 shadow-[0_0_28px_rgba(245,158,11,0.16)]' : 'border-cyan-500/30 bg-gradient-to-r from-cyan-500/10 to-[#111722]'}`}
         >
           <div className="absolute -right-5 -top-8 h-24 w-24 rounded-full bg-amber-400/10 blur-2xl" />
           <div className="relative flex items-center gap-3">
-            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-xl ${availableDestinyEvents.length ? 'border-amber-400/50 bg-amber-400/15' : 'border-cyan-400/30 bg-cyan-400/10'}`}>⏳</div>
+            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-xl ${unresolvedDestinyEvents.length ? 'border-amber-400/50 bg-amber-400/15' : 'border-cyan-400/30 bg-cyan-400/10'}`}>⏳</div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className={`text-sm font-black italic ${availableDestinyEvents.length ? 'text-amber-300' : 'text-white'}`}>命定事件</span>
-                {availableDestinyEvents.length > 0 && <span className="animate-pulse rounded-full bg-rose-500 px-2 py-0.5 text-[9px] font-black text-white">{availableDestinyEvents.length} 个可触发</span>}
+                <span className={`text-sm font-black italic ${unresolvedDestinyEvents.length ? 'text-amber-300' : 'text-white'}`}>命定事件</span>
+                {unresolvedDestinyEvents.length > 0 && <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[9px] font-black text-white">{unresolvedDestinyEvents.length} 个可决定</span>}
               </div>
               <p className="mt-1 truncate text-[11px] text-slate-400">
                 {destinyEventEntrySummary}
               </p>
             </div>
-            <ChevronRight className={`h-5 w-5 shrink-0 ${availableDestinyEvents.length ? 'text-amber-300' : 'text-cyan-300'}`} />
+            <ChevronRight className={`h-5 w-5 shrink-0 ${unresolvedDestinyEvents.length ? 'text-amber-300' : 'text-cyan-300'}`} />
           </div>
         </button>
       )}

@@ -5,6 +5,9 @@ import { resolve } from 'node:path';
 import { UPDATE_ANNOUNCEMENTS } from '../src/data/updateAnnouncements';
 
 const homeSource = readFileSync(resolve('src/components/HomeScreen.tsx'), 'utf8');
+const appSource = readFileSync(resolve('src/App.tsx'), 'utf8');
+const seasonDashboardSource = readFileSync(resolve('src/components/SeasonDashboard.tsx'), 'utf8');
+const globalStyles = readFileSync(resolve('src/index.css'), 'utf8');
 const migrationSource = readFileSync(resolve('activity/migrate-legendary-data.cjs'), 'utf8');
 const postMatchSource = readFileSync(resolve('src/components/PostMatchModal.tsx'), 'utf8');
 
@@ -20,8 +23,32 @@ test('v8 announcement leads with parallel league and omits removed release notes
 
 test('homepage announcement loads and labels both global leaderboards', () => {
   assert.match(homeSource, /loadGlobalHallOfFame\(mode\)/);
-  assert.match(homeSource, /isClassic \? '经典模式' : '平行联盟'/);
-  assert.match(homeSource, /登顶\{modeName\}传奇榜/);
+  assert.match(homeSource, /isClassic \? '经典' : '平行'/);
+  assert.match(homeSource, /\{modeName\}传奇榜TOP1/);
+});
+
+test('homepage announcement loops downward with longer holds', () => {
+  assert.match(homeSource, /className="announcement-vertical-track/);
+  assert.match(homeSource, /className="announcement-vertical-item"/);
+  assert.match(homeSource, /\[\.\.\.MODES, MODES\[0\]\]/);
+  assert.match(globalStyles, /animation: announcement-vertical-switch 6s/);
+  assert.match(globalStyles, /0%, 41\.666%[\s\S]*translateY\(-66\.666%\)/);
+  assert.match(globalStyles, /50%, 91\.666%[\s\S]*translateY\(-33\.333%\)/);
+  assert.match(globalStyles, /100%[\s\S]*translateY\(0\)/);
+  assert.doesNotMatch(globalStyles, /ticker-scroll|translateX\(-50%\)/);
+});
+
+test('parallel season entry announces every unresolved destiny event after offseason', () => {
+  assert.match(appSource, /previousPhase !== 'offseason' \|\| phase !== 'regular_season'/);
+  assert.match(appSource, /event\.year === currentYear && !destinyEventRecords\[event\.id\]/);
+  assert.match(appSource, /本赛季有命定事件/);
+  assert.match(appSource, /setIsDestinyEventsOpen\(true\)/);
+});
+
+test('destiny entry counts unavailable current-season events as decisions', () => {
+  assert.match(seasonDashboardSource, /item\.status === 'available' \|\| item\.status === 'unavailable'/);
+  assert.match(seasonDashboardSource, /\{unresolvedDestinyEvents\.length\} 个可决定/);
+  assert.doesNotMatch(seasonDashboardSource, /个可触发/);
 });
 
 test('first-generation migration cannot be mistaken for a v7-to-v8 release monitor', () => {

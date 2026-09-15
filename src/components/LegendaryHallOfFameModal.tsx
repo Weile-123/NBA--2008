@@ -368,6 +368,10 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
     setLegends(getHallOfFameLegends(leaderboardGameMode));
   };
 
+  const isParallelDetail = selectedLegend?.gameMode === 'random_trade';
+  const detailAccent = isParallelDetail ? 'text-cyan-300' : 'text-amber-400';
+  const detailBorder = isParallelDetail ? 'border-cyan-400/40' : 'border-amber-500/30';
+
   return (
     <div className="min-h-screen bg-[#070913] text-slate-200 p-3 sm:p-6 lg:p-8 flex flex-col selection:bg-amber-500 selection:text-black animate-in fade-in duration-200">
       <div className="max-w-6xl w-full mx-auto space-y-6 flex-1 flex flex-col">
@@ -458,7 +462,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
                     setSelectedLegend(null);
                     resetModalScroll();
                   }}
-                  className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl bg-[#161c2b] hover:bg-[#20283d] text-amber-400 font-bold text-xs border border-amber-500/30 transition-all cursor-pointer shadow-lg active:scale-95"
+                  className={`inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl bg-[#161c2b] hover:bg-[#20283d] ${detailAccent} font-bold text-xs border ${detailBorder} transition-all cursor-pointer shadow-lg active:scale-95`}
                 >
                   <ArrowLeft className="w-4 h-4 shrink-0" />
                   <span>返回历史传奇列表</span>
@@ -477,8 +481,8 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
               </div>
 
               {/* Legend Hero Banner Card */}
-              <div className="p-3.5 sm:p-6 rounded-2xl bg-gradient-to-r from-amber-950/40 via-[#141b2a] to-[#0e1320] border-2 border-amber-500/50 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 blur-3xl rounded-full pointer-events-none" />
+              <div className={`p-3.5 sm:p-6 rounded-2xl ${isParallelDetail ? 'bg-gradient-to-r from-cyan-950/40 via-[#141b2a] to-violet-950/40 border-cyan-400/50' : 'bg-gradient-to-r from-amber-950/40 via-[#141b2a] to-[#0e1320] border-amber-500/50'} border-2 shadow-2xl relative overflow-hidden`}>
+                <div className={`absolute top-0 right-0 w-64 h-64 ${isParallelDetail ? 'bg-cyan-500/10' : 'bg-amber-500/10'} blur-3xl rounded-full pointer-events-none`} />
                 
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 relative z-10">
                   <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
@@ -531,7 +535,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 <div className="p-2.5 sm:p-3.5 rounded-xl bg-[#121724] border border-[#232c40] text-center">
                   <span className="text-[10px] text-slate-400 font-mono block">生涯总得分</span>
-                  <span className="text-sm sm:text-lg font-black font-mono text-amber-400">
+                  <span className={`text-sm sm:text-lg font-black font-mono ${detailAccent}`}>
                     {selectedLegend.totalPoints.toLocaleString()} <span className="text-[10px] sm:text-xs font-normal text-slate-400">分</span>
                   </span>
                   <span className="text-[10px] text-slate-500 block font-mono mt-0.5">场均 {Number(selectedLegend.avgPpg || 0).toFixed(1)} 分</span>
@@ -555,7 +559,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
 
                 <div className="p-2.5 sm:p-3.5 rounded-xl bg-[#121724] border border-[#232c40] text-center">
                   <span className="text-[10px] text-slate-400 font-mono block">生涯出场数</span>
-                  <span className="text-sm sm:text-lg font-black font-mono text-purple-400">
+                  <span className={`text-sm sm:text-lg font-black font-mono ${isParallelDetail ? 'text-fuchsia-300' : 'text-purple-400'}`}>
                     {selectedLegend.totalGames} <span className="text-[10px] sm:text-xs font-normal text-slate-400">场</span>
                   </span>
                   <span className="text-[10px] text-slate-500 block font-mono mt-0.5">{selectedLegend.seasonsPlayed} 个赛季</span>
@@ -580,29 +584,29 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
 
                 return (
                   <div className="space-y-2.5 sm:space-y-3">
-                    <h3 className="text-xs font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2">
-                      <Trophy className="w-4 h-4 text-amber-400 shrink-0" />
+                    <h3 className={`text-xs font-bold ${detailAccent} uppercase tracking-widest flex items-center gap-2`}>
+                      <Trophy className={`w-4 h-4 ${detailAccent} shrink-0`} />
                       <span>生涯成就与荣誉汇总</span>
                     </h3>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
-                      <div className="p-2.5 sm:p-3 rounded-xl bg-[#121724] border border-amber-500/30 flex items-center gap-2.5">
+                      <div className={`p-2.5 sm:p-3 rounded-xl bg-[#121724] border ${isParallelDetail ? 'border-cyan-400/40' : 'border-amber-500/30'} flex items-center gap-2.5`}>
                         <span className="text-xl sm:text-2xl shrink-0">🏆</span>
                         <div className="min-w-0">
                           <div className="text-xs sm:text-sm font-black text-white truncate">{selectedLegend.careerAccolades.championships} 次</div>
-                          <div className="text-[9px] sm:text-[10px] text-amber-300 font-mono truncate">联盟 总冠军</div>
+                          <div className={`text-[9px] sm:text-[10px] ${detailAccent} font-mono truncate`}>联盟 总冠军</div>
                         </div>
                       </div>
 
-                      <div className="p-2.5 sm:p-3 rounded-xl bg-[#121724] border border-amber-500/30 flex items-center gap-2.5">
+                      <div className={`p-2.5 sm:p-3 rounded-xl bg-[#121724] border ${isParallelDetail ? 'border-cyan-400/40' : 'border-amber-500/30'} flex items-center gap-2.5`}>
                         <span className="text-xl sm:text-2xl shrink-0">🥇</span>
                         <div className="min-w-0">
                           <div className="text-xs sm:text-sm font-black text-white truncate">{selectedLegend.careerAccolades.mvps} 次</div>
-                          <div className="text-[9px] sm:text-[10px] text-amber-300 font-mono truncate">常规赛 MVP</div>
+                          <div className={`text-[9px] sm:text-[10px] ${detailAccent} font-mono truncate`}>常规赛 MVP</div>
                         </div>
                       </div>
 
-                      <div className="p-2.5 sm:p-3 rounded-xl bg-[#121724] border border-amber-500/30 flex items-center gap-2.5">
+                      <div className={`p-2.5 sm:p-3 rounded-xl bg-[#121724] border ${isParallelDetail ? 'border-cyan-400/40' : 'border-amber-500/30'} flex items-center gap-2.5`}>
                         <span className="text-xl sm:text-2xl shrink-0">🎖️</span>
                         <div className="min-w-0">
                           <div className="text-xs sm:text-sm font-black text-white truncate">{selectedLegend.careerAccolades.fmvps} 次</div>
@@ -610,7 +614,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
                         </div>
                       </div>
 
-                      <div className="p-2.5 sm:p-3 rounded-xl bg-[#121724] border border-amber-500/30 flex items-center gap-2.5">
+                      <div className={`p-2.5 sm:p-3 rounded-xl bg-[#121724] border ${isParallelDetail ? 'border-cyan-400/40' : 'border-amber-500/30'} flex items-center gap-2.5`}>
                         <span className="text-xl sm:text-2xl shrink-0">🛡️</span>
                         <div className="min-w-0">
                           <div className="text-xs sm:text-sm font-black text-white truncate">{selectedLegend.careerAccolades.dpoys} 次</div>
@@ -685,8 +689,8 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
               {/* Section 2: 退役球衣汇总 (Simplified: Enlarged Team Logo + Jersey Number below) */}
               {selectedLegend.retiredJerseys && selectedLegend.retiredJerseys.length > 0 && (
                 <div className="space-y-2.5 sm:space-y-3">
-                  <h3 className="text-xs font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2">
-                    <Shirt className="w-4 h-4 text-amber-400 shrink-0" />
+                  <h3 className={`text-xs font-bold ${detailAccent} uppercase tracking-widest flex items-center gap-2`}>
+                    <Shirt className={`w-4 h-4 ${detailAccent} shrink-0`} />
                     <span>退役球衣汇总 ({selectedLegend.retiredJerseys.length} 支球队)</span>
                   </h3>
 
@@ -711,8 +715,8 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
               {/* Section 3: 赛季时间线 (Season Timeline in Visual Timeline Style with Gold Border for Champion Seasons) */}
               <div className="space-y-2.5 sm:space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-xs font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-amber-400 shrink-0" />
+                  <h3 className={`text-xs font-bold ${detailAccent} uppercase tracking-widest flex items-center gap-2`}>
+                    <Calendar className={`w-4 h-4 ${detailAccent} shrink-0`} />
                     <span>职业生涯赛季时间线</span>
                   </h3>
                   <span className="text-[10px] font-mono text-slate-400 shrink-0">
@@ -781,7 +785,7 @@ export const LegendaryHallOfFameModal: React.FC<LegendaryHallOfFameModalProps> =
                   <button
                     type="button"
                     onClick={() => setShowFullTimelineModal(true)}
-                    className="w-full py-2.5 sm:py-3 px-4 rounded-xl bg-gradient-to-r from-[#161f33] via-[#1d2840] to-[#161f33] hover:from-amber-500/20 hover:via-amber-500/30 hover:to-amber-500/20 border border-amber-500/30 hover:border-amber-400/60 text-amber-300 font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg active:scale-[0.99] group mt-2"
+                    className={`w-full py-2.5 sm:py-3 px-4 rounded-xl bg-gradient-to-r from-[#161f33] via-[#1d2840] to-[#161f33] ${isParallelDetail ? 'hover:from-cyan-500/20 hover:via-violet-500/30 hover:to-cyan-500/20 border-cyan-400/30 hover:border-cyan-300/60 text-cyan-200' : 'hover:from-amber-500/20 hover:via-amber-500/30 hover:to-amber-500/20 border-amber-500/30 hover:border-amber-400/60 text-amber-300'} border font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg active:scale-[0.99] group mt-2`}
                   >
                     <Calendar className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform shrink-0" />
                     <span>查看完整赛季时间线 (共 {selectedLegend.timeline.length} 赛季)</span>

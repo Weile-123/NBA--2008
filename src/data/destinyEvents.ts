@@ -74,6 +74,11 @@ export interface DestinyEventEvaluation {
   record?: DestinyEventRecord;
 }
 
+export function canUnlockDestinyConditionWithAd(score: number, requiredScore: number): boolean {
+  const deficit = requiredScore - score;
+  return deficit >= 1 && deficit <= 2;
+}
+
 export interface DestinyConditionCheck {
   label: string;
   met: boolean;
@@ -137,20 +142,20 @@ const higherRatedTeammates = (playerName: string, value: number, points = 1): De
 
 const DESTINY_EVENT_DEFINITIONS: DestinyEventDefinition[] = [
   {
-    id: 'decision_1', year: 2010, title: '决定一：南海岸集结', category: '决定', protectionYears: 3,
+    id: 'decision_1', year: 2010, title: '决定一', category: '决定', protectionYears: 3,
     history: '2010 年夏天，勒布朗·詹姆斯宣布离开克里夫兰，与德维恩·韦德、克里斯·波什在迈阿密联手。',
     result: '勒布朗·詹姆斯与克里斯·波什加盟迈阿密，三位核心进入三年稳定期。',
     conditions: [withoutTitle('勒布朗·詹姆斯')],
     moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'mia' }, { playerName: '克里斯·波什', destinationTeamId: 'mia' }],
     routes: [
       {
-        id: 'south_beach', title: '南海岸三巨头', result: '勒布朗·詹姆斯与克里斯·波什加盟迈阿密，三位核心进入三年稳定期。', requiredScore: 3,
-        conditions: [requiredOnTeam('德维恩·韦德', 'mia', '迈阿密'), strategyIn('mia', '迈阿密', ['contender', 'playoff']), playerTeamMaxWins('勒布朗·詹姆斯', 59), minWins('mia', '迈阿密', 45)],
+        id: 'south_beach', title: '三巨头', result: '勒布朗·詹姆斯与克里斯·波什加盟迈阿密，三位核心进入三年稳定期。', requiredScore: 3,
+        conditions: [requiredOnTeam('德维恩·韦德', 'mia', '迈阿密'), strategyIn('mia', '迈阿密', ['contender', 'playoff']), playerTeamMaxWins('勒布朗·詹姆斯', 55), minWins('mia', '迈阿密', 48)],
         moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'mia' }, { playerName: '克里斯·波什', destinationTeamId: 'mia' }],
       },
       {
         id: 'broadway', title: '百老汇巨星', result: '勒布朗·詹姆斯加盟纽约，麦迪逊广场花园迎来新的建队核心。', requiredScore: 3,
-        conditions: [strategyIn('nyk', '纽约', ['retooling', 'rebuilding']), maxElite('nyk', '纽约', 1, 88, 1), playerTeamMaxWins('勒布朗·詹姆斯', 55, 1)],
+        conditions: [strategyIn('nyk', '纽约', ['retooling', 'rebuilding']), maxElite('nyk', '纽约', 1, 88, 1), playerTeamMaxWins('勒布朗·詹姆斯', 52, 1)],
         moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'nyk' }],
       },
       {
@@ -169,7 +174,7 @@ const DESTINY_EVENT_DEFINITIONS: DestinyEventDefinition[] = [
     moves: [{ playerName: '卡梅隆·安东尼', destinationTeamId: 'nyk' }],
   },
   {
-    id: 'cp3_lakers', year: 2011, title: '被叫停的交易', category: '重磅交易', protectionYears: 2,
+    id: 'cp3_lakers', year: 2011, title: '篮球原因', category: '重磅交易', protectionYears: 2,
     history: '2011 年，湖人曾达成得到克里斯·保罗的三方交易，但这笔交易最终被联盟叫停。',
     result: '交易在平行时空顺利完成，克里斯·保罗加盟洛杉矶湖人，与科比组成顶级后场。',
     conditions: [
@@ -184,17 +189,17 @@ const DESTINY_EVENT_DEFINITIONS: DestinyEventDefinition[] = [
     skipDefaultScoring: true,
   },
   {
-    id: 'harden_houston', year: 2012, title: '大胡子独当一面', category: '重磅交易', protectionYears: 3,
+    id: 'harden_houston', year: 2012, title: '一小时通牒', category: '重磅交易', protectionYears: 3,
     history: '雷霆年轻第六人詹姆斯·哈登被送往休斯敦，从此成长为持球大核心。',
     result: '詹姆斯·哈登加盟休斯敦并获得建队核心地位。',
     conditions: [], moves: [{ playerName: '詹姆斯·哈登', destinationTeamId: 'hou' }], requiredScore: 3,
   },
   {
-    id: 'howard_houston', year: 2013, title: '魔兽空降休斯敦', category: '自由市场', protectionYears: 2,
+    id: 'howard_houston', year: 2013, title: '摩登时代', category: '自由市场', protectionYears: 2,
     history: '德怀特·霍华德离开洛杉矶，选择前往休斯敦开启新的争冠窗口。',
     result: '德怀特·霍华德加盟休斯敦，球队内线实力得到提升。',
     conditions: [
-      eventCompleted('harden_houston', '大胡子独当一面'),
+      eventCompleted('harden_houston', '一小时通牒'),
       maxElite('hou', '休斯敦', 2, 88),
       playerTeamMaxWins('德怀特·霍华德', 50),
     ],
@@ -203,73 +208,73 @@ const DESTINY_EVENT_DEFINITIONS: DestinyEventDefinition[] = [
     skipDefaultScoring: true,
   },
   {
-    id: 'decision_2', year: 2014, title: '决定二：回到故乡', category: '决定', protectionYears: 3,
+    id: 'decision_2', year: 2014, title: '决定二', category: '决定', protectionYears: 3,
     history: '勒布朗·詹姆斯宣布回归克里夫兰，要为家乡带回一座冠军奖杯。',
     result: '勒布朗·詹姆斯回归克里夫兰，重新成为球队核心。',
     conditions: [eventCompletedWithoutRoute('decision_1', '决定一', 'stay_cavaliers', '留守骑士')], moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'cle' }],
     requiredScore: 3,
   },
   {
-    id: 'love_cleveland', year: 2014, title: '三巨头最后一块拼图', category: '重磅交易', protectionYears: 2,
+    id: 'love_cleveland', year: 2014, title: '爱神', category: '重磅交易', protectionYears: 2,
     history: '克里夫兰以年轻资产换来凯文·乐福，组建新的争冠三巨头。',
     result: '凯文·乐福加盟克里夫兰，与球队核心共同冲击冠军。',
     conditions: [eventCompleted('decision_2', '决定二'), requiredOnTeam('凯里·欧文', 'cle', '克里夫兰'), requiredOnTeam('勒布朗·詹姆斯', 'cle', '克里夫兰')], moves: [{ playerName: '凯文·乐福', destinationTeamId: 'cle' }], requiredScore: 3,
   },
   {
-    id: 'aldridge_spurs', year: 2015, title: '马刺迎来全明星内线', category: '自由市场', protectionYears: 2,
+    id: 'aldridge_spurs', year: 2015, title: '阿德返乡', category: '自由市场', protectionYears: 2,
     history: '拉马库斯·阿尔德里奇选择圣安东尼奥，延续球队的争冠周期。',
     result: '拉马库斯·阿尔德里奇加盟圣安东尼奥。',
     conditions: [], moves: [{ playerName: '拉马库斯·阿尔德里奇', destinationTeamId: 'sas' }], requiredScore: 3,
   },
   {
-    id: 'durant_warriors', year: 2016, title: '杜兰特的抉择', category: '决定', protectionYears: 3,
+    id: 'durant_warriors', year: 2016, title: '联盟大结局', category: '决定', protectionYears: 3,
     history: '凯文·杜兰特加盟金州，与斯蒂芬·库里领衔的冠军班底组成历史级阵容。',
     result: '凯文·杜兰特加盟金州，杜兰特与库里进入三年稳定期。',
     conditions: [withoutTitle('凯文·杜兰特')],
     moves: [{ playerName: '凯文·杜兰特', destinationTeamId: 'gsw' }],
     routes: [
       {
-        id: 'bay_area', title: '死神降临湾区', result: '凯文·杜兰特加盟金州，与斯蒂芬·库里组成历史级双核。', requiredScore: 2,
+        id: 'bay_area', title: '海啸兄弟', result: '凯文·杜兰特加盟金州，与斯蒂芬·库里组成历史级双核。', requiredScore: 2,
         conditions: [requiredOnTeam('斯蒂芬·库里', 'gsw', '金州'), strategyIn('gsw', '金州', ['contender', 'playoff']), minWins('gsw', '金州', 55)],
         moves: [{ playerName: '凯文·杜兰特', destinationTeamId: 'gsw' }],
       },
       {
         id: 'boston_project', title: '绿军复兴计划', result: '凯文·杜兰特加盟波士顿，成为绿军复兴计划的头号核心。', requiredScore: 3,
-        conditions: [strategyIn('bos', '波士顿', ['contender', 'playoff'], 2), maxElite('bos', '波士顿', 1, 88), playerTeamMaxWins('凯文·杜兰特', 55)],
+        conditions: [strategyIn('bos', '波士顿', ['contender', 'playoff'], 1), maxElite('bos', '波士顿', 1, 88), playerTeamMaxWins('凯文·杜兰特', 55)],
         moves: [{ playerName: '凯文·杜兰特', destinationTeamId: 'bos' }],
       },
       {
-        id: 'thunder_return', title: '雷霆最后一舞', result: '凯文·杜兰特留守俄克拉荷马，与威斯布鲁克继续冲击冠军。', requiredScore: 2,
-        conditions: [minWins('okc', '俄克拉荷马', 50), strategyIn('okc', '俄克拉荷马', ['contender', 'playoff'])],
+        id: 'thunder_return', title: '真正的MVP', result: '凯文·杜兰特留守俄克拉荷马。', requiredScore: 2,
+        conditions: [requiredOnTeam('凯文·杜兰特', 'okc', '俄克拉荷马雷霆'), minWins('okc', '俄克拉荷马', 50), strategyIn('okc', '俄克拉荷马', ['contender', 'playoff'])],
         moves: [{ playerName: '凯文·杜兰特', destinationTeamId: 'okc' }],
       },
     ],
   },
   {
-    id: 'cp3_houston', year: 2017, title: '灯泡组合成军', category: '重磅交易', protectionYears: 2,
+    id: 'cp3_houston', year: 2017, title: '灯泡组合', category: '重磅交易', protectionYears: 2,
     history: '克里斯·保罗转投休斯敦，与詹姆斯·哈登组成联盟顶级后场。',
     result: '克里斯·保罗加盟休斯敦，与哈登共同进入争冠窗口。',
-    conditions: [eventCompletedWithPlayerOnTeam('harden_houston', '大胡子独当一面', '詹姆斯·哈登', 'hou', '休斯敦'), strategyIn('hou', '休斯敦', ['contender', 'playoff']), minWins('hou', '休斯敦', 45), maxElite('hou', '休斯敦', 2, 88)], moves: [{ playerName: '克里斯·保罗', destinationTeamId: 'hou' }], requiredScore: 3, skipDefaultScoring: true,
+    conditions: [eventCompletedWithPlayerOnTeam('harden_houston', '一小时通牒', '詹姆斯·哈登', 'hou', '休斯敦'), strategyIn('hou', '休斯敦', ['contender', 'playoff']), minWins('hou', '休斯敦', 45), maxElite('hou', '休斯敦', 2, 88)], moves: [{ playerName: '克里斯·保罗', destinationTeamId: 'hou' }], requiredScore: 3, skipDefaultScoring: true,
   },
   {
-    id: 'kyrie_boston', year: 2017, title: '欧文接管绿军', category: '重磅交易', protectionYears: 2,
+    id: 'kyrie_boston', year: 2017, title: '德鲁大叔', category: '重磅交易', protectionYears: 2,
     history: '凯里·欧文离开克里夫兰，前往波士顿寻求独自带队的机会。',
     result: '凯里·欧文加盟波士顿，成为球队新的后场核心。',
     conditions: [strategyIn('bos', '波士顿', ['contender', 'playoff']), maxElite('bos', '波士顿', 2, 88), minWins('bos', '波士顿', 45)], moves: [{ playerName: '凯里·欧文', destinationTeamId: 'bos' }], requiredScore: 3, skipDefaultScoring: true,
   },
   {
-    id: 'lebron_lakers', year: 2018, title: '詹姆斯的下一站', category: '决定', protectionYears: 3,
+    id: 'lebron_lakers', year: 2018, title: '决定三', category: '决定', protectionYears: 3,
     history: '勒布朗·詹姆斯加盟洛杉矶，将自己的生涯带到新的舞台。',
     result: '勒布朗·詹姆斯加盟洛杉矶湖人，开启三年稳定期。',
     conditions: [withoutTitleInPreviousSeasons('勒布朗·詹姆斯', 2)], moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'lal' }],
     routes: [
       {
-        id: 'hollywood', title: '天选之子西游', result: '勒布朗·詹姆斯加盟洛杉矶湖人，开启新的争冠篇章。', requiredScore: 2,
+        id: 'hollywood', title: '紫金的传承', result: '勒布朗·詹姆斯加盟洛杉矶湖人，开启新的争冠篇章。', requiredScore: 2,
         conditions: [maxElite('lal', '洛杉矶湖人', 1, 90), playerTeamMaxWins('勒布朗·詹姆斯', 55)],
         moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'lal' }],
       },
       {
-        id: 'process', title: '加入费城过程', result: '勒布朗·詹姆斯加盟费城，与乔尔·恩比德组成全新的东部争冠核心。', requiredScore: 1,
+        id: 'process', title: '相信过程', result: '勒布朗·詹姆斯加盟费城，与乔尔·恩比德组成全新的东部争冠核心。', requiredScore: 1,
         conditions: [requiredOnTeam('乔尔·恩比德', 'phi', '费城'), minWins('phi', '费城', 45)],
         moves: [{ playerName: '勒布朗·詹姆斯', destinationTeamId: 'phi' }],
       },
@@ -280,19 +285,19 @@ const DESTINY_EVENT_DEFINITIONS: DestinyEventDefinition[] = [
     ],
   },
   {
-    id: 'kawhi_toronto', year: 2018, title: '北境豪赌', category: '重磅交易', protectionYears: 2,
+    id: 'kawhi_toronto', year: 2018, title: '北境之王', category: '重磅交易', protectionYears: 2,
     history: '多伦多以核心阵容为筹码换来科怀·伦纳德，押注一次争冠机会。',
     result: '科怀·伦纳德加盟多伦多，北境进入争冠模式。',
     conditions: [strategyIn('tor', '多伦多', ['contender', 'playoff']), minWins('tor', '多伦多', 45), maxElite('tor', '多伦多', 2, 88)], moves: [{ playerName: '科怀·伦纳德', destinationTeamId: 'tor' }], requiredScore: 3, skipDefaultScoring: true,
   },
   {
-    id: 'ad_lakers', year: 2019, title: '浓眉加盟湖人', category: '重磅交易', protectionYears: 3,
+    id: 'ad_lakers', year: 2019, title: '擎天白玉柱', category: '重磅交易', protectionYears: 3,
     history: '安东尼·戴维斯前往洛杉矶，与勒布朗·詹姆斯组成顶级锋线组合。',
     result: '安东尼·戴维斯加盟洛杉矶湖人，两位核心进入三年稳定期。',
-    conditions: [eventCompleted('lebron_lakers', '詹姆斯的下一站', 'hollywood', '天选之子西游'), maxElite('lal', '洛杉矶湖人', 2, 90), minWins('lal', '洛杉矶湖人', 45)], moves: [{ playerName: '安东尼·戴维斯', destinationTeamId: 'lal' }], requiredScore: 2, skipDefaultScoring: true,
+    conditions: [eventCompleted('lebron_lakers', '决定三', 'hollywood', '紫金的传承'), maxElite('lal', '洛杉矶湖人', 2, 90), minWins('lal', '洛杉矶湖人', 45)], moves: [{ playerName: '安东尼·戴维斯', destinationTeamId: 'lal' }], requiredScore: 2, skipDefaultScoring: true,
   },
   {
-    id: 'kawhi_pg_clippers', year: 2019, title: '洛城双翼集结', category: '决定', protectionYears: 3,
+    id: 'kawhi_pg_clippers', year: 2019, title: '银河战舰', category: '决定', protectionYears: 3,
     history: '科怀·伦纳德选择快船，球队同步交易得到保罗·乔治。',
     result: '科怀·伦纳德与保罗·乔治加盟洛杉矶快船。',
     conditions: [strategyIn('lac', '洛杉矶快船', ['contender', 'playoff']), minWins('lac', '洛杉矶快船', 45), playerTeamMaxWins('保罗·乔治', 55)], moves: [{ playerName: '科怀·伦纳德', destinationTeamId: 'lac' }, { playerName: '保罗·乔治', destinationTeamId: 'lac' }], requiredScore: 3, skipDefaultScoring: true,
@@ -304,11 +309,11 @@ const DESTINY_EVENT_DEFINITIONS: DestinyEventDefinition[] = [
     conditions: [requiredOnTeam('詹姆斯·哈登', 'hou', '休斯敦'), strategyIn('hou', '休斯敦', ['contender', 'playoff']), minWins('hou', '休斯敦', 45)], moves: [{ playerName: '拉塞尔·威斯布鲁克', destinationTeamId: 'hou' }], requiredScore: 2, skipDefaultScoring: true,
   },
   {
-    id: 'durant_kyrie_brooklyn', year: 2019, title: '双星汇聚布鲁克林', category: '自由市场', protectionYears: 3,
+    id: 'durant_kyrie_brooklyn', year: 2019, title: '布鲁克林的火把', category: '自由市场', protectionYears: 3,
     history: '凯文·杜兰特与凯里·欧文相约布鲁克林，篮网由此迎来新的争冠核心。',
     result: '凯文·杜兰特与凯里·欧文加盟布鲁克林，双星获得三年交易保护。',
     conditions: [
-      eventCompleted('durant_warriors', '杜兰特的抉择'),
+      eventCompleted('durant_warriors', '联盟大结局'),
       requiredPlayerTeamPreviousSeasonWithoutTitle('凯文·杜兰特'),
       requiredPlayerTeamPreviousSeasonWithoutTitle('凯里·欧文'),
     ],
@@ -317,17 +322,17 @@ const DESTINY_EVENT_DEFINITIONS: DestinyEventDefinition[] = [
     skipDefaultScoring: true,
   },
   {
-    id: 'paul_suns', year: 2020, title: '保罗加盟太阳', category: '重磅交易', protectionYears: 2,
+    id: 'paul_suns', year: 2020, title: '控场大师', category: '重磅交易', protectionYears: 2,
     history: '菲尼克斯以年轻资产换来克里斯·保罗，组建新的争冠后场。',
     result: '克里斯·保罗加盟菲尼克斯太阳。',
     conditions: [strategyIn('phx', '菲尼克斯', ['contender', 'playoff']), minWins('phx', '菲尼克斯', 45), maxElite('phx', '菲尼克斯', 2, 88)], moves: [{ playerName: '克里斯·保罗', destinationTeamId: 'phx' }], requiredScore: 3, skipDefaultScoring: true,
   },
   {
-    id: 'harden_brooklyn', year: 2021, title: '布鲁克林三巨头', category: '重磅交易', protectionYears: 2,
+    id: 'harden_brooklyn', year: 2021, title: '最强的进攻', category: '重磅交易', protectionYears: 2,
     history: '詹姆斯·哈登前往布鲁克林，与杜兰特、欧文组成豪华进攻阵容。',
     result: '詹姆斯·哈登加盟布鲁克林，核心成员获得两年稳定期。',
     conditions: [
-      eventCompleted('durant_kyrie_brooklyn', '双星汇聚布鲁克林'),
+      eventCompleted('durant_kyrie_brooklyn', '布鲁克林的火把'),
       strategyIn('bkn', '布鲁克林', ['contender', 'playoff']),
       playerTeamPreviousSeasonWithoutTitle('詹姆斯·哈登'),
     ],
@@ -336,45 +341,45 @@ const DESTINY_EVENT_DEFINITIONS: DestinyEventDefinition[] = [
     skipDefaultScoring: true,
   },
   {
-    id: 'westbrook_lakers', year: 2021, title: '三双王来到洛杉矶', category: '重磅交易', protectionYears: 2,
+    id: 'westbrook_lakers', year: 2021, title: '场均三双', category: '重磅交易', protectionYears: 2,
     history: '洛杉矶湖人交易得到拉塞尔·威斯布鲁克，组建经验丰富的明星阵容。',
     result: '拉塞尔·威斯布鲁克加盟洛杉矶湖人。',
     conditions: [], moves: [{ playerName: '拉塞尔·威斯布鲁克', destinationTeamId: 'lal' }], requiredScore: 3,
   },
   {
-    id: 'mitchell_cleveland', year: 2022, title: '米切尔空降骑士', category: '重磅交易', protectionYears: 2,
+    id: 'mitchell_cleveland', year: 2022, title: '米球王', category: '重磅交易', protectionYears: 2,
     history: '克里夫兰交易得到多诺万·米切尔，年轻阵容迎来明星得分手。',
     result: '多诺万·米切尔加盟克里夫兰。',
     conditions: [], moves: [{ playerName: '多诺万·米切尔', destinationTeamId: 'cle' }], requiredScore: 3,
   },
   {
-    id: 'durant_phoenix', year: 2023, title: '太阳组成豪华进攻组', category: '重磅交易', protectionYears: 2,
+    id: 'durant_phoenix', year: 2023, title: '凤凰城崛起', category: '重磅交易', protectionYears: 2,
     history: '菲尼克斯交易得到凯文·杜兰特，向总冠军发起冲击。',
     result: '凯文·杜兰特加盟菲尼克斯太阳。',
     conditions: [], moves: [{ playerName: '凯文·杜兰特', destinationTeamId: 'phx' }], requiredScore: 3,
   },
   {
-    id: 'lillard_bucks', year: 2023, title: '利拉德联手字母哥', category: '重磅交易', protectionYears: 2,
+    id: 'lillard_bucks', year: 2023, title: '读表先生', category: '重磅交易', protectionYears: 2,
     history: '达米安·利拉德离开波特兰，加盟密尔沃基追逐冠军。',
     result: '达米安·利拉德加盟密尔沃基。',
     conditions: [requiredOnTeam('扬尼斯·阿德托昆博', 'mil', '密尔沃基雄鹿')],
     moves: [{ playerName: '达米安·利拉德', destinationTeamId: 'mil' }], requiredScore: 3,
   },
   {
-    id: 'harden_clippers', year: 2023, title: '哈登回到家乡', category: '重磅交易', protectionYears: 2,
+    id: 'harden_clippers', year: 2023, title: '洛城的孩子', category: '重磅交易', protectionYears: 2,
     history: '詹姆斯·哈登加盟洛杉矶快船，与多位明星队友并肩作战。',
     result: '詹姆斯·哈登加盟洛杉矶快船。',
     conditions: [], moves: [{ playerName: '詹姆斯·哈登', destinationTeamId: 'lac' }], requiredScore: 3,
   },
   {
-    id: 'klay_leaves_warriors', year: 2024, title: '汤普森告别金州', category: '自由市场', protectionYears: 2,
+    id: 'klay_leaves_warriors', year: 2024, title: '再见，克莱', category: '自由市场', protectionYears: 2,
     history: '克莱·汤普森结束金州生涯，加盟达拉斯开启职业生涯新篇章。',
     result: '克莱·汤普森加盟达拉斯独行侠。',
     conditions: [requiredOnTeam('克莱·汤普森', 'gsw', '金州勇士'), strategyIn('dal', '达拉斯', ['contender', 'playoff']), minWins('dal', '达拉斯', 45), maxElite('dal', '达拉斯', 2, 88)],
     moves: [{ playerName: '克莱·汤普森', destinationTeamId: 'dal' }], requiredScore: 3, skipDefaultScoring: true,
   },
   {
-    id: 'luka_davis_swap', year: 2025, title: '洛城与达拉斯的世纪互换', category: '重磅交易', protectionYears: 3,
+    id: 'luka_davis_swap', year: 2025, title: '谁才是赢家？', category: '重磅交易', protectionYears: 3,
     history: '洛杉矶与达拉斯完成震动联盟的交易，卢卡·东契奇和安东尼·戴维斯互换东家。',
     result: '卢卡·东契奇加盟洛杉矶湖人，安东尼·戴维斯加盟达拉斯独行侠。',
     conditions: [requiredOnTeam('卢卡·东契奇', 'dal', '达拉斯独行侠'), requiredOnTeam('安东尼·戴维斯', 'lal', '洛杉矶湖人'), strategyIn('lal', '洛杉矶湖人', ['contender', 'playoff']), strategyIn('dal', '达拉斯', ['contender', 'playoff']), playerTeamPreviousSeasonWithoutTitle('卢卡·东契奇')],

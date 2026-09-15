@@ -1,4 +1,4 @@
-import { HISTORICAL_REAL_TRADES, type ExecutedTradeDetail, type TradeModalData } from '../data/realTradesData';
+import { applyHistoricalTeamIdentityUpdates, HISTORICAL_REAL_TRADES, type ExecutedTradeDetail, type TradeModalData } from '../data/realTradesData';
 import type { Position, RosterPlayer, Team, TeamStrategy } from '../types';
 import { calculateTeamPowerRating } from './leagueLogic';
 
@@ -198,7 +198,10 @@ export function executeRandomTradesForSeason(currentTeams: Team[], year: number,
   const minTrades = Math.max(1, options.minTrades ?? 14);
   const maxTrades = Math.max(minTrades, options.maxTrades ?? 20);
   const target = minTrades + Math.floor(random() * (maxTrades - minTrades + 1));
-  const teams = currentTeams.map((team) => ({ ...team, roster: team.roster.map((p) => ({ ...p })) }));
+  const teams = applyHistoricalTeamIdentityUpdates(
+    currentTeams.map((team) => ({ ...team, roster: team.roster.map((p) => ({ ...p })) })),
+    year,
+  );
   const rosterTargets = new Map(teams.map((team) => [team.id, team.roster.length]));
   const retirements = retirePlayers(teams, year, options);
   const moved = new Set<string>();
@@ -251,7 +254,7 @@ export function executeRandomTradesForSeason(currentTeams: Team[], year: number,
     while (team.roster.length < targetSize) team.roster.push(createDepthPlayer(team, year, team.roster.length, usedNames));
     refreshTeam(team);
   }
-  if (!trades.length && !retirements.all.length) return { updatedTeams: currentTeams, modalData: null };
+  if (!trades.length && !retirements.all.length) return { updatedTeams: teams, modalData: null };
   const userDeals = trades.filter((t) => t.playerA?.fromTeamId === options.userTeamId || t.playerB?.fromTeamId === options.userTeamId);
   const importantDeals = trades.filter((trade) => trade.tradeCategory !== 'rotation');
   const headlines = [...userDeals, ...importantDeals, ...retirements.visible]

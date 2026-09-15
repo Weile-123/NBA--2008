@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Team, PlayerProfile, MatchBoxScore } from '../types';
 import { getPersistentValue, hydratePersistentValues, removePersistentValue, setPersistentValue } from '../lib/persistentStorage';
 import { TeamLogo } from './TeamLogo';
@@ -10,6 +10,7 @@ import type { GameMode } from '../gameMode';
 import { getSeasonSimulationPowerRating } from '../utils/parallelSeasonBalance';
 import { MatchSimulator } from './MatchSimulator';
 import { applyPlayoffGamesToCareer } from '../utils/playoffStats';
+import { calculateFinalsAverages } from '../utils/finalsStats';
 
 export interface PlayoffSeries {
   id: string;
@@ -93,7 +94,7 @@ interface PlayoffPanelProps {
   player: PlayerProfile;
   currentYear: number;
   onUpdatePlayer?: (player: PlayerProfile) => void;
-  onFinishPlayoffs: (championTeam: Team, fmvpName?: string) => void;
+  onFinishPlayoffs: (championTeam: Team, fmvpName?: string, settledPlayer?: PlayerProfile) => void;
 }
 
 export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
@@ -178,7 +179,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
     }
   }, [careerSignature, currentYear, currentRound, seriesList, champion]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!onUpdatePlayer) return;
     const games = seriesList.flatMap((series) => series.userGames || []);
     const updatedPlayer = applyPlayoffGamesToCareer(player, games);
@@ -681,9 +682,15 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
     const isUser = !!winner.isUser || winner.id === player.id || winner.name === player.name;
 
     if (isUser) {
-      const ppg = player.seasonStats?.games > 0 ? (player.seasonStats.pts / player.seasonStats.games + 3.2).toFixed(1) : '26.5';
-      const rpg = player.seasonStats?.games > 0 ? (player.seasonStats.reb / player.seasonStats.games + 1.2).toFixed(1) : '6.0';
-      const apg = player.seasonStats?.games > 0 ? (player.seasonStats.ast / player.seasonStats.games + 1.5).toFixed(1) : '6.5';
+      const finalsSeries = seriesList.find((series) => series.round === 4);
+      const finalsAverages = calculateFinalsAverages(finalsSeries?.userGames || []);
+      // New saves use the exact box scores generated in each Finals game. Old
+      // playoff caches did not retain those games, so fall back to unmodified
+      // regular-season averages instead of inventing an arbitrary bonus.
+      const fallbackGames = player.seasonStats?.games || 0;
+      const ppg = (finalsAverages?.ppg ?? (fallbackGames > 0 ? player.seasonStats.pts / fallbackGames : 0)).toFixed(1);
+      const rpg = (finalsAverages?.rpg ?? (fallbackGames > 0 ? player.seasonStats.reb / fallbackGames : 0)).toFixed(1);
+      const apg = (finalsAverages?.apg ?? (fallbackGames > 0 ? player.seasonStats.ast / fallbackGames : 0)).toFixed(1);
 
       return {
         name: player.name,
@@ -696,9 +703,12 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
         reason: `在总决赛绝境中强势爆发，以无解得分与致命助攻统治系列赛，率领【${champ.name}】加冕至高荣耀！`,
       };
     } else {
-      const ppg = winner.stats?.ppg ? (winner.stats.ppg + 3.5).toFixed(1) : (winner.ovr * 0.29).toFixed(1);
-      const rpg = winner.stats?.rpg ? (winner.stats.rpg + 1.2).toFixed(1) : '7.8';
-      const apg = winner.stats?.apg ? (winner.stats.apg + 1.5).toFixed(1) : '6.4';
+      // NPC playoff simulation currently resolves team scores rather than a
+      // full box score. Keep its known player averages unchanged; do not add
+      // fake Finals bonuses that can disagree with the simulation result.
+      const ppg = winner.stats?.ppg ? winner.stats.ppg.toFixed(1) : (winner.ovr * 0.29).toFixed(1);
+      const rpg = winner.stats?.rpg ? winner.stats.rpg.toFixed(1) : '7.8';
+      const apg = winner.stats?.apg ? winner.stats.apg.toFixed(1) : '6.4';
 
       return {
         name: winner.name,
@@ -1273,6 +1283,10 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    const settledPlayer = applyPlayoffGamesToCareer(
+                      player,
+                      seriesList.flatMap((series) => series.userGames || []),
+                    );
                     let nextAccolades = [...(player.accolades || [])];
                     if (fmvp.isUser) {
                       const existingFmvp = nextAccolades.find((a) => a.year === currentYear && a.type === 'FMVP');
@@ -1304,12 +1318,13 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
                         ];
                       }
                     }
-                    if (nextAccolades.length !== (player.accolades || []).length) {
-                      onUpdatePlayer?.({ ...player, accolades: nextAccolades });
-                    }
+                    const completedPlayer = nextAccolades.length !== (player.accolades || []).length
+                      ? { ...settledPlayer, accolades: nextAccolades }
+                      : settledPlayer;
+                    onUpdatePlayer?.(completedPlayer);
                     clearPlayoffStorage(currentYear);
                     setShowHonorsModal(false);
-                    onFinishPlayoffs(champion, fmvp.name);
+                    onFinishPlayoffs(champion, fmvp.name, completedPlayer);
                   }}
                   className="w-full py-3 sm:py-4 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-black font-black italic text-xs sm:text-sm rounded-2xl transition-all shadow-2xl flex items-center justify-center gap-2 uppercase tracking-wide cursor-pointer"
                 >

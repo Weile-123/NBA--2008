@@ -3807,6 +3807,29 @@ function findTeamById(teams: Team[], teamId?: string): Team | undefined {
 }
 
 /**
+ * Franchise identity changes belong to the league timeline rather than the
+ * historical trade script, so both classic and parallel careers apply them.
+ */
+export function applyHistoricalTeamIdentityUpdates(currentTeams: Team[], year: number): Team[] {
+  return currentTeams.map((team) => {
+    const updated = { ...team };
+    if (year >= 2012 && updated.id === 'bkn' && (updated.name === '新泽西网' || updated.name === '新泽西篮网')) {
+      updated.name = '布鲁克林篮网';
+      updated.abbrev = 'BKN';
+    }
+    if (year >= 2013 && (updated.id === 'noh' || updated.name === '新奥尔良黄蜂')) {
+      updated.name = '新奥尔良鹈鹕';
+      updated.abbrev = 'NOP';
+    }
+    if (year >= 2014 && (updated.id === 'cha' || updated.name === '夏洛特山猫')) {
+      updated.name = '夏洛特黄蜂';
+      updated.abbrev = 'CHA';
+    }
+    return updated;
+  });
+}
+
+/**
  * Executes historical trades for a given season year on the teams list.
  * Recalculates team ratings and returns updated teams alongside execution details for the modal.
  */
@@ -3819,37 +3842,7 @@ export function executeHistoricalTradesForSeason(
   const configuredTrades = config?.trades || [];
 
   // Deep clone teams to avoid mutating original state directly
-  const teams: Team[] = JSON.parse(JSON.stringify(currentTeams));
-
-  // Perform league team updates for 2012+ (e.g., New Jersey Nets -> Brooklyn Nets)
-  if (year >= 2012) {
-    teams.forEach((t) => {
-      if (t.id === 'bkn' && (t.name === '新泽西网' || t.name === '新泽西篮网')) {
-        t.name = '布鲁克林篮网';
-        t.abbrev = 'BKN';
-      }
-    });
-  }
-
-  // Perform league team updates for 2013+ (e.g., New Orleans Hornets -> Pelicans)
-  if (year >= 2013) {
-    teams.forEach((t) => {
-      if (t.id === 'noh' || t.name === '新奥尔良黄蜂') {
-        t.name = '新奥尔良鹈鹕';
-        t.abbrev = 'NOP';
-      }
-    });
-  }
-
-  // Perform Charlotte Bobcats -> Charlotte Hornets update for 2014+
-  if (year >= 2014) {
-    teams.forEach((t) => {
-      if (t.id === 'cha' || t.name === '夏洛特山猫') {
-        t.name = '夏洛特黄蜂';
-        t.abbrev = 'CHA';
-      }
-    });
-  }
+  const teams = applyHistoricalTeamIdentityUpdates(JSON.parse(JSON.stringify(currentTeams)) as Team[], year);
 
   const executedDetails: ExecutedTradeDetail[] = [];
 

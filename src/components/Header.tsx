@@ -159,6 +159,10 @@ export const Header: React.FC<HeaderProps> = ({
                   {currentTeam.name}
                 </span>
               </div>
+              <span className="text-[#232834] sm:hidden">|</span>
+              <span className="text-amber-300/80 font-mono text-[9px] sm:hidden shrink-0">
+                {currentYear}-{currentYear + 1}
+              </span>
               <span className="text-[#232834] hidden sm:inline">|</span>
               <span className="text-slate-300 font-mono text-[10px] sm:text-[11px] hidden sm:inline">
                 {currentYear}-{currentYear + 1} 赛季

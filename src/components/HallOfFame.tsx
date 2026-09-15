@@ -792,7 +792,6 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
                 >
                   <div className="flex items-center gap-2.5">
                     <span className="font-mono font-black text-slate-500 text-xs w-7">#{rankNum}</span>
-                    <span className="text-xl">{g.avatar}</span>
                     <div>
                       <div className="font-bold text-white text-xs uppercase">{g.name}</div>
                       <div className="text-[10px] text-slate-500 font-mono">

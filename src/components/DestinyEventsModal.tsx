@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState } from 'react';
-import { Check, ChevronRight, Clock3, MonitorPlay, Sparkles, X, XCircle } from 'lucide-react';
+import { Check, ChevronRight, Clock3, Loader2, MonitorPlay, Sparkles, X, XCircle } from 'lucide-react';
 import type { GameState, Team } from '../types';
 import {
   DESTINY_EVENT_DEADLINE_GAME,
+  canUnlockDestinyConditionWithAd,
   getDestinyEventEvaluations,
   type DestinyEventDefinition,
   type DestinyEventRecord,
@@ -36,6 +37,7 @@ export function DestinyEventsModal({ currentYear, currentGame, teams, leagueHist
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [showAllHandled, setShowAllHandled] = useState(false);
   const [unlockingKey, setUnlockingKey] = useState<string | null>(null);
   const listScrollRef = useRef<HTMLDivElement>(null);
   const detailScrollRef = useRef<HTMLDivElement>(null);
@@ -86,7 +88,7 @@ export function DestinyEventsModal({ currentYear, currentGame, teams, leagueHist
     <div key={check.unlockKey || check.label} className={`flex items-start gap-1.5 text-[11px] leading-relaxed ${check.met ? 'text-emerald-300' : 'text-rose-300'}`}>
       {check.met ? <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
       <span className="min-w-0 flex-1">{check.label}{check.required ? '（必须）' : ''}</span>
-      {canUnlock && !check.met && !check.required && check.points === 1 && (
+      {canUnlock && !check.met && !check.required && check.points > 0 && (
         <button
           type="button"
           disabled={unlockingKey !== null}
@@ -94,7 +96,8 @@ export function DestinyEventsModal({ currentYear, currentGame, teams, leagueHist
           className="ml-1 flex shrink-0 items-center gap-1 rounded-md border border-violet-400/40 bg-violet-500/15 px-1.5 py-0.5 text-[9px] font-black text-violet-200 disabled:opacity-50"
           aria-label="看广告解锁该条件"
         >
-          <MonitorPlay className={`h-3 w-3 ${unlockingKey === check.unlockKey ? 'animate-pulse' : ''}`} />解锁
+          {unlockingKey === check.unlockKey ? <Loader2 className="h-3 w-3 animate-spin" /> : <MonitorPlay className="h-3 w-3" />}
+          {unlockingKey === check.unlockKey ? '加载中…' : '解锁'}
         </button>
       )}
     </div>
@@ -114,23 +117,35 @@ export function DestinyEventsModal({ currentYear, currentGame, teams, leagueHist
         <div className="relative min-h-0 flex-1 overflow-hidden">
         <div ref={listScrollRef} className="absolute inset-0 overflow-y-auto p-3 pr-5 sm:p-4">
           <div className="mb-3 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.06] px-3 py-2.5 text-[11px] leading-relaxed text-slate-300">
-            命定事件取材于现实历史。请在当季交易截止日（第 {DESTINY_EVENT_DEADLINE_GAME} 场结束前）作出选择；未处理的事件会在第 {DESTINY_EVENT_DEADLINE_GAME + 1} 场自动按“忽略”结算并失效。
+            命定事件取材于现实历史，由你来决定历史走向。请在当季交易截止日（第 {DESTINY_EVENT_DEADLINE_GAME} 场结束前）作出选择；未处理的事件会在第 {DESTINY_EVENT_DEADLINE_GAME + 1} 场自动按“忽略”结算并失效。
           </div>
           <div className="mb-3 text-xs text-slate-400">
             当前赛季：<strong className="font-mono text-cyan-300">{currentYear}-{currentYear + 1}</strong>
           </div>
           {handled.length > 0 && (
-            <section className="mb-4 overflow-hidden rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04]">
-              <div className="border-b border-emerald-500/20 px-3 py-2 text-[11px] font-black text-emerald-300">已完成与已忽略事件</div>
-              <div className="divide-y divide-slate-700/60">
+            <section className="mb-4 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-2.5">
+              <div className="mb-2 flex items-center justify-between gap-2 px-1 text-[11px] font-black text-emerald-300">
+                <span>已完成与已忽略事件</span>
+                <span className="text-[9px] font-normal text-slate-500">点击标签查看详情</span>
+              </div>
+              <div className={`flex flex-wrap gap-1.5 overflow-hidden transition-[max-height] duration-200 ${showAllHandled ? 'max-h-none' : 'max-h-[94px]'}`}>
                 {handled.map((item) => (
-                  <button key={item.event.id} type="button" onClick={() => setSelectedId(item.event.id)} className="grid w-full grid-cols-[42px_1fr_auto] items-center gap-2 px-3 py-2.5 text-left">
-                    <span className="font-mono text-[10px] text-cyan-300">{item.event.year}</span>
-                    <span className="min-w-0 text-xs font-bold text-slate-100">{item.event.title}</span>
-                    <span className={`rounded-full border px-2 py-0.5 text-[9px] font-black ${STATUS_META[item.status].className}`}>{item.record?.autoIgnored ? '截止日失效' : STATUS_META[item.status].label}</span>
+                  <button key={item.event.id} type="button" onClick={() => setSelectedId(item.event.id)} title={`${item.event.year} · ${item.event.title}`} className={`inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 py-1.5 text-left text-[10px] font-black transition active:scale-95 ${item.status === 'triggered' ? 'border-emerald-400/45 bg-emerald-400/10 text-emerald-200' : 'border-slate-500/60 bg-slate-700/60 text-slate-300'}`}>
+                    <span className="shrink-0 font-mono text-[9px] opacity-80">{item.event.year}</span>
+                    <span className="max-w-[12rem] truncate">{item.event.title}</span>
+                    <span className="shrink-0 text-[9px] opacity-80">{item.record?.autoIgnored ? '失效' : item.status === 'triggered' ? '完成' : '忽略'}</span>
                   </button>
                 ))}
               </div>
+              {handled.length > 3 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllHandled((value) => !value)}
+                  className="mt-2 w-full rounded-lg border border-emerald-500/20 bg-slate-900/60 py-1.5 text-[10px] font-black text-slate-300"
+                >
+                  {showAllHandled ? '收起已处理事件' : `展开全部 ${handled.length} 个已处理事件`}
+                </button>
+              )}
             </section>
           )}
           <div className="mb-2 text-[11px] font-black text-slate-400">待处理与未来事件</div>
@@ -189,7 +204,7 @@ export function DestinyEventsModal({ currentYear, currentGame, teams, leagueHist
                       check,
                       currentYear === selected.event.year && !selectedDeadlinePassed && selected.routeEvaluations.length === 0
                         && selected.checks.filter((item) => item.required).every((item) => item.met)
-                        && selected.score === selected.requiredScore - 1,
+                        && canUnlockDestinyConditionWithAd(selected.score, selected.requiredScore),
                     ))}
                   </div>
                 </div>
@@ -205,7 +220,7 @@ export function DestinyEventsModal({ currentYear, currentGame, teams, leagueHist
                             currentYear === selected.event.year && !selectedDeadlinePassed
                               && selected.checks.filter((item) => item.required).every((item) => item.met)
                               && routeEvaluation.checks.filter((item) => item.required).every((item) => item.met)
-                              && routeEvaluation.score === routeEvaluation.requiredScore - 1,
+                              && canUnlockDestinyConditionWithAd(routeEvaluation.score, routeEvaluation.requiredScore),
                           ))}</div>
                           <p className="mt-2 text-[11px] leading-relaxed text-cyan-100"><strong className="text-cyan-300">结果：</strong>{routeEvaluation.route.result}</p>
                           <button

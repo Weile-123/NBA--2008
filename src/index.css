@@ -127,23 +127,30 @@
   height: 0;
 }
 
-@keyframes ticker-scroll {
-  0% {
-    transform: translateX(0%);
+@keyframes announcement-vertical-switch {
+  0%, 41.666% {
+    transform: translateY(-66.666%);
+  }
+  50%, 91.666% {
+    transform: translateY(-33.333%);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translateY(0);
   }
 }
 
-.animate-ticker {
+.announcement-vertical-track {
   display: flex;
-  width: max-content;
-  animation: ticker-scroll 24s linear infinite;
+  height: 300%;
+  flex-direction: column;
+  animation: announcement-vertical-switch 6s ease-in-out infinite;
 }
 
-.animate-ticker:hover {
-  animation-play-state: paused;
+.announcement-vertical-item {
+  display: flex;
+  height: 33.333%;
+  min-width: 0;
+  align-items: center;
 }
 .scrollbar-thin::-webkit-scrollbar-corner {
   background: transparent;
@@ -260,11 +267,8 @@
     animation: none !important;
   }
 
-  /* The global announcement is functional content, not decoration. Keep it
-     moving on touch devices, but use a slower compositor-only transform to
-     reduce Android WebView load. */
-  .animate-ticker {
-    animation-duration: 32s;
+  /* Keep the compact two-line announcement on one compositor layer. */
+  .announcement-vertical-track {
     will-change: auto;
   }
 }

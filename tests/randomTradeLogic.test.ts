@@ -8,6 +8,7 @@ import { calculateTeamPowerRating } from '../src/utils/leagueLogic';
 import { applyDraftRookiesToTeams } from '../src/utils/draftLogic';
 import { progressLeagueForNewSeason } from '../src/utils/progressionLogic';
 import { getHistoricalDraftData } from '../src/data/draftData';
+import { applyHistoricalTeamIdentityUpdates } from '../src/data/realTradesData';
 
 const positions: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
 
@@ -86,6 +87,28 @@ test('full parallel league performs 14 to 20 moves but only displays major deals
   assert.ok((result.modalData?.executedTrades.length || 0) >= 6);
   assert.ok((result.modalData?.executedTrades.length || 0) <= 10);
   assert.equal(result.modalData?.hiddenTransactions, (result.modalData?.totalTransactions || 0) - (result.modalData?.executedTrades.length || 0));
+});
+
+test('franchise identity changes stay synchronized in classic and parallel timelines', () => {
+  const original = [
+    { ...makeLeague(3)[0], id: 'bkn', name: '新泽西篮网', abbrev: 'NJN' },
+    { ...makeLeague(3)[1], id: 'noh', name: '新奥尔良黄蜂', abbrev: 'NOH' },
+    { ...makeLeague(3)[2], id: 'cha', name: '夏洛特山猫', abbrev: 'CHA' },
+  ];
+  const updated = applyHistoricalTeamIdentityUpdates(original, 2014);
+  assert.deepEqual(updated.map((team) => [team.name, team.abbrev]), [
+    ['布鲁克林篮网', 'BKN'],
+    ['新奥尔良鹈鹕', 'NOP'],
+    ['夏洛特黄蜂', 'CHA'],
+  ]);
+  assert.equal(original[0].name, '新泽西篮网');
+
+  const parallel = executeRandomTradesForSeason(
+    original.map((team) => ({ ...team, roster: team.roster.map((player) => ({ ...player, ovr: 60 })) })),
+    2014,
+    { random: seededRandom(4), minTrades: 1, maxTrades: 1 },
+  );
+  assert.deepEqual(parallel.updatedTeams.map((team) => team.name), ['布鲁克林篮网', '新奥尔良鹈鹕', '夏洛特黄蜂']);
 });
 
 test('a 92 OVR star cannot be swapped one-for-one for an 81 OVR prospect', () => {

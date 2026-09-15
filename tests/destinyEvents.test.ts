@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Position, Team } from '../src/types';
-import { DESTINY_EVENTS, evaluateDestinyEvent, getDestinyEventEntrySummary, ignoreDestinyEvent, triggerDestinyEvent } from '../src/data/destinyEvents';
+import { DESTINY_EVENTS, canUnlockDestinyConditionWithAd, evaluateDestinyEvent, getDestinyEventEntrySummary, ignoreDestinyEvent, triggerDestinyEvent } from '../src/data/destinyEvents';
 import { executeRandomTradesForSeason } from '../src/utils/randomTradeLogic';
 import { getSeasonSimulationPowerRating } from '../src/utils/parallelSeasonBalance';
 
@@ -67,7 +67,7 @@ test('a rewarded ad can unlock the final optional condition after all mandatory 
   const miami = makeTeam('mia', '迈阿密', [{ id: 'wade', name: '德维恩·韦德', ovr: 94 }]);
   const toronto = makeTeam('tor', '多伦多', [{ id: 'bosh', name: '克里斯·波什', ovr: 89 }]);
   cleveland.previousSeasonWins = 60;
-  miami.previousSeasonWins = 45;
+  miami.previousSeasonWins = 48;
   miami.strategy = 'playoff';
   const teams = [cleveland, miami, toronto];
   const before = evaluateDestinyEvent(event, 2010, teams);
@@ -78,6 +78,13 @@ test('a rewarded ad can unlock the final optional condition after all mandatory 
   const after = evaluateDestinyEvent(event, 2010, teams, [], {}, [missing.unlockKey]);
   assert.equal(after.routeEvaluations.find((candidate) => candidate.route.id === 'south_beach')?.available, true);
   assert.equal(triggerDestinyEvent(event, 2010, teams, [], {}, undefined, undefined, 'south_beach', [missing.unlockKey]).success, true);
+});
+
+test('rewarded ads are offered when an event is one or two points short', () => {
+  assert.equal(canUnlockDestinyConditionWithAd(2, 3), true);
+  assert.equal(canUnlockDestinyConditionWithAd(1, 3), true);
+  assert.equal(canUnlockDestinyConditionWithAd(0, 3), false);
+  assert.equal(canUnlockDestinyConditionWithAd(3, 3), false);
 });
 
 test('linked destiny events require their preceding event or exact branch', () => {
@@ -96,8 +103,8 @@ test('linked destiny events require their preceding event or exact branch', () =
   const adEvent = DESTINY_EVENTS.find((candidate) => candidate.id === 'ad_lakers')!;
   const wrongRouteRecord = { lebron_lakers: { eventId: 'lebron_lakers', triggeredAtYear: 2018, result: '完成', movedPlayers: [], routeId: 'process' } };
   const rightRouteRecord = { lebron_lakers: { ...wrongRouteRecord.lebron_lakers, routeId: 'hollywood' } };
-  assert.equal(evaluateDestinyEvent(adEvent, 2019, [lakers, davis], [], wrongRouteRecord).checks.find((check) => check.label.includes('天选之子西游'))?.met, false);
-  assert.equal(evaluateDestinyEvent(adEvent, 2019, [lakers, davis], [], rightRouteRecord).checks.find((check) => check.label.includes('天选之子西游'))?.met, true);
+  assert.equal(evaluateDestinyEvent(adEvent, 2019, [lakers, davis], [], wrongRouteRecord).checks.find((check) => check.label.includes('紫金的传承'))?.met, false);
+  assert.equal(evaluateDestinyEvent(adEvent, 2019, [lakers, davis], [], rightRouteRecord).checks.find((check) => check.label.includes('紫金的传承'))?.met, true);
 });
 
 test('season entry reports a completed decision instead of unmet conditions', () => {
@@ -197,7 +204,7 @@ test('triggering a destiny event preserves roster sizes and the user player', ()
   ];
   const sizes = new Map(teams.map((team) => [team.id, team.roster.length]));
   teams[1].strategy = 'playoff';
-  teams[1].previousSeasonWins = 45;
+  teams[1].previousSeasonWins = 48;
   const result = triggerDestinyEvent(event, 2010, teams, [], {}, 'user', '测试玩家', 'south_beach');
   assert.equal(result.success, true);
   assert.equal(result.record?.movedPlayers.length, 2);
@@ -357,7 +364,7 @@ test('decision one exposes multiple routes and records the selected branch resul
   cleveland.previousSeasonWins = 50;
   const miami = makeTeam('mia', '迈阿密', [{ id: 'wade', name: '德维恩·韦德', ovr: 94 }]);
   miami.strategy = 'contender';
-  miami.previousSeasonWins = 45;
+  miami.previousSeasonWins = 48;
   const toronto = makeTeam('tor', '多伦多', [{ id: 'bosh', name: '克里斯·波什', ovr: 89 }]);
   const newYork = makeTeam('nyk', '纽约');
   newYork.strategy = 'rebuilding';
@@ -403,11 +410,13 @@ test('revised destiny catalog keeps the requested thresholds, replacements and d
   const southBeach = decisionOne.routes!.find((route) => route.id === 'south_beach')!;
   assert.equal(southBeach.requiredScore, 3);
   assert.equal(southBeach.conditions.find((condition) => condition.playerNames?.includes('德维恩·韦德'))?.required, true);
-  assert.equal(southBeach.conditions.some((condition) => condition.teamId === 'mia' && condition.type === 'team_previous_wins_at_least' && condition.value === 45), true);
+  assert.equal(southBeach.conditions.some((condition) => condition.playerNames?.includes('勒布朗·詹姆斯') && condition.type === 'player_team_previous_wins_at_most' && condition.value === 55), true);
+  assert.equal(southBeach.conditions.some((condition) => condition.teamId === 'mia' && condition.type === 'team_previous_wins_at_least' && condition.value === 48), true);
+  assert.equal(decisionOne.routes!.find((route) => route.id === 'broadway')?.conditions.some((condition) => condition.playerNames?.includes('勒布朗·詹姆斯') && condition.type === 'player_team_previous_wins_at_most' && condition.value === 52), true);
   assert.equal(decisionOne.routes!.find((route) => route.id === 'stay_cavaliers')?.fallback, true);
 
   const vetoedTrade = byId('cp3_lakers');
-  assert.equal(vetoedTrade.title, '被叫停的交易');
+  assert.equal(vetoedTrade.title, '篮球原因');
   assert.equal(vetoedTrade.conditions.some((condition) => condition.type === 'team_strategy_in'), false);
   assert.equal(vetoedTrade.conditions.some((condition) => condition.type === 'team_previous_wins_at_least' && condition.value === 53), true);
   assert.equal(byId('howard_houston').conditions.some((condition) => condition.playerNames?.includes('德怀特·霍华德') && condition.value === 50), true);
@@ -417,6 +426,7 @@ test('revised destiny catalog keeps the requested thresholds, replacements and d
   const durant = byId('durant_warriors');
   assert.equal(durant.routes!.find((route) => route.id === 'bay_area')?.conditions.find((condition) => condition.playerNames?.includes('斯蒂芬·库里'))?.required, true);
   assert.equal(durant.routes!.find((route) => route.id === 'thunder_return')?.conditions.some((condition) => condition.type === 'team_previous_wins_at_least' && condition.value === 50), true);
+  assert.equal(durant.routes!.find((route) => route.id === 'thunder_return')?.conditions.some((condition) => condition.type === 'player_on_team' && condition.playerNames?.includes('凯文·杜兰特') && condition.teamId === 'okc' && condition.required), true);
   assert.equal(byId('cp3_houston').conditions.some((condition) => condition.type === 'event_completed_player_on_team'), true);
 
   const lebron = byId('lebron_lakers');

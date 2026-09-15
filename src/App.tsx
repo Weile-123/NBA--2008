@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { loadGameFromStorage } from './utils/storage';
 import { DEFAULT_GAME_MODE, GameMode } from './gameMode';
 
@@ -30,6 +30,7 @@ import { TimelinePage } from './components/TimelinePage';
 import { useCareerGame } from './hooks/useCareerGame';
 import { mustRetireAtAge } from './utils/calc2k';
 import { completeRewardedAd } from './lib/rewardedAd';
+import { DESTINY_EVENTS } from './data/destinyEvents';
 
 export default function App() {
   const [gameMode, setGameMode] = useState<GameMode>(DEFAULT_GAME_MODE);
@@ -168,6 +169,19 @@ function CareerApp({
     return true;
   };
   const [isDestinyEventsOpen, setIsDestinyEventsOpen] = useState(false);
+  const [destinySeasonNoticeCount, setDestinySeasonNoticeCount] = useState(0);
+  const previousPhaseRef = useRef(phase);
+
+  useEffect(() => {
+    const previousPhase = previousPhaseRef.current;
+    previousPhaseRef.current = phase;
+    if (gameMode !== 'random_trade' || previousPhase !== 'offseason' || phase !== 'regular_season') return;
+
+    const unresolvedCount = DESTINY_EVENTS.filter(
+      (event) => event.year === currentYear && !destinyEventRecords[event.id],
+    ).length;
+    if (unresolvedCount > 0) setDestinySeasonNoticeCount(unresolvedCount);
+  }, [currentYear, destinyEventRecords, gameMode, phase]);
 
   useEffect(() => {
     if (launchAction === 'new') setPhase('creation');
@@ -444,6 +458,37 @@ function CareerApp({
       )}
 
       <Suspense fallback={null}>
+      {gameMode === 'random_trade' && destinySeasonNoticeCount > 0 && (
+        <div className="fixed inset-0 z-[89] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <section className="w-full max-w-sm rounded-2xl border border-cyan-400/35 bg-[#101722] p-5 text-center shadow-[0_0_55px_rgba(34,211,238,0.18)]">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-cyan-400/35 bg-cyan-400/10 text-2xl">⏳</div>
+            <h2 className="mt-3 text-lg font-black text-white">本赛季有命定事件</h2>
+            <p className="mt-2 text-xs leading-relaxed text-slate-300">
+              {currentYear}-{currentYear + 1} 赛季共有 <strong className="text-cyan-300">{destinySeasonNoticeCount}</strong> 个事件等待决定，部分事件需要先满足条件。
+            </p>
+            <div className="mt-5 grid grid-cols-[0.8fr_1.2fr] gap-2">
+              <button
+                type="button"
+                onClick={() => setDestinySeasonNoticeCount(0)}
+                className="rounded-xl border border-slate-600 bg-slate-800 px-3 py-2.5 text-xs font-black text-slate-300"
+              >
+                稍后查看
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDestinySeasonNoticeCount(0);
+                  setIsDestinyEventsOpen(true);
+                }}
+                className="rounded-xl bg-gradient-to-r from-cyan-400 to-violet-500 px-3 py-2.5 text-xs font-black text-slate-950 shadow-lg"
+              >
+                前往查看
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
         {/* Match Simulator Modal */}
         {phase === 'match_sim' && player && (
           <MatchSimulator

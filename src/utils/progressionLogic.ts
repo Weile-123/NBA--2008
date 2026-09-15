@@ -85,9 +85,14 @@ export function calculateDynamicOvr(
     }
 
     if (superstarConfig) {
-      const declineDrop = yearsPast * superstarConfig.slowDeclineRate;
+      // The old floor was permanent, which could leave a 40-43 year-old star
+      // at virtually peak level. After age 36, both the target rating and the
+      // protection floor now decline gradually while elite longevity remains.
+      const lateCareerYears = Math.max(0, safeAge - 36);
+      const declineDrop = yearsPast * superstarConfig.slowDeclineRate + lateCareerYears * 0.9;
       const targetOvr = Math.round(safePeakOvr - declineDrop);
-      return Math.min(99, Math.max(superstarConfig.minFloorOvr, targetOvr));
+      const ageAdjustedFloor = Math.max(72, Math.round(superstarConfig.minFloorOvr - lateCareerYears * 1.5));
+      return Math.min(99, Math.max(ageAdjustedFloor, targetOvr));
     } else {
       const declineDrop = Math.pow(yearsPast, 1.2) * 2.3;
       return Math.min(99, Math.max(60, Math.round(safePeakOvr - declineDrop)));
