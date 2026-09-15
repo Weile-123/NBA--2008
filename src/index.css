@@ -56,6 +56,14 @@
   top: calc(1rem + env(safe-area-inset-top, 0px));
 }
 
+/* Some Android App WebViews force-adjust dark text on bright controls. Keep
+   enabled amber primary actions legible while leaving disabled buttons gray. */
+.primary-action-text:not(:disabled) {
+  color: #050505 !important;
+  -webkit-text-fill-color: #050505 !important;
+  forced-color-adjust: none;
+}
+
 /* Hide native webkit scrollbar arrows globally */
 ::-webkit-scrollbar-button {
   display: none;

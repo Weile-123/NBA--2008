@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
-import { Check, ChevronRight, Clock3, Sparkles, X, XCircle } from 'lucide-react';
+import { Check, ChevronRight, Clock3, MonitorPlay, Sparkles, X, XCircle } from 'lucide-react';
 import type { GameState, Team } from '../types';
 import {
+  DESTINY_EVENT_DEADLINE_GAME,
   getDestinyEventEvaluations,
   type DestinyEventDefinition,
   type DestinyEventRecord,
@@ -11,44 +12,54 @@ import { MobilePersistentScrollbar } from './MobilePersistentScrollbar';
 
 interface DestinyEventsModalProps {
   currentYear: number;
+  currentGame: number;
   teams: Team[];
   leagueHistory?: GameState['leagueHistory'];
   records: Record<string, DestinyEventRecord>;
+  adUnlocks?: Record<string, string[]>;
   onTrigger: (event: DestinyEventDefinition, routeId?: string) => { success: boolean; message: string };
+  onIgnore: (event: DestinyEventDefinition) => { success: boolean; message: string };
+  onUnlockCondition: (eventId: string, unlockKey: string) => Promise<boolean>;
   onClose: () => void;
 }
 
 const STATUS_META: Record<DestinyEventStatus, { label: string; className: string }> = {
   available: { label: '可触发', className: 'border-amber-400/50 bg-amber-400/15 text-amber-300' },
   triggered: { label: '已触发', className: 'border-emerald-400/35 bg-emerald-400/10 text-emerald-300' },
+  ignored: { label: '已忽略', className: 'border-slate-600 bg-slate-800 text-slate-400' },
   unavailable: { label: '条件不足', className: 'border-rose-400/30 bg-rose-400/10 text-rose-300' },
   expired: { label: '已失效', className: 'border-slate-600 bg-slate-800 text-slate-400' },
   upcoming: { label: '未到赛季', className: 'border-slate-600 bg-slate-800/80 text-slate-400' },
 };
 
-export function DestinyEventsModal({ currentYear, teams, leagueHistory, records, onTrigger, onClose }: DestinyEventsModalProps) {
+export function DestinyEventsModal({ currentYear, currentGame, teams, leagueHistory, records, adUnlocks = {}, onTrigger, onIgnore, onUnlockCondition, onClose }: DestinyEventsModalProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [unlockingKey, setUnlockingKey] = useState<string | null>(null);
   const listScrollRef = useRef<HTMLDivElement>(null);
   const detailScrollRef = useRef<HTMLDivElement>(null);
   const evaluations = useMemo(
-    () => getDestinyEventEvaluations(currentYear, teams, leagueHistory, records),
-    [currentYear, teams, leagueHistory, records],
+    () => getDestinyEventEvaluations(currentYear, teams, leagueHistory, records, adUnlocks),
+    [currentYear, teams, leagueHistory, records, adUnlocks],
   );
-  const ordered = useMemo(() => [...evaluations].sort((a, b) => {
+  const ordered = useMemo(() => evaluations.filter((item) => item.status !== 'triggered' && item.status !== 'ignored').sort((a, b) => {
     const timeGroup = (year: number) => year === currentYear ? 0 : year > currentYear ? 1 : 2;
     const groupDifference = timeGroup(a.event.year) - timeGroup(b.event.year);
     if (groupDifference !== 0) return groupDifference;
     if (a.event.year !== b.event.year) {
       return a.event.year > currentYear ? a.event.year - b.event.year : b.event.year - a.event.year;
     }
-    const statusPriority: Record<DestinyEventStatus, number> = { available: 0, triggered: 1, unavailable: 2, upcoming: 3, expired: 4 };
+    const statusPriority: Record<DestinyEventStatus, number> = { available: 0, unavailable: 1, upcoming: 2, expired: 3, triggered: 4, ignored: 5 };
     return statusPriority[a.status] - statusPriority[b.status];
   }), [evaluations, currentYear]);
+  const handled = useMemo(() => evaluations
+    .filter((item) => item.status === 'triggered' || item.status === 'ignored')
+    .sort((a, b) => b.event.year - a.event.year), [evaluations]);
   const displayedEvents = showAll ? ordered : ordered.slice(0, 5);
   const selected = evaluations.find((item) => item.event.id === selectedId) || null;
-  const availableRoutes = selected?.routeEvaluations.filter((route) => selected.status === 'available' && route.available) || [];
+  const deadlinePassed = currentGame > DESTINY_EVENT_DEADLINE_GAME;
+  const selectedDeadlinePassed = deadlinePassed && selected?.event.year === currentYear;
 
   const handleTrigger = (routeId?: string) => {
     if (!selected) return;
@@ -57,10 +68,35 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
     if (response.success) setSelectedId(null);
   };
 
-  const conditionLine = (check: { label: string; met: boolean; required: boolean }) => (
-    <div key={check.label} className={`flex items-start gap-1.5 text-[11px] leading-relaxed ${check.met ? 'text-emerald-300' : 'text-rose-300'}`}>
+  const handleIgnore = () => {
+    if (!selected) return;
+    const response = onIgnore(selected.event);
+    setResult(response.message);
+    if (response.success) setSelectedId(null);
+  };
+
+  const handleAdUnlock = async (eventId: string, unlockKey: string) => {
+    if (unlockingKey) return;
+    setUnlockingKey(unlockKey);
+    await onUnlockCondition(eventId, unlockKey);
+    setUnlockingKey(null);
+  };
+
+  const conditionLine = (check: { label: string; met: boolean; required: boolean; points: number; unlockKey: string }, canUnlock = false) => (
+    <div key={check.unlockKey || check.label} className={`flex items-start gap-1.5 text-[11px] leading-relaxed ${check.met ? 'text-emerald-300' : 'text-rose-300'}`}>
       {check.met ? <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
-      <span>{check.label}{check.required ? '（必须）' : ''}</span>
+      <span className="min-w-0 flex-1">{check.label}{check.required ? '（必须）' : ''}</span>
+      {canUnlock && !check.met && !check.required && check.points === 1 && (
+        <button
+          type="button"
+          disabled={unlockingKey !== null}
+          onClick={() => void handleAdUnlock(selected!.event.id, check.unlockKey)}
+          className="ml-1 flex shrink-0 items-center gap-1 rounded-md border border-violet-400/40 bg-violet-500/15 px-1.5 py-0.5 text-[9px] font-black text-violet-200 disabled:opacity-50"
+          aria-label="看广告解锁该条件"
+        >
+          <MonitorPlay className={`h-3 w-3 ${unlockingKey === check.unlockKey ? 'animate-pulse' : ''}`} />解锁
+        </button>
+      )}
     </div>
   );
 
@@ -70,7 +106,7 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
         <header className="flex items-center justify-between border-b border-[#293140] px-4 py-3.5">
           <div>
             <h2 className="flex items-center gap-2 text-lg font-black text-white"><Sparkles className="h-4 w-4 text-amber-400" />命定事件</h2>
-            <p className="mt-1 text-[11px] text-slate-400">事件仅能在指定赛季触发。</p>
+            <p className="mt-1 text-[11px] text-slate-400">当季事件须在第 {DESTINY_EVENT_DEADLINE_GAME} 场结束前处理。</p>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg bg-slate-800 p-2 text-slate-400" aria-label="关闭"><X className="h-5 w-5" /></button>
         </header>
@@ -78,11 +114,26 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
         <div className="relative min-h-0 flex-1 overflow-hidden">
         <div ref={listScrollRef} className="absolute inset-0 overflow-y-auto p-3 pr-5 sm:p-4">
           <div className="mb-3 rounded-xl border border-cyan-400/25 bg-cyan-400/[0.06] px-3 py-2.5 text-[11px] leading-relaxed text-slate-300">
-            命定事件取材于现实中真实发生或曾有可能发生的联盟事件。当前置条件达成后，你可以决定是否触发，并在关键事件中选择时间线的走向。
+            命定事件取材于现实历史。请在当季交易截止日（第 {DESTINY_EVENT_DEADLINE_GAME} 场结束前）作出选择；未处理的事件会在第 {DESTINY_EVENT_DEADLINE_GAME + 1} 场自动按“忽略”结算并失效。
           </div>
           <div className="mb-3 text-xs text-slate-400">
             当前赛季：<strong className="font-mono text-cyan-300">{currentYear}-{currentYear + 1}</strong>
           </div>
+          {handled.length > 0 && (
+            <section className="mb-4 overflow-hidden rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04]">
+              <div className="border-b border-emerald-500/20 px-3 py-2 text-[11px] font-black text-emerald-300">已完成与已忽略事件</div>
+              <div className="divide-y divide-slate-700/60">
+                {handled.map((item) => (
+                  <button key={item.event.id} type="button" onClick={() => setSelectedId(item.event.id)} className="grid w-full grid-cols-[42px_1fr_auto] items-center gap-2 px-3 py-2.5 text-left">
+                    <span className="font-mono text-[10px] text-cyan-300">{item.event.year}</span>
+                    <span className="min-w-0 text-xs font-bold text-slate-100">{item.event.title}</span>
+                    <span className={`rounded-full border px-2 py-0.5 text-[9px] font-black ${STATUS_META[item.status].className}`}>{item.record?.autoIgnored ? '截止日失效' : STATUS_META[item.status].label}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+          <div className="mb-2 text-[11px] font-black text-slate-400">待处理与未来事件</div>
           <div className="space-y-2">
             {displayedEvents.map((item) => {
               const meta = STATUS_META[item.status];
@@ -120,9 +171,9 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
             <div ref={detailScrollRef} className="absolute inset-0 overflow-y-auto p-4 pr-6">
             <p className="text-xs leading-relaxed text-slate-300">{selected.event.history}</p>
 
-            {selected.status === 'triggered' ? (
+            {selected.status === 'triggered' || selected.status === 'ignored' ? (
               <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-                <div className="text-[10px] font-black text-emerald-300">事件已完成{selected.record?.routeTitle ? ` · ${selected.record.routeTitle}` : ''}</div>
+                <div className="text-[10px] font-black text-emerald-300">{selected.status === 'ignored' ? '事件已忽略' : '事件已完成'}{selected.record?.routeTitle ? ` · ${selected.record.routeTitle}` : ''}</div>
                 <p className="mt-2 text-sm leading-relaxed text-emerald-100">{selected.record?.result || selected.event.result}</p>
               </div>
             ) : (
@@ -134,18 +185,37 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
                   </div>
                   <div className="space-y-1.5">
                     <div className={`flex items-center gap-1.5 text-[11px] ${currentYear === selected.event.year ? 'text-emerald-300' : 'text-slate-400'}`}><Clock3 className="h-3.5 w-3.5" />仅限 {selected.event.year}-{selected.event.year + 1} 赛季</div>
-                    {selected.checks.map(conditionLine)}
+                    {selected.checks.map((check) => conditionLine(
+                      check,
+                      currentYear === selected.event.year && !selectedDeadlinePassed && selected.routeEvaluations.length === 0
+                        && selected.checks.filter((item) => item.required).every((item) => item.met)
+                        && selected.score === selected.requiredScore - 1,
+                    ))}
                   </div>
                 </div>
 
                 {selected.routeEvaluations.length > 0 ? (
                   <div className="divide-y divide-slate-700/70">
-                    {selected.routeEvaluations.map((routeEvaluation) => {
+                    {selected.routeEvaluations.filter((routeEvaluation) => !routeEvaluation.route.fallback).map((routeEvaluation) => {
                       return (
                         <section key={routeEvaluation.route.id} className="py-3">
                           <div className="flex items-center justify-between gap-2"><span className="text-xs font-black text-white">{routeEvaluation.route.title}</span><span className="text-[10px] font-black text-amber-300">条件 {routeEvaluation.score}/{routeEvaluation.requiredScore}</span></div>
-                          <div className="mt-2 space-y-1">{routeEvaluation.checks.map(conditionLine)}</div>
+                          <div className="mt-2 space-y-1">{routeEvaluation.checks.map((check) => conditionLine(
+                            check,
+                            currentYear === selected.event.year && !selectedDeadlinePassed
+                              && selected.checks.filter((item) => item.required).every((item) => item.met)
+                              && routeEvaluation.checks.filter((item) => item.required).every((item) => item.met)
+                              && routeEvaluation.score === routeEvaluation.requiredScore - 1,
+                          ))}</div>
                           <p className="mt-2 text-[11px] leading-relaxed text-cyan-100"><strong className="text-cyan-300">结果：</strong>{routeEvaluation.route.result}</p>
+                          <button
+                            type="button"
+                            disabled={!routeEvaluation.available || selectedDeadlinePassed}
+                            onClick={() => handleTrigger(routeEvaluation.route.id)}
+                            className="primary-action-text mt-2.5 w-full rounded-xl bg-amber-500 px-3 py-2.5 text-xs font-black text-black disabled:bg-slate-800 disabled:text-slate-500 disabled:opacity-100"
+                          >
+                            {selectedDeadlinePassed ? '交易截止日已过' : routeEvaluation.available ? `选择“${routeEvaluation.route.title}”` : selected.status === 'upcoming' ? '未到赛季' : '条件未满足'}
+                          </button>
                         </section>
                       );
                     })}
@@ -162,16 +232,18 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
             </div>
 
             <footer className="shrink-0 border-t border-slate-700/70 bg-[#0d121b] p-3">
-              {selected.status === 'triggered' ? (
+              {selected.status === 'triggered' || selected.status === 'ignored' ? (
                 <button type="button" onClick={() => setSelectedId(null)} className="w-full rounded-xl border border-emerald-500/35 bg-emerald-500/10 py-2.5 text-sm font-black text-emerald-300">返回事件列表</button>
-              ) : availableRoutes.length > 0 ? (
-                <div className="grid gap-2">
-                  {availableRoutes.map((route) => <button key={route.route.id} type="button" onClick={() => handleTrigger(route.route.id)} className="w-full rounded-xl bg-amber-500 px-3 py-2.5 text-xs font-black text-black">选择“{route.route.title}”</button>)}
-                </div>
-              ) : selected.status === 'available' ? (
-                <button type="button" onClick={() => handleTrigger()} className="w-full rounded-xl bg-amber-500 px-4 py-3 text-sm font-black text-black">触发事件</button>
               ) : (
-                <div className={`rounded-xl border px-3 py-2.5 text-center text-xs font-black ${STATUS_META[selected.status].className}`}>{STATUS_META[selected.status].label}</div>
+                <div className="grid gap-2">
+                  {selected.status === 'available' && selected.routeEvaluations.length === 0 && <button type="button" disabled={selectedDeadlinePassed} onClick={() => handleTrigger()} className="primary-action-text w-full rounded-xl bg-amber-500 px-4 py-3 text-sm font-black text-black disabled:bg-slate-800 disabled:text-slate-500">{selectedDeadlinePassed ? '交易截止日已过' : '触发事件'}</button>}
+                  {selected.event.year === currentYear && !selectedDeadlinePassed && (
+                    <button type="button" onClick={handleIgnore} className="w-full rounded-xl border border-slate-600 bg-slate-800 px-4 py-2.5 text-sm font-black text-slate-200">
+                      忽略
+                    </button>
+                  )}
+                  {(selected.event.year !== currentYear || selectedDeadlinePassed) && <div className={`rounded-xl border px-3 py-2.5 text-center text-xs font-black ${STATUS_META[selectedDeadlinePassed ? 'expired' : selected.status].className}`}>{selectedDeadlinePassed ? '交易截止日后事件失效' : STATUS_META[selected.status].label}</div>}
+                </div>
               )}
             </footer>
           </div>
@@ -181,7 +253,7 @@ export function DestinyEventsModal({ currentYear, teams, leagueHistory, records,
       {result && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4">
           <div className="w-full max-w-sm rounded-2xl border border-amber-500/40 bg-[#111722] p-5 text-center">
-            <h3 className="text-lg font-black text-white">时间线已经改变</h3>
+            <h3 className="text-lg font-black text-white">选择已记录</h3>
             <p className="mt-3 text-sm leading-relaxed text-slate-300">{result}</p>
             <button type="button" onClick={() => setResult(null)} className="mt-5 w-full rounded-xl bg-amber-500 py-2.5 text-sm font-black text-black">确认</button>
           </div>

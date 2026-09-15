@@ -180,7 +180,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Skill Points & Special Training Entry Button */}
           <button
             onClick={onOpenAttributes}
-            className={`relative flex items-center gap-1 border font-black italic px-2 py-1 sm:px-3 sm:py-1.5 rounded transition-all text-[10px] sm:text-xs uppercase shadow-md active:scale-95 cursor-pointer shrink-0 whitespace-nowrap ${
+            className={`${!isOverflowing ? 'primary-action-text' : ''} relative flex items-center gap-1 border font-black italic px-2 py-1 sm:px-3 sm:py-1.5 rounded transition-all text-[10px] sm:text-xs uppercase shadow-md active:scale-95 cursor-pointer shrink-0 whitespace-nowrap ${
               isOverflowing
                 ? 'border-amber-500/50 bg-amber-950/80 text-amber-300 hover:bg-amber-900/80'
                 : 'border-amber-400 bg-amber-500 text-black hover:bg-amber-400'

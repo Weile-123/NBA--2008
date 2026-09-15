@@ -23,7 +23,7 @@ import { GameMode } from '../gameMode';
 import type { YearDraftData } from '../data/draftData';
 import { generateParallelDraftData, PARALLEL_HISTORICAL_DRAFT_END_YEAR } from '../utils/randomDraftLogic';
 import { evaluateTeamStrategies, initializeTeamStrategies } from '../utils/teamStrategyLogic';
-import { triggerDestinyEvent, type DestinyEventDefinition, type DestinyEventRecord } from '../data/destinyEvents';
+import { DESTINY_EVENT_DEADLINE_GAME, DESTINY_EVENTS, ignoreDestinyEvent, triggerDestinyEvent, type DestinyEventDefinition, type DestinyEventRecord } from '../data/destinyEvents';
 
 export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   const [phase, setPhaseState] = useState<GameState['phase']>('home');
@@ -55,6 +55,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
   const isLeavingRegularSeasonRef = useRef(false);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isRegularSeasonAutoSimulating, setIsRegularSeasonAutoSimulating] = useState(false);
+  const destinyDeadlineResolutionRef = useRef<string | null>(null);
 
   // Automatically scroll to the top of the page when changing tabs or phases
   useEffect(() => {
@@ -123,6 +124,28 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     if (gameMode !== 'random_trade' || teams.length === 0 || teams.every((team) => team.strategyModelVersion === 2)) return;
     setTeams(initializeTeamStrategies(teams, currentYear));
   }, [gameMode, currentYear, teams]);
+
+  useEffect(() => {
+    if (currentSeasonWeek <= DESTINY_EVENT_DEADLINE_GAME) destinyDeadlineResolutionRef.current = null;
+    if (gameMode !== 'random_trade' || phase !== 'regular_season' || !player || currentSeasonWeek <= DESTINY_EVENT_DEADLINE_GAME) return;
+    const unresolved = DESTINY_EVENTS.filter((event) => event.year === currentYear && !destinyEventRecords[event.id]);
+    if (unresolved.length === 0) return;
+    const resolutionKey = `${currentYear}:${DESTINY_EVENT_DEADLINE_GAME}`;
+    if (destinyDeadlineResolutionRef.current === resolutionKey) return;
+    destinyDeadlineResolutionRef.current = resolutionKey;
+
+    let nextTeams = teams;
+    const nextRecords = { ...destinyEventRecords };
+    for (const event of unresolved) {
+      const resolution = ignoreDestinyEvent(event, currentYear, nextRecords, nextTeams, player.id, player.name, true);
+      if (!resolution.success || !resolution.record) continue;
+      nextTeams = resolution.teams;
+      nextRecords[event.id] = resolution.record;
+    }
+    if (nextTeams !== teams) setTeams(nextTeams);
+    setDestinyEventRecords(nextRecords);
+    showToast(`交易截止日已过，${unresolved.length} 个未处理的命定事件已自动忽略并失效`);
+  }, [gameMode, phase, player, currentSeasonWeek, currentYear, destinyEventRecords, teams]);
 
   const checkAndApplyMilestones = (
     oldCareerStats: PlayerProfile['careerStats'],
@@ -1035,6 +1058,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
 
   const handleTriggerDestinyEvent = (event: DestinyEventDefinition, routeId?: string) => {
     if (!player || gameMode !== 'random_trade') return { success: false, message: '该玩法仅在平行时空开放' };
+    if (currentSeasonWeek > DESTINY_EVENT_DEADLINE_GAME) return { success: false, message: '交易截止日已过，该事件已经失效' };
     const result = triggerDestinyEvent(
       event,
       currentYear,
@@ -1044,6 +1068,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
       player.id,
       player.name,
       routeId,
+      player.destinyEventAdUnlocks?.[event.id] || [],
     );
     if (!result.success || !result.record) return { success: false, message: result.message };
     setTeams(result.teams);
@@ -1070,6 +1095,16 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
             },
       };
     });
+    return { success: true, message: result.message };
+  };
+
+  const handleIgnoreDestinyEvent = (event: DestinyEventDefinition) => {
+    if (!player || gameMode !== 'random_trade') return { success: false, message: '该玩法仅在平行时空开放' };
+    if (currentSeasonWeek > DESTINY_EVENT_DEADLINE_GAME) return { success: false, message: '交易截止日已过，该事件已经失效' };
+    const result = ignoreDestinyEvent(event, currentYear, destinyEventRecords, teams, player.id, player.name);
+    if (!result.success || !result.record) return { success: false, message: result.message };
+    if (result.teams !== teams) setTeams(result.teams);
+    setDestinyEventRecords((previous) => ({ ...previous, [event.id]: result.record as DestinyEventRecord }));
     return { success: true, message: result.message };
   };
 
@@ -1220,6 +1255,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     handleNextSeason,
     handleViewSeasonTrades,
     handleTriggerDestinyEvent,
+    handleIgnoreDestinyEvent,
     handleInviteStar,
     currentTeam,
     oppTeam,

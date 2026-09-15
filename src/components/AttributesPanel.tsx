@@ -375,7 +375,7 @@ export const AttributesPanel: React.FC<AttributesPanelProps> = ({
                       type="button"
                       onClick={() => onUpgradeAttribute(key)}
                       disabled={skillPoints <= 0 || isAtCap}
-                      className="px-2 sm:px-2.5 py-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-20 disabled:pointer-events-none text-black font-black italic rounded-lg text-xs shadow-md transition-transform active:scale-95 flex items-center justify-center gap-0.5 cursor-pointer uppercase whitespace-nowrap"
+                      className="primary-action-text px-2 sm:px-2.5 py-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-20 disabled:pointer-events-none text-black font-black italic rounded-lg text-xs shadow-md transition-transform active:scale-95 flex items-center justify-center gap-0.5 cursor-pointer uppercase whitespace-nowrap"
                     >
                       <Flame className="w-3 h-3 fill-black" />{' '}
                       {isOvrAtCap ? '综评封顶' : isAtCap ? '封顶' : '+1'}

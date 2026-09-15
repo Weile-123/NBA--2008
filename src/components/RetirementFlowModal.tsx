@@ -331,7 +331,7 @@ export const RetirementFlowModal: React.FC<RetirementFlowModalProps> = ({
       const legendRecord: RetiredPlayerRecord = {
         gameMode,
         unlockedDestinyEvents: gameMode === 'random_trade'
-          ? Object.values(destinyEventRecords as Record<string, DestinyEventRecord>).map((record) => {
+          ? Object.values(destinyEventRecords as Record<string, DestinyEventRecord>).filter((record) => !record.ignored).map((record) => {
               const definition = DESTINY_EVENTS.find((event) => event.id === record.eventId);
               return {
                 eventId: record.eventId,

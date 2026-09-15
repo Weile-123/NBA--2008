@@ -1,6 +1,6 @@
 import React from 'react';
 import { PlayerProfile, Team } from '../types';
-import { Users, Lock, Sparkles, ShieldAlert, HeartHandshake, Clock, X, Building2, HelpCircle, UserPlus, MonitorPlay } from 'lucide-react';
+import { Users, Lock, Sparkles, ShieldAlert, HeartHandshake, Clock, X, Building2, HelpCircle, UserPlus, MonitorPlay, Eye } from 'lucide-react';
 import { getCompleteTeamRoster, getPlayerCategoryRatings, getUserPlayerCategoryRatings } from '../utils/leagueLogic';
 import { TeamLogo } from './TeamLogo';
 import { ContractOffer, generateFreeAgencyOffers, regenerateFreeAgencyOffers } from '../utils/contractLogic';
@@ -54,6 +54,7 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
   const [selectedStarKey, setSelectedStarKey] = React.useState('');
   const [isInvitingStar, setIsInvitingStar] = React.useState(false);
   const [starInviteMessage, setStarInviteMessage] = React.useState('');
+  const [viewingOfferRosterTeam, setViewingOfferRosterTeam] = React.useState<Team | null>(null);
   const requestTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => () => {
@@ -512,14 +513,23 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
                       </div>
                     </div>
 
-                    {/* Accept Action */}
-                    <button
-                      type="button"
-                      onClick={() => handleAcceptTradeOffer(offer)}
-                      className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-black italic text-xs rounded-lg transition-all flex items-center gap-1 cursor-pointer self-stretch sm:self-auto justify-center shadow-md"
-                    >
-                      <span>🤝 确认交易并加盟</span>
-                    </button>
+                    {/* Roster and accept actions */}
+                    <div className="flex gap-2 self-stretch sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => setViewingOfferRosterTeam(offer.team)}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-cyan-500/35 bg-cyan-500/10 px-3 py-2.5 text-xs font-black text-cyan-300 transition-colors hover:bg-cyan-500/20 sm:flex-none"
+                      >
+                        <Eye className="h-4 w-4" />查看阵容
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAcceptTradeOffer(offer)}
+                        className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-2.5 text-xs font-black italic text-black shadow-md transition-all hover:from-emerald-400 hover:to-emerald-500 sm:flex-none"
+                      >
+                        <span>🤝 确认交易并加盟</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -539,6 +549,43 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
               >
                 关闭
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewingOfferRosterTeam && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 backdrop-blur-md">
+          <div className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-cyan-500/35 bg-[#111722] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#293140] p-4">
+              <div className="flex items-center gap-3">
+                <TeamLogo team={viewingOfferRosterTeam} size="md" />
+                <div>
+                  <h3 className="text-sm font-black text-white">{viewingOfferRosterTeam.city} {viewingOfferRosterTeam.name} 当前阵容</h3>
+                  <p className="mt-0.5 text-[10px] font-mono text-cyan-300">球队 OVR {viewingOfferRosterTeam.rating}</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setViewingOfferRosterTeam(null)} className="rounded-lg bg-slate-800 p-2 text-slate-400" aria-label="关闭阵容">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-3">
+              <div className="grid grid-cols-[42px_1fr_76px_54px] gap-2 px-2 pb-2 text-[9px] font-black text-slate-500">
+                <span>位置</span><span>球员</span><span className="text-center">定位</span><span className="text-right">综评</span>
+              </div>
+              <div className="space-y-1.5">
+                {getCompleteTeamRoster(viewingOfferRosterTeam, null, seasonIndex).roster.map((candidate) => (
+                  <div key={candidate.id} className="grid grid-cols-[42px_1fr_76px_54px] items-center gap-2 rounded-lg border border-[#253047] bg-[#0b1019] px-2 py-2.5 text-xs">
+                    <span className="font-mono font-black text-amber-300">{candidate.position}</span>
+                    <span className="min-w-0 truncate font-bold text-white">{candidate.name}</span>
+                    <span className="text-center text-[10px] text-slate-400">{candidate.role}</span>
+                    <span className="text-right font-mono font-black text-cyan-300">{candidate.ovr}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="border-t border-[#293140] p-3">
+              <button type="button" onClick={() => setViewingOfferRosterTeam(null)} className="w-full rounded-xl bg-slate-800 py-2.5 text-xs font-black text-white">返回报价</button>
             </div>
           </div>
         </div>

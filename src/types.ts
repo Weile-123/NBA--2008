@@ -183,6 +183,10 @@ export interface PlayerProfile {
   draftYear: number;
   contract: Contract;
   careerStats: PlayerStats;
+  /** Playoff game ids already included in careerStats, used to make settlement idempotent. */
+  playoffStatGameIds?: string[];
+  /** Optional destiny conditions unlocked by rewarded ads in parallel mode. */
+  destinyEventAdUnlocks?: Record<string, string[]>;
   seasonStats: PlayerStats;
   accolades: Accolade[];
   endorsements: Endorsement[];

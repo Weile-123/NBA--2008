@@ -1,6 +1,31 @@
 import { Team, RosterPlayer, PlayerProfile, Position, SingleGamePlayerStats, MatchRosterStats, MatchBoxScore, CategoryRatings } from '../types';
 import { getPlayerTotalAttributes } from './calc2k';
 
+type BalancedStarterCandidate = { id: string; position: Position; score: number };
+
+/** Selects a conventional two-guard, two-forward and one-center starting unit. */
+export function selectBalancedStarterIds<T extends BalancedStarterCandidate>(players: T[]): Set<string> {
+  const sorted = [...players].sort((a, b) => b.score - a.score);
+  const starters = new Set<string>();
+  const addBest = (positions: Position[], limit: number) => {
+    for (const player of sorted) {
+      if (starters.size >= 5 || limit <= 0) break;
+      if (positions.includes(player.position) && !starters.has(player.id)) {
+        starters.add(player.id);
+        limit -= 1;
+      }
+    }
+  };
+  addBest(['PG', 'SG'], 2);
+  addBest(['SF', 'PF'], 2);
+  addBest(['C'], 1);
+  for (const player of sorted) {
+    if (starters.size >= 5) break;
+    starters.add(player.id);
+  }
+  return starters;
+}
+
 /**
  * Extracts short team nickname (without city prefix)
  * e.g., "克利夫兰骑士" -> "骑士", "洛杉矶湖人" -> "湖人"
@@ -777,13 +802,17 @@ export function getCompleteTeamRoster(
     // Calculate team usage congestion context
     const teamUsageContext = calculateTeamUsageContext(rawRoster);
 
+    const starterIds = selectBalancedStarterIds(rawRoster.map((p) => ({ id: p.id, position: p.position, score: p.ovr })));
+    const starterOrder = rawRoster.filter((p) => starterIds.has(p.id));
+    const coreId = starterOrder[0]?.id;
+    const sixthManId = rawRoster.find((p) => !starterIds.has(p.id))?.id;
     const enriched = rawRoster.map((p, idx) => {
       const item = enrichRosterPlayer(p, idx, seasonIndex, teamUsageContext);
       let roleTag: '战术核心' | '绝对首发' | '第六人' | '轮换替补' | '饮水机守门员' = '饮水机守门员';
       let mins = 8.0;
-      if (idx === 0) { roleTag = '战术核心'; mins = 35.0; }
-      else if (idx < 5) { roleTag = '绝对首发'; mins = 30.0; }
-      else if (idx === 5) { roleTag = '第六人'; mins = 24.0; }
+      if (p.id === coreId) { roleTag = '战术核心'; mins = 35.0; }
+      else if (starterIds.has(p.id)) { roleTag = '绝对首发'; mins = 30.0; }
+      else if (p.id === sixthManId) { roleTag = '第六人'; mins = 24.0; }
       else if (idx < 10) { roleTag = '轮换替补'; mins = 16.0; }
       else { roleTag = '饮水机守门员'; mins = 6.0; }
       return {
@@ -852,37 +881,17 @@ export function getCompleteTeamRoster(
     userScore = userPlayer.ovr + performanceMod;
   }
 
-  // Find position starters among teammates
-  const positions: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
-  const starterIds = new Set<string>();
-  const teammateStartersMap: { [key in Position]?: typeof teammates[0] } = {};
+  const starterIds = selectBalancedStarterIds(teammates);
 
-  positions.forEach((pos) => {
-    const candidatesAtPos = teammates.filter((t) => t.position === pos).sort((a, b) => b.score - a.score);
-    if (candidatesAtPos.length > 0) {
-      starterIds.add(candidatesAtPos[0].id);
-      teammateStartersMap[pos] = candidatesAtPos[0];
-    }
-  });
-
-  // Fill starters to 5 if needed
-  if (starterIds.size < 5) {
-    const sortedAll = [...teammates].sort((a, b) => b.score - a.score);
-    for (const t of sortedAll) {
-      if (starterIds.size >= 5) break;
-      if (!starterIds.has(t.id)) {
-        starterIds.add(t.id);
-      }
-    }
-  }
-
-  const starterTeammates = teammates.filter((t) => starterIds.has(t.id)).sort((a, b) => b.score - a.score);
   const benchTeammates = teammates.filter((t) => !starterIds.has(t.id)).sort((a, b) => b.score - a.score);
 
   const teammateSixthMan = benchTeammates.length > 0 ? benchTeammates[0] : null;
 
-  // Starter at user's position
-  const posStarter = teammateStartersMap[userPlayer.position] || starterTeammates[0];
+  const userStarterKey = '__user_player__';
+  const lineupWithUser = selectBalancedStarterIds([
+    ...teammates,
+    { id: userStarterKey, position: userPlayer.position, score: userScore },
+  ]);
 
   // Determine user role and minutes
   let userRole: '战术核心' | '绝对首发' | '第六人' | '轮换替补' | '饮水机守门员' = '饮水机守门员';
@@ -896,10 +905,9 @@ export function getCompleteTeamRoster(
     userMinutes = 12.0;
   } else {
     // userPlayer.ovr >= 74
-    // Compare with the starter at the user's own position first. Requiring the
-    // user to beat an unrelated high-rated bench player before this comparison
-    // could incorrectly demote a clear positional starter to the rotation.
-    const qualifiesForStarter = posStarter ? (userScore >= posStarter.score && userPlayer.ovr >= 78) : true;
+    // Compete inside the balanced two-guard/two-forward/one-center unit so a
+    // second elite player at the same listed position can still start.
+    const qualifiesForStarter = lineupWithUser.has(userStarterKey) && userPlayer.ovr >= 78;
     const qualifiesForSixthMan = teammateSixthMan ? (userScore >= teammateSixthMan.score) : true;
 
     if (qualifiesForStarter) {
@@ -930,8 +938,9 @@ export function getCompleteTeamRoster(
   // Rebuild the teammate depth chart after inserting the user. A displaced
   // starter must compete with all other reserves for the sixth-man role.
   const userIsStarter = userRole === '绝对首发' || userRole === '战术核心';
-  const activeStarterIds = new Set(starterIds);
-  if (userIsStarter && posStarter) activeStarterIds.delete(posStarter.id);
+  const activeStarterIds = userIsStarter
+    ? new Set([...lineupWithUser].filter((id) => id !== userStarterKey))
+    : new Set(starterIds);
   const adjustedBench = teammates
     .filter((t) => !activeStarterIds.has(t.id))
     .sort((a, b) => b.score - a.score);

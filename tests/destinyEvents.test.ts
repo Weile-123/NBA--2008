@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Position, Team } from '../src/types';
-import { DESTINY_EVENTS, evaluateDestinyEvent, getDestinyEventEntrySummary, triggerDestinyEvent } from '../src/data/destinyEvents';
+import { DESTINY_EVENTS, evaluateDestinyEvent, getDestinyEventEntrySummary, ignoreDestinyEvent, triggerDestinyEvent } from '../src/data/destinyEvents';
 import { executeRandomTradesForSeason } from '../src/utils/randomTradeLogic';
 import { getSeasonSimulationPowerRating } from '../src/utils/parallelSeasonBalance';
 
@@ -61,13 +61,32 @@ test('future routes cannot become available or be triggered early', () => {
   assert.equal(triggerDestinyEvent(event, 2009, teams).success, false);
 });
 
+test('a rewarded ad can unlock the final optional condition after all mandatory conditions pass', () => {
+  const event = DESTINY_EVENTS.find((candidate) => candidate.id === 'decision_1')!;
+  const cleveland = makeTeam('cle', '克里夫兰', [{ id: 'lebron', name: '勒布朗·詹姆斯', ovr: 96 }]);
+  const miami = makeTeam('mia', '迈阿密', [{ id: 'wade', name: '德维恩·韦德', ovr: 94 }]);
+  const toronto = makeTeam('tor', '多伦多', [{ id: 'bosh', name: '克里斯·波什', ovr: 89 }]);
+  cleveland.previousSeasonWins = 60;
+  miami.previousSeasonWins = 45;
+  miami.strategy = 'playoff';
+  const teams = [cleveland, miami, toronto];
+  const before = evaluateDestinyEvent(event, 2010, teams);
+  const route = before.routeEvaluations.find((candidate) => candidate.route.id === 'south_beach')!;
+  assert.equal(route.score, 2);
+  assert.equal(route.available, false);
+  const missing = route.checks.find((check) => !check.met && !check.required)!;
+  const after = evaluateDestinyEvent(event, 2010, teams, [], {}, [missing.unlockKey]);
+  assert.equal(after.routeEvaluations.find((candidate) => candidate.route.id === 'south_beach')?.available, true);
+  assert.equal(triggerDestinyEvent(event, 2010, teams, [], {}, undefined, undefined, 'south_beach', [missing.unlockKey]).success, true);
+});
+
 test('linked destiny events require their preceding event or exact branch', () => {
   const lebron = { id: 'lebron', name: '勒布朗·詹姆斯', ovr: 96 };
   const cleveland = makeTeam('cle', '克里夫兰', [lebron]);
   cleveland.strategy = 'contender';
   cleveland.previousSeasonWins = 50;
   const decisionTwo = DESTINY_EVENTS.find((candidate) => candidate.id === 'decision_2')!;
-  assert.equal(evaluateDestinyEvent(decisionTwo, 2014, [cleveland]).requiredScore, 2);
+  assert.equal(evaluateDestinyEvent(decisionTwo, 2014, [cleveland]).requiredScore, 3);
   assert.equal(evaluateDestinyEvent(decisionTwo, 2014, [cleveland]).checks.find((check) => check.label.includes('决定一'))?.met, false);
   const decisionOneRecord = { decision_1: { eventId: 'decision_1', triggeredAtYear: 2010, result: '完成', movedPlayers: [] } };
   assert.equal(evaluateDestinyEvent(decisionTwo, 2014, [cleveland], [], decisionOneRecord).checks.find((check) => check.label.includes('决定一'))?.met, true);
@@ -157,7 +176,7 @@ test('later event conditions use championship history and the rebuilt Brooklyn c
 });
 
 test('removed events no longer appear in the destiny catalog', () => {
-  for (const id of ['lockout_2011', 'small_ball_revolution', 'bubble_2020', 'lakers_f4']) {
+  for (const id of ['lockout_2011', 'small_ball_revolution', 'bubble_2020', 'lakers_f4', 'holiday_bucks', 'gobert_wolves', 'kawhi_extension']) {
     assert.equal(DESTINY_EVENTS.some((event) => event.id === id), false);
   }
 });
@@ -178,7 +197,8 @@ test('triggering a destiny event preserves roster sizes and the user player', ()
   ];
   const sizes = new Map(teams.map((team) => [team.id, team.roster.length]));
   teams[1].strategy = 'playoff';
-  const result = triggerDestinyEvent(event, 2010, teams, [], {}, 'user', '测试玩家');
+  teams[1].previousSeasonWins = 45;
+  const result = triggerDestinyEvent(event, 2010, teams, [], {}, 'user', '测试玩家', 'south_beach');
   assert.equal(result.success, true);
   assert.equal(result.record?.movedPlayers.length, 2);
   assert.equal(result.teams.find((team) => team.id === 'mia')?.roster.some((player) => player.id === 'user'), true);
@@ -337,18 +357,76 @@ test('decision one exposes multiple routes and records the selected branch resul
   cleveland.previousSeasonWins = 50;
   const miami = makeTeam('mia', '迈阿密', [{ id: 'wade', name: '德维恩·韦德', ovr: 94 }]);
   miami.strategy = 'contender';
+  miami.previousSeasonWins = 45;
   const toronto = makeTeam('tor', '多伦多', [{ id: 'bosh', name: '克里斯·波什', ovr: 89 }]);
-  const chicago = makeTeam('chi', '芝加哥', [{ id: 'rose', name: '德里克·罗斯', ovr: 91 }]);
-  chicago.strategy = 'contender';
-  chicago.previousSeasonWins = 50;
   const newYork = makeTeam('nyk', '纽约');
   newYork.strategy = 'rebuilding';
-  const teams = [cleveland, miami, toronto, chicago, newYork];
+  const teams = [cleveland, miami, toronto, newYork];
   const evaluation = evaluateDestinyEvent(event, 2010, teams);
   assert.equal(evaluation.routeEvaluations.length, 3);
-  assert.equal(evaluation.routeEvaluations.find((route) => route.route.id === 'windy_city')?.available, true);
-  const result = triggerDestinyEvent(event, 2010, teams, [], {}, undefined, undefined, 'windy_city');
+  assert.equal(evaluation.routeEvaluations.some((route) => route.route.id === 'windy_city'), false);
+  const result = triggerDestinyEvent(event, 2010, teams, [], {}, undefined, undefined, 'south_beach');
   assert.equal(result.success, true);
-  assert.equal(result.record?.routeId, 'windy_city');
-  assert.equal(result.teams.find((team) => team.id === 'chi')?.roster.some((player) => player.id === 'lebron'), true);
+  assert.equal(result.record?.routeId, 'south_beach');
+  assert.equal(result.teams.find((team) => team.id === 'mia')?.roster.some((player) => player.id === 'lebron'), true);
+});
+
+test('ignoring an event records no roster change and decision fallbacks select their stay route', () => {
+  const tradeEvent = DESTINY_EVENTS.find((candidate) => candidate.id === 'paul_suns')!;
+  const ignored = ignoreDestinyEvent(tradeEvent, 2020);
+  assert.equal(ignored.success, true);
+  assert.equal(ignored.record?.ignored, true);
+  assert.deepEqual(ignored.record?.movedPlayers, []);
+  assert.equal(evaluateDestinyEvent(tradeEvent, 2020, [], [], { paul_suns: ignored.record! }).status, 'ignored');
+
+  const decisionOne = DESTINY_EVENTS.find((candidate) => candidate.id === 'decision_1')!;
+  const stayed = ignoreDestinyEvent(decisionOne, 2010);
+  assert.equal(stayed.record?.ignored, true);
+  assert.equal(stayed.record?.routeId, 'stay_cavaliers');
+  assert.deepEqual(stayed.record?.movedPlayers, []);
+});
+
+test('ignoring Durant choice sends Durant to a random different team', () => {
+  const event = DESTINY_EVENTS.find((candidate) => candidate.id === 'durant_warriors')!;
+  const thunder = makeTeam('okc', '俄克拉荷马', [{ id: 'durant', name: '凯文·杜兰特', ovr: 96 }]);
+  const celtics = makeTeam('bos', '波士顿', [{ id: 'reserve', name: '替补球员', ovr: 70 }]);
+  const ignored = ignoreDestinyEvent(event, 2016, {}, [thunder, celtics], undefined, undefined, false, () => 0);
+  assert.equal(ignored.success, true);
+  assert.equal(ignored.record?.ignored, true);
+  assert.deepEqual(ignored.record?.movedPlayers, ['凯文·杜兰特']);
+  assert.equal(ignored.teams.find((team) => team.id === 'bos')?.roster.some((player) => player.name === '凯文·杜兰特'), true);
+});
+
+test('revised destiny catalog keeps the requested thresholds, replacements and dependencies', () => {
+  const byId = (id: string) => DESTINY_EVENTS.find((event) => event.id === id)!;
+  const decisionOne = byId('decision_1');
+  const southBeach = decisionOne.routes!.find((route) => route.id === 'south_beach')!;
+  assert.equal(southBeach.requiredScore, 3);
+  assert.equal(southBeach.conditions.find((condition) => condition.playerNames?.includes('德维恩·韦德'))?.required, true);
+  assert.equal(southBeach.conditions.some((condition) => condition.teamId === 'mia' && condition.type === 'team_previous_wins_at_least' && condition.value === 45), true);
+  assert.equal(decisionOne.routes!.find((route) => route.id === 'stay_cavaliers')?.fallback, true);
+
+  const vetoedTrade = byId('cp3_lakers');
+  assert.equal(vetoedTrade.title, '被叫停的交易');
+  assert.equal(vetoedTrade.conditions.some((condition) => condition.type === 'team_strategy_in'), false);
+  assert.equal(vetoedTrade.conditions.some((condition) => condition.type === 'team_previous_wins_at_least' && condition.value === 53), true);
+  assert.equal(byId('howard_houston').conditions.some((condition) => condition.playerNames?.includes('德怀特·霍华德') && condition.value === 50), true);
+
+  const decisionTwo = byId('decision_2');
+  assert.equal(decisionTwo.conditions.some((condition) => condition.type === 'event_completed_route_not_selected' && condition.routeId === 'stay_cavaliers'), true);
+  const durant = byId('durant_warriors');
+  assert.equal(durant.routes!.find((route) => route.id === 'bay_area')?.conditions.find((condition) => condition.playerNames?.includes('斯蒂芬·库里'))?.required, true);
+  assert.equal(durant.routes!.find((route) => route.id === 'thunder_return')?.conditions.some((condition) => condition.type === 'team_previous_wins_at_least' && condition.value === 50), true);
+  assert.equal(byId('cp3_houston').conditions.some((condition) => condition.type === 'event_completed_player_on_team'), true);
+
+  const lebron = byId('lebron_lakers');
+  assert.equal(lebron.routes!.find((route) => route.id === 'hollywood')?.conditions.some((condition) => condition.type === 'team_strategy_in'), false);
+  assert.equal(lebron.routes!.find((route) => route.id === 'hollywood')?.conditions.some((condition) => condition.type === 'team_max_elite_players' && condition.ovrThreshold === 90 && condition.value === 1), true);
+  assert.equal(lebron.routes!.find((route) => route.id === 'process')?.conditions.find((condition) => condition.playerNames?.includes('乔尔·恩比德'))?.required, true);
+  assert.equal(lebron.routes!.find((route) => route.id === 'home_guardian')?.fallback, true);
+  assert.equal(byId('ad_lakers').conditions.some((condition) => condition.type === 'team_max_elite_players' && condition.ovrThreshold === 90 && condition.value === 2), true);
+
+  assert.equal(DESTINY_EVENTS.some((event) => event.id === 'paul_suns'), true);
+  assert.equal(DESTINY_EVENTS.some((event) => event.id === 'klay_leaves_warriors'), true);
+  assert.equal(DESTINY_EVENTS.some((event) => event.id === 'luka_davis_swap' && event.year === 2025), true);
 });

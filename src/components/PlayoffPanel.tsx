@@ -9,6 +9,7 @@ import { getUserPlayoffStatus, settleInteractivePlayoffGame } from '../utils/pla
 import type { GameMode } from '../gameMode';
 import { getSeasonSimulationPowerRating } from '../utils/parallelSeasonBalance';
 import { MatchSimulator } from './MatchSimulator';
+import { applyPlayoffGamesToCareer } from '../utils/playoffStats';
 
 export interface PlayoffSeries {
   id: string;
@@ -22,9 +23,12 @@ export interface PlayoffSeries {
   seedA?: number; // Conference seed (1-8)
   seedB?: number; // Conference seed (1-8)
   lastUserGame?: PlayoffGameSummary;
+  userGames?: PlayoffGameSummary[];
 }
 
-interface PlayoffGameSummary {
+export interface PlayoffGameSummary {
+  id: string;
+  started?: boolean;
   teamAId: string;
   teamBId: string;
   teamAScore: number;
@@ -173,6 +177,13 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
       savePlayoffState(currentYear, currentRound, seriesList, champion, careerSignature);
     }
   }, [careerSignature, currentYear, currentRound, seriesList, champion]);
+
+  useEffect(() => {
+    if (!onUpdatePlayer) return;
+    const games = seriesList.flatMap((series) => series.userGames || []);
+    const updatedPlayer = applyPlayoffGamesToCareer(player, games);
+    if (updatedPlayer !== player) onUpdatePlayer(updatedPlayer);
+  }, [onUpdatePlayer, player, seriesList]);
 
   // Initialize Playoff Series on mount if no saved state exists for currentYear
   useEffect(() => {
@@ -336,8 +347,10 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
       else teamBScore += 1;
     }
 
-    const { userMinutes } = getCompleteTeamRoster(userTeam, player, currentYear - 2007);
+    const { userMinutes, userRole } = getCompleteTeamRoster(userTeam, player, currentYear - 2007);
     return {
+      id: `${series.id}:G${series.winsA + series.winsB + 1}`,
+      started: userRole === '战术核心' || userRole === '绝对首发',
       teamAId: series.teamA.id,
       teamBId: series.teamB.id,
       teamAScore,
@@ -416,6 +429,9 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
             winsB: result.winsB,
             winnerId: result.winnerId,
             lastUserGame: result.lastUserGame ?? nextList[idx].lastUserGame,
+            userGames: result.lastUserGame
+              ? [...(nextList[idx].userGames || []), result.lastUserGame]
+              : nextList[idx].userGames,
           };
         }
       }
@@ -442,6 +458,9 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
               winsB: result.winsB,
               winnerId: result.winnerId,
               lastUserGame: result.lastUserGame ?? currentList[idx].lastUserGame,
+              userGames: result.lastUserGame
+                ? [...(currentList[idx].userGames || []), result.lastUserGame]
+                : currentList[idx].userGames,
             };
           }
         }
@@ -581,11 +600,27 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
             winsB: result.winsB,
             winnerId: result.winnerId,
             lastUserGame: result.lastUserGame ?? nextList[idx].lastUserGame,
+            userGames: result.lastUserGame
+              ? [...(nextList[idx].userGames || []), result.lastUserGame]
+              : nextList[idx].userGames,
           };
           continue;
         }
 
-        nextList[idx] = settleInteractivePlayoffGame(series, userTeam.id, boxScore);
+        const settled = settleInteractivePlayoffGame(series, userTeam.id, boxScore);
+        const { userRole } = getCompleteTeamRoster(userTeam, player, currentYear - 2007);
+        const summary = settled.lastUserGame
+          ? {
+              ...settled.lastUserGame,
+              id: `${series.id}:G${series.winsA + series.winsB + 1}`,
+              started: userRole === '战术核心' || userRole === '绝对首发',
+            }
+          : undefined;
+        nextList[idx] = {
+          ...settled,
+          lastUserGame: summary,
+          userGames: summary ? [...(series.userGames || []), summary] : series.userGames,
+        };
       }
 
       return nextList;

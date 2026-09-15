@@ -61,3 +61,11 @@ test('the highest-rated reserve remains sixth man after the user enters the star
   assert.equal(bestBench?.role, '第六人');
   assert.equal(displacedCenter?.role, '轮换替补');
 });
+
+test('two elite point guards can start together in the two-guard lineup', () => {
+  const team = makeTeam();
+  team.roster = team.roster.map((candidate) => candidate.id === 'sg-starter' ? { ...candidate, position: 'PG' as Position } : candidate);
+  const result = getCompleteTeamRoster(team, null, 2);
+  assert.equal(result.roster.find((candidate) => candidate.id === 'pg-starter')?.role, '战术核心');
+  assert.equal(result.roster.find((candidate) => candidate.id === 'sg-starter')?.role, '绝对首发');
+});

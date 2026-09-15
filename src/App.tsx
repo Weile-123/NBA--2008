@@ -29,6 +29,7 @@ import { TimelinePage } from './components/TimelinePage';
 
 import { useCareerGame } from './hooks/useCareerGame';
 import { mustRetireAtAge } from './utils/calc2k';
+import { completeRewardedAd } from './lib/rewardedAd';
 
 export default function App() {
   const [gameMode, setGameMode] = useState<GameMode>(DEFAULT_GAME_MODE);
@@ -147,10 +148,25 @@ function CareerApp({
     handleNextSeason,
     handleViewSeasonTrades,
     handleTriggerDestinyEvent,
+    handleIgnoreDestinyEvent,
     handleInviteStar,
     currentTeam,
     oppTeam,
   } = useCareerGame(gameMode, resumeOnMount);
+
+  const handleUnlockDestinyCondition = async (eventId: string, unlockKey: string) => {
+    if (gameMode !== 'random_trade' || !player || !await completeRewardedAd()) return false;
+    const existing = player.destinyEventAdUnlocks?.[eventId] || [];
+    if (existing.includes(unlockKey)) return true;
+    setPlayer((current) => current ? ({
+      ...current,
+      destinyEventAdUnlocks: {
+        ...(current.destinyEventAdUnlocks || {}),
+        [eventId]: [...(current.destinyEventAdUnlocks?.[eventId] || []), unlockKey],
+      },
+    }) : current);
+    return true;
+  };
   const [isDestinyEventsOpen, setIsDestinyEventsOpen] = useState(false);
 
   useEffect(() => {
@@ -495,10 +511,14 @@ function CareerApp({
       {gameMode === 'random_trade' && isDestinyEventsOpen && (
         <DestinyEventsModal
           currentYear={currentYear}
+          currentGame={currentSeasonWeek}
           teams={teams}
           leagueHistory={leagueHistory}
           records={destinyEventRecords}
+          adUnlocks={player.destinyEventAdUnlocks}
           onTrigger={handleTriggerDestinyEvent}
+          onIgnore={handleIgnoreDestinyEvent}
+          onUnlockCondition={handleUnlockDestinyCondition}
           onClose={() => setIsDestinyEventsOpen(false)}
         />
       )}

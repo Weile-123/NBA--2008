@@ -13,7 +13,7 @@ import { mustRetireAtAge } from '../utils/calc2k';
 import type { SeasonAwards } from '../utils/awardsLogic';
 import type { GameMode } from '../gameMode';
 import type { YearDraftData } from '../data/draftData';
-import { getDestinyEventEntrySummary, getDestinyEventEvaluations, type DestinyEventRecord } from '../data/destinyEvents';
+import { DESTINY_EVENT_DEADLINE_GAME, getDestinyEventEntrySummary, getDestinyEventEvaluations, type DestinyEventRecord } from '../data/destinyEvents';
 
 // The heavy 82-card ticker is replaced by a compact progress view while this
 // loop runs, so we can simulate faster and still yield between games for taps.
@@ -122,10 +122,13 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
   const lastInjuryKeyRef = useRef<string | null>(null);
   const isInjured = player.health.status === 'injured';
   const destinyEvaluations = gameMode === 'random_trade'
-    ? getDestinyEventEvaluations(currentYear, teams, leagueHistory, destinyEventRecords)
+    ? getDestinyEventEvaluations(currentYear, teams, leagueHistory, destinyEventRecords, player.destinyEventAdUnlocks)
     : [];
-  const availableDestinyEvents = destinyEvaluations.filter((item) => item.status === 'available');
-  const destinyEventEntrySummary = getDestinyEventEntrySummary(destinyEvaluations, currentYear);
+  const isDestinyDeadlinePassed = currentGame > DESTINY_EVENT_DEADLINE_GAME;
+  const availableDestinyEvents = destinyEvaluations.filter((item) => item.status === 'available' && !isDestinyDeadlinePassed);
+  const destinyEventEntrySummary = isDestinyDeadlinePassed
+    ? '交易截止日已过，本赛季未处理事件已失效'
+    : getDestinyEventEntrySummary(destinyEvaluations, currentYear);
 
   const handleAwardsSettled = React.useCallback((settledAwards: SeasonAwards) => {
     settledSeasonAwardsRef.current = settledAwards;
