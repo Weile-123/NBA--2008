@@ -1,29 +1,19 @@
 import { Team, RosterPlayer, PlayerProfile, Position, SingleGamePlayerStats, MatchRosterStats, MatchBoxScore, CategoryRatings } from '../types';
 import { getPlayerTotalAttributes } from './calc2k';
+import { getSecondaryPosition, isCompatiblePositionPair } from './playerPositions';
 
-type BalancedStarterCandidate = { id: string; position: Position; score: number };
+type BalancedStarterCandidate = { id: string; name?: string; position: Position; secondaryPosition?: Position; score: number };
 
-/** Selects a conventional two-guard, two-forward and one-center starting unit. */
+/** Higher-rated players claim their natural position before a secondary slot. */
 export function selectBalancedStarterIds<T extends BalancedStarterCandidate>(players: T[]): Set<string> {
-  const sorted = [...players].sort((a, b) => b.score - a.score);
-  const starters = new Set<string>();
-  const addBest = (positions: Position[], limit: number) => {
-    for (const player of sorted) {
-      if (starters.size >= 5 || limit <= 0) break;
-      if (positions.includes(player.position) && !starters.has(player.id)) {
-        starters.add(player.id);
-        limit -= 1;
-      }
-    }
-  };
-  addBest(['PG', 'SG'], 2);
-  addBest(['SF', 'PF'], 2);
-  addBest(['C'], 1);
-  for (const player of sorted) {
-    if (starters.size >= 5) break;
-    starters.add(player.id);
+  const slots: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
+  const assigned = new Map<Position, T>();
+  for (const player of [...players].sort((a, b) => b.score - a.score)) {
+    const secondary = getSecondaryPosition({ ...player, name: player.name || '' });
+    if (slots.includes(player.position) && !assigned.has(player.position)) assigned.set(player.position, player);
+    else if (secondary && slots.includes(secondary) && !assigned.has(secondary)) assigned.set(secondary, player);
   }
-  return starters;
+  return new Set([...assigned.values()].map((player) => player.id));
 }
 
 /**
@@ -55,7 +45,7 @@ export function getShortTeamName(fullName: string): string {
 
 /**
  * Calculates a team's dynamic Power Rating (战力评估) using comprehensive weighted formula:
- * - Starters (top 5 by OVR): 70% weight
+ * - Eligible PG/SG/SF/PF/C starters: 70% weight
  * - Bench (6th to 10th players by OVR): 30% weight
  * - Superstar presence bonus (OVR >= 95 / 90 / 86)
  */
@@ -63,8 +53,11 @@ export function calculateTeamPowerRating(team: Team): number {
   if (!team.roster || team.roster.length === 0) return team.rating || 75;
 
   const sorted = [...team.roster].sort((a, b) => b.ovr - a.ovr);
-  const starters = sorted.slice(0, 5);
-  const bench = sorted.slice(5, 10);
+  const starterIds = selectBalancedStarterIds(sorted.map((p) => ({
+    id: p.id, name: p.name, position: p.position, secondaryPosition: p.secondaryPosition, score: p.ovr,
+  })));
+  const starters = sorted.filter((p) => starterIds.has(p.id));
+  const bench = sorted.filter((p) => !starterIds.has(p.id)).slice(0, 5);
 
   const avgStarter = starters.reduce((acc, p) => acc + p.ovr, 0) / (starters.length || 1);
   const avgBench = bench.length > 0 ? bench.reduce((acc, p) => acc + p.ovr, 0) / bench.length : avgStarter - 8;
@@ -802,7 +795,7 @@ export function getCompleteTeamRoster(
     // Calculate team usage congestion context
     const teamUsageContext = calculateTeamUsageContext(rawRoster);
 
-    const starterIds = selectBalancedStarterIds(rawRoster.map((p) => ({ id: p.id, position: p.position, score: p.ovr })));
+    const starterIds = selectBalancedStarterIds(rawRoster.map((p) => ({ id: p.id, name: p.name, position: p.position, secondaryPosition: p.secondaryPosition, score: p.ovr })));
     const starterOrder = rawRoster.filter((p) => starterIds.has(p.id));
     const coreId = starterOrder[0]?.id;
     const sixthManId = rawRoster.find((p) => !starterIds.has(p.id))?.id;
@@ -817,6 +810,7 @@ export function getCompleteTeamRoster(
       else { roleTag = '饮水机守门员'; mins = 6.0; }
       return {
         ...item,
+        secondaryPosition: getSecondaryPosition(p),
         age: p.age,
         peakAge: p.peakAge,
         peakOvr: p.peakOvr,
@@ -848,6 +842,7 @@ export function getCompleteTeamRoster(
       id: p.id,
       name: p.name,
       position: (p.position || 'PG') as Position,
+      secondaryPosition: getSecondaryPosition(p),
       ovr: p.ovr,
       age: p.age,
       peakAge: p.peakAge,
@@ -888,9 +883,11 @@ export function getCompleteTeamRoster(
   const teammateSixthMan = benchTeammates.length > 0 ? benchTeammates[0] : null;
 
   const userStarterKey = '__user_player__';
+  const userSecondaryPosition = userPlayer.secondaryPosition && isCompatiblePositionPair(userPlayer.position, userPlayer.secondaryPosition)
+    ? userPlayer.secondaryPosition : undefined;
   const lineupWithUser = selectBalancedStarterIds([
     ...teammates,
-    { id: userStarterKey, position: userPlayer.position, score: userScore },
+    { id: userStarterKey, name: '', position: userPlayer.position, secondaryPosition: userSecondaryPosition, score: userScore },
   ]);
 
   // Determine user role and minutes
@@ -905,8 +902,7 @@ export function getCompleteTeamRoster(
     userMinutes = 12.0;
   } else {
     // userPlayer.ovr >= 74
-    // Compete inside the balanced two-guard/two-forward/one-center unit so a
-    // second elite player at the same listed position can still start.
+    // Compete for an eligible PG/SG/SF/PF/C slot using the same rule as NPCs.
     const qualifiesForStarter = lineupWithUser.has(userStarterKey) && userPlayer.ovr >= 78;
     const qualifiesForSixthMan = teammateSixthMan ? (userScore >= teammateSixthMan.score) : true;
 
@@ -981,6 +977,7 @@ export function getCompleteTeamRoster(
       id: t.id,
       name: t.name,
       position: t.position,
+      secondaryPosition: t.secondaryPosition,
       ovr: t.ovr,
       scoringRating: reEnriched.scoringRating,
       reboundRating: reEnriched.reboundRating,
@@ -1025,6 +1022,7 @@ export function getCompleteTeamRoster(
     id: 'user_player',
     name: userPlayer.name,
     position: userPlayer.position,
+    secondaryPosition: userSecondaryPosition,
     ovr: userPlayer.ovr,
     scoringRating: userCatRatings.scoringRating,
     reboundRating: userCatRatings.reboundRating,

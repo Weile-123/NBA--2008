@@ -12,7 +12,7 @@ const migrationSource = readFileSync(resolve('activity/migrate-legendary-data.cj
 const postMatchSource = readFileSync(resolve('src/components/PostMatchModal.tsx'), 'utf8');
 
 test('v8 announcement leads with parallel league and omits removed release notes', () => {
-  const v8 = UPDATE_ANNOUNCEMENTS[0].versions.find((version) => version.version === 'v8');
+  const v8 = UPDATE_ANNOUNCEMENTS.flatMap((announcement) => announcement.versions).find((version) => version.version === 'v8');
   assert.equal(v8?.sections[0]?.title, '新模式——平行联盟');
   assert.ok(v8?.sections[0]?.items.some((item) => item.includes('独立存档')));
   assert.ok(v8?.sections[0]?.items.some((item) => item.includes('随机交易')));

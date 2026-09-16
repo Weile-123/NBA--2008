@@ -1149,7 +1149,7 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
                                 {!isUser && p.isStar && <span className="text-[8px] text-amber-400 font-bold">⭐全明星</span>}
                               </div>
                             </td>
-                            <td className="py-2.5 px-2 sm:px-3 text-center font-mono text-slate-400">{p.position}</td>
+                            <td className="py-2.5 px-2 sm:px-3 text-center font-mono text-slate-400">{p.position}{p.secondaryPosition ? ` / ${p.secondaryPosition}` : ''}</td>
                             <td className="py-2.5 px-2 sm:px-3 text-center font-mono font-bold text-slate-300">{p.role}</td>
                             <td className="py-2.5 px-2 sm:px-3 text-center font-mono font-black text-amber-400 text-xs hidden sm:table-cell">
                               {p.minutes} 分钟

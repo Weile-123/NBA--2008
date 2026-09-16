@@ -10,7 +10,7 @@ import type { GameMode } from '../gameMode';
 import { getSeasonSimulationPowerRating } from '../utils/parallelSeasonBalance';
 import { MatchSimulator } from './MatchSimulator';
 import { applyPlayoffGamesToCareer } from '../utils/playoffStats';
-import { calculateFinalsAverages } from '../utils/finalsStats';
+import { calculateFinalsAverages, selectFinalsMvp } from '../utils/finalsStats';
 
 export interface PlayoffSeries {
   id: string;
@@ -645,45 +645,20 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
     }
   };
 
-  // Compute FMVP winner details according to strict logic:
-  // 1. 必须首发 (Must be a starter: role === '战术核心' || role === '绝对首发')
-  // 2. 必须是球队战术核心 (Tactical core: top starters sorted by OVR)
-  // 3. 综评排名队内第一 90% 概率，排名队内第二 10% 概率；如果第一和第二差距大于 5，则第一 100% 概率拿 FMVP
+  // Award the championship team's most valuable Finals performer.
   const getFmvpWinner = (champ: Team) => {
     const { roster } = getCompleteTeamRoster(champ, player, currentYear - 2007);
-
-    // 1. Filter starters (roles: '战术核心' or '绝对首发')
-    let starters = roster.filter((p) => p.role === '战术核心' || p.role === '绝对首发');
-    if (starters.length === 0) {
-      starters = roster.slice(0, 5);
-    }
-
-    // 2. Sort starters by OVR descending to find team's top core candidates
-    const sortedStarters = [...starters].sort((a, b) => b.ovr - a.ovr);
-
-    const p1 = sortedStarters[0]; // #1 starter in team by OVR
-    const p2 = sortedStarters[1]; // #2 starter in team by OVR
-
-    let winner = p1 || roster[0];
-
-    if (p1 && p2) {
-      const ovrDiff = p1.ovr - p2.ovr;
-      if (ovrDiff > 5) {
-        // 如果第一和第二差距大于5，则第一100%概率拿fmvp
-        winner = p1;
-      } else {
-        // 综评排名队内第一90%概率，排名队内第二10%概率 (use a stable hash to keep it deterministic across re-renders)
-        const nameHash = champ.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        const seedVal = (champ.wins * 31 + nameHash + currentYear) % 100;
-        winner = seedVal < 90 ? p1 : p2;
-      }
-    }
+    const finalsSeries = seriesList.find((series) => series.round === 4 && series.winnerId === champ.id);
+    const finalsAverages = champ.id === userTeam.id
+      ? calculateFinalsAverages(finalsSeries?.userGames || []) : null;
+    const eligible = roster.filter((p) => p.role === '战术核心' || p.role === '绝对首发' || p.isUser);
+    const nameHash = champ.name.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    const draw = (champ.wins * 31 + nameHash + currentYear) % 100;
+    const winner = selectFinalsMvp(eligible.length ? eligible : roster, 'user_player', finalsAverages, draw) || roster[0];
 
     const isUser = !!winner.isUser || winner.id === player.id || winner.name === player.name;
 
     if (isUser) {
-      const finalsSeries = seriesList.find((series) => series.round === 4);
-      const finalsAverages = calculateFinalsAverages(finalsSeries?.userGames || []);
       // New saves use the exact box scores generated in each Finals game. Old
       // playoff caches did not retain those games, so fall back to unmodified
       // regular-season averages instead of inventing an arbitrary bonus.

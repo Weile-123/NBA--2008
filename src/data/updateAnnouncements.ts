@@ -21,6 +21,21 @@ export interface UpdateAnnouncement {
 // include completed features, optimizations and bug fixes in concise wording.
 export const UPDATE_ANNOUNCEMENTS: UpdateAnnouncement[] = [
   {
+    id: '20260916-v9',
+    publishedAt: '2026-09-16',
+    title: '第九次更新说明',
+    introduction: ['经典模式与平行联盟同步优化球员位置和季后赛荣誉。'],
+    versions: [{ version: 'v9', sections: [
+      { title: '首发阵容与球员位置', items: [
+        '创建球员时可选择主要位置和次要位置，更多联盟球员也拥有符合实际的双位置。',
+        '优化球队首发阵容，让双位置球员获得更合理的上场机会。',
+      ] },
+      { title: '总决赛荣誉', items: [
+        '优化 FMVP 获奖逻辑，玩家球员在总决赛的优质表现更容易获得 FMVP。',
+      ] },
+    ] }],
+  },
+  {
     id: '20260914-1900',
     publishedAt: '2026-09-14 19:00',
     title: '第八次更新说明',

@@ -163,6 +163,7 @@ export interface PlayerProfile {
   height: string;
   weight: string;
   position: Position;
+  secondaryPosition?: Position;
   archetype: Archetype;
   attributes: Attributes;
   attributeCaps: AttributeCaps;
@@ -223,6 +224,7 @@ export interface RosterPlayer {
   id: string;
   name: string;
   position: Position;
+  secondaryPosition?: Position;
   number?: string;
   ovr: number;
   // 专项综评（可选，未填时自动按球员位置和总评智能衍生）

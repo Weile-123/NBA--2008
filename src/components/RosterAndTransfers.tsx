@@ -744,7 +744,7 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
                             )}
                             {!isUser && p.isStar && <span className="text-[8px] sm:text-[9px] text-amber-400 font-bold">⭐全明星</span>}
                             <span className="text-[9px] font-mono font-bold text-slate-400 sm:hidden bg-slate-800 px-1 py-0.2 rounded">
-                              {p.position}
+                              {p.position}{p.secondaryPosition ? ` / ${p.secondaryPosition}` : ''}
                             </span>
                           </div>
                           <div className="text-[9px] text-slate-400 font-mono sm:hidden flex items-center gap-1">
@@ -754,7 +754,7 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
                           </div>
                         </div>
                       </td>
-                      <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center font-mono font-bold text-slate-300 hidden sm:table-cell">{p.position}</td>
+                      <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center font-mono font-bold text-slate-300 hidden sm:table-cell">{p.position}{p.secondaryPosition ? ` / ${p.secondaryPosition}` : ''}</td>
                       <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center font-mono font-bold text-slate-200 hidden md:table-cell">{age} 岁</td>
                       <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center hidden lg:table-cell">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${getRoleBadgeColor(p.role || '轮换替补')}`}>

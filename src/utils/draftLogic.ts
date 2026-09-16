@@ -1,6 +1,7 @@
 import { Team, RosterPlayer, PlayerProfile, Position } from '../types';
 import { getHistoricalDraftData, DraftPickItem, YearDraftData } from '../data/draftData';
 import { calculateTeamPowerRating } from './leagueLogic';
+import { getSecondaryPosition } from './playerPositions';
 
 /** The team selected during creation is authoritative for the user's first draft. */
 export function resolveUserDraftTeam(
@@ -101,6 +102,7 @@ export function applyDraftRookiesToTeams(
       id: `rookie_${year}_${p.name}`,
       name: p.name,
       position: p.position,
+      secondaryPosition: getSecondaryPosition(p),
       ovr: p.ovr,
       age: p.age,
       peakAge: p.peakAge || 26,

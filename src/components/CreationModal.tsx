@@ -11,6 +11,7 @@ calculateAttributesAndCaps,
 POSITION_ARCHETYPES,
 } from '../utils/attributeCalculator';
 import { calculateUserDraftPick } from '../utils/draftLogic';
+import { isCompatiblePositionPair } from '../utils/playerPositions';
 import { MobilePersistentScrollbar } from './MobilePersistentScrollbar';
 import { TeamLogo } from './TeamLogo';
 
@@ -109,6 +110,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
   // Step 4: Player Customization state
   const [jerseyNum, setJerseyNum] = useState(24);
   const [position, setPosition] = useState<Position>('PG');
+  const [secondaryPosition, setSecondaryPosition] = useState<Position | null>(null);
   const [favoriteTeamId, setFavoriteTeamId] = useState<string>('');
 
   // Height & Weight state
@@ -216,6 +218,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
   // When position changes, reset archetype
   const handlePositionChange = (pos: Position) => {
     setPosition(pos);
+    if (secondaryPosition && !isCompatiblePositionPair(pos, secondaryPosition)) setSecondaryPosition(null);
     const newArchs = POSITION_ARCHETYPES[pos] || POSITION_ARCHETYPES.PG;
     setSelectedArchId(newArchs[0].id);
   };
@@ -260,6 +263,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
       height: `${heightCm}cm`,
       weight: `${weightKg}kg`,
       position,
+      secondaryPosition: secondaryPosition || undefined,
       archetype: activeArch.name,
       attributes,
       attributeCaps,
@@ -866,6 +870,16 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                 <option value="PF">PF · 大前锋</option>
                 <option value="C">C · 中锋</option>
               </select>
+              <div className="text-[11px] font-bold text-slate-400">次要位置</div>
+              <div className="flex gap-1.5">
+                {[null, ...(['PG', 'SG', 'SF', 'PF', 'C'] as Position[]).filter((pos) => isCompatiblePositionPair(position, pos))].map((pos) => (
+                  <button key={pos ?? 'none'} type="button"
+                    onClick={() => setSecondaryPosition(pos as Position | null)}
+                    className={`flex-1 rounded-lg border py-2 text-[11px] font-bold ${secondaryPosition === pos ? 'border-cyan-400 bg-cyan-500/20 text-cyan-200' : 'border-[#303744] text-slate-300'}`}>
+                    {pos ?? '无'}
+                  </button>
+                ))}
+              </div>
               </div>
 
             {/* Section 3: Height & Weight Selection */}
