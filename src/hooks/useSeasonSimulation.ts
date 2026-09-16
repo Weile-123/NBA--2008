@@ -6,6 +6,7 @@ import { generateTweets } from '../utils/proceduralEngine';
 import { evaluatePostGameHealth, getPlayerTotalAttributes, mustRetireAtAge } from '../utils/calc2k';
 import type { GameMode } from '../gameMode';
 import { getSeasonSimulationPowerRating } from '../utils/parallelSeasonBalance';
+import { applyPostMatchRewards, type PostMatchRewards } from '../utils/postMatchRewards';
 
 import { MilestoneTrigger } from '../data/milestonesData';
 
@@ -525,39 +526,9 @@ export function useSeasonSimulation({
   };
 
   // Post match rewards handler with XP conversion
-  const handlePostMatchContinue = (rewards: {
-    xpEarned: number;
-    moraleDelta: number;
-    mediaRepDelta: number;
-    fanDelta: number;
-    skillPointsEarned?: number;
-  }) => {
+  const handlePostMatchContinue = (rewards: PostMatchRewards) => {
     if (!player) return;
-
-    const currentXp = player.xp || 0;
-    const maxXp = player.maxXp || 500;
-    let newXp = currentXp + rewards.xpEarned;
-    let newLevel = player.level || 1;
-    let newSp = (player.skillPoints || 0) + (rewards.skillPointsEarned || 0);
-    let newMaxXp = maxXp;
-
-    if (newXp >= maxXp) {
-      newLevel += 1;
-      newSp += 1;
-      newXp = newXp - maxXp;
-      newMaxXp = Math.round(maxXp * 1.15);
-    }
-
-    setPlayer({
-      ...player,
-      xp: newXp,
-      maxXp: newMaxXp,
-      level: newLevel,
-      skillPoints: newSp,
-      morale: Math.min(100, Math.max(0, player.morale + rewards.moraleDelta)),
-      mediaReputation: Math.min(100, Math.max(0, player.mediaReputation + rewards.mediaRepDelta)),
-      fansCount: player.fansCount + rewards.fanDelta,
-    });
+    setPlayer(applyPostMatchRewards(player, rewards));
 
     // Advance schedule game (up to 83 to mark regular season completed)
     if (currentSeasonWeek <= 82) {

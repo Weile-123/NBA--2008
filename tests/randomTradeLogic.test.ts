@@ -9,6 +9,7 @@ import { applyDraftRookiesToTeams } from '../src/utils/draftLogic';
 import { progressLeagueForNewSeason } from '../src/utils/progressionLogic';
 import { getHistoricalDraftData } from '../src/data/draftData';
 import { applyHistoricalTeamIdentityUpdates } from '../src/data/realTradesData';
+import { getSecondaryPosition } from '../src/utils/playerPositions';
 
 const positions: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
 
@@ -87,6 +88,21 @@ test('full parallel league performs 14 to 20 moves but only displays major deals
   assert.ok((result.modalData?.executedTrades.length || 0) >= 6);
   assert.ok((result.modalData?.executedTrades.length || 0) <= 10);
   assert.equal(result.modalData?.hiddenTransactions, (result.modalData?.totalTransactions || 0) - (result.modalData?.executedTrades.length || 0));
+});
+
+test('parallel trades preserve a viable starter at every position across multiple moves', () => {
+  const teams = makeLeague(30);
+  const best = (team: Team, position: Position) => team.roster.reduce((value, player) =>
+    player.position === position || getSecondaryPosition(player) === position ? Math.max(value, player.ovr) : value, 0);
+  const result = executeRandomTradesForSeason(teams, 2012, { random: seededRandom(128), minTrades: 20, maxTrades: 20 });
+  for (const team of result.updatedTeams) {
+    const original = teams.find((candidate) => candidate.id === team.id)!;
+    for (const position of positions) {
+      const originalBest = best(original, position);
+      const floor = originalBest >= 76 ? Math.max(76, originalBest - 6) : originalBest;
+      assert.ok(best(team, position) >= floor, `${team.id} lost ${position} coverage`);
+    }
+  }
 });
 
 test('franchise identity changes stay synchronized in classic and parallel timelines', () => {

@@ -8,6 +8,7 @@ import { completeRewardedAd } from '../lib/rewardedAd';
 import { RewardedRefreshButton } from './RewardedRefreshButton';
 import { DEFAULT_GAME_MODE, GameMode } from '../gameMode';
 import { getEffectiveTeamStrategy, getTeamStrategyDescription, getTeamStrategyLabel } from '../utils/teamStrategyLogic';
+import { getStarInvitationCandidates, rankTeamPositionNeeds } from '../utils/starInvitationCandidates';
 
 interface RosterAndTransfersProps {
   gameMode?: GameMode;
@@ -26,12 +27,6 @@ interface RosterAndTransfersProps {
 }
 
 const TRADE_DEADLINE_GAME = 55;
-
-function invitationOrder(key: string, year: number): number {
-  let hash = year * 2654435761;
-  for (let index = 0; index < key.length; index += 1) hash = Math.imul(hash ^ key.charCodeAt(index), 16777619);
-  return hash >>> 0;
-}
 
 export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
   gameMode = DEFAULT_GAME_MODE,
@@ -105,13 +100,8 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
       : isInvitationCoolingDown
         ? `${lastInvitationYear! + 3}赛季可再次邀请`
         : `生涯剩余${remainingInvitations}次`;
-  const starInvitationCandidates = React.useMemo(() => allTeams
-    .filter((team) => team.id !== currentTeam.id)
-    .flatMap((team) => team.roster
-      .filter((candidate) => candidate.ovr >= 86 && candidate.id !== player.id && candidate.name !== player.name && !(player.invitedStarPlayerIds || []).includes(candidate.id))
-      .map((candidate) => ({ team, player: candidate })))
-    .sort((a, b) => invitationOrder(`${a.team.id}:${a.player.id}`, currentYear) - invitationOrder(`${b.team.id}:${b.player.id}`, currentYear))
-    .slice(0, 6), [allTeams, currentTeam.id, currentYear, player.id, player.name, player.invitedStarPlayerIds]);
+  const neededPositions = rankTeamPositionNeeds(currentTeam, player).slice(0, 2);
+  const starInvitationCandidates = getStarInvitationCandidates(currentTeam, allTeams, player, currentYear);
 
   const handleConfirmStarInvitation = async () => {
     if (!selectedStarKey || !onInviteStar || isInvitingStar || isInvitationUnavailable || isTradeDeadlinePassed) return;
@@ -599,7 +589,7 @@ export const RosterAndTransfers: React.FC<RosterAndTransfersProps> = ({
                 <h3 className="flex items-center gap-2 text-base font-black italic text-white">
                   <UserPlus className="h-5 w-5 text-cyan-300" /> 选择邀请球星
                 </h3>
-                <p className="mt-0.5 text-[10px] text-slate-400">生涯剩余 {remainingInvitations} 次 · 邀请成功后不可更换</p>
+                <p className="mt-0.5 text-[10px] text-slate-400">优先补强 {neededPositions.join(' / ')} · 剩余 {remainingInvitations} 次</p>
               </div>
               <button type="button" onClick={() => setIsStarInviteOpen(false)} className="rounded-lg bg-slate-800 p-1.5 text-slate-400 hover:text-white">
                 <X className="h-4 w-4" />

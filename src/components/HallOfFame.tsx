@@ -255,6 +255,11 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
       a.title.includes('Scoring Leader') ||
       a.title.includes('Scoring Champion')
   ).length;
+  const reboundLeaderCount = accolades.filter((a) => a.type === 'REBOUND_LEADER').length;
+  const assistLeaderCount = accolades.filter((a) => a.type === 'ASSIST_LEADER').length;
+  const threePointLeaderCount = accolades.filter((a) => a.type === 'THREE_POINT_LEADER').length;
+  const blockLeaderCount = accolades.filter((a) => a.type === 'BLOCK_LEADER').length;
+  const stealLeaderCount = accolades.filter((a) => a.type === 'STEAL_LEADER').length;
 
   const dpoyCount = accolades.filter(
     (a) => a.type === 'DPOY' || a.title.includes('最佳防守球员') || (a.title.includes('DPOY') && !a.title.includes('阵') && !a.title.includes('阵容'))
@@ -313,7 +318,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
   const CORE_HONORS = [
     {
       key: 'allStar',
-      title: '联盟 全明星',
+      title: '全明星',
       subtitle: 'All-Star Selection',
       count: allStarCount,
       icon: '🌟',
@@ -322,7 +327,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
     },
     {
       key: 'milestoneTop3',
-      title: '历史单项 Top 3',
+      title: '历史前3',
       subtitle: 'All-Time Milestone Top 3',
       count: milestoneTop3Count,
       icon: '🎖️',
@@ -331,7 +336,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
     },
     {
       key: 'mvp',
-      title: '常规赛 MVP',
+      title: 'MVP',
       subtitle: 'Most Valuable Player',
       count: mvpCount,
       icon: '👑',
@@ -340,16 +345,26 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
     },
     {
       key: 'scoringTitle',
-      title: '常规赛得分王',
+      title: '得分王',
       subtitle: 'Scoring Champion',
       count: scoringTitleCount,
       icon: '🔥',
       accentColor: 'border-rose-500/50 text-rose-400 bg-rose-500/10',
       badgeBg: 'bg-rose-500/20 text-rose-300 border border-rose-500/40',
     },
+    { key: 'reboundLeader', title: '篮板王', subtitle: '常规赛数据王', count: reboundLeaderCount, icon: '🏀',
+      accentColor: 'border-sky-500/50 text-sky-300 bg-sky-500/10', badgeBg: 'bg-sky-500/20 text-sky-300 border border-sky-500/40' },
+    { key: 'assistLeader', title: '助攻王', subtitle: '常规赛数据王', count: assistLeaderCount, icon: '🎯',
+      accentColor: 'border-teal-500/50 text-teal-300 bg-teal-500/10', badgeBg: 'bg-teal-500/20 text-teal-300 border border-teal-500/40' },
+    { key: 'threePointLeader', title: '三分王', subtitle: '常规赛数据王', count: threePointLeaderCount, icon: '🎯',
+      accentColor: 'border-amber-500/50 text-amber-300 bg-amber-500/10', badgeBg: 'bg-amber-500/20 text-amber-300 border border-amber-500/40' },
+    { key: 'blockLeader', title: '盖帽王', subtitle: '常规赛数据王', count: blockLeaderCount, icon: '🛡️',
+      accentColor: 'border-cyan-500/50 text-cyan-300 bg-cyan-500/10', badgeBg: 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' },
+    { key: 'stealLeader', title: '抢断王', subtitle: '常规赛数据王', count: stealLeaderCount, icon: '⚡',
+      accentColor: 'border-purple-500/50 text-purple-300 bg-purple-500/10', badgeBg: 'bg-purple-500/20 text-purple-300 border border-purple-500/40' },
     {
       key: 'dpoy',
-      title: '最佳防守球员',
+      title: 'DPOY',
       subtitle: 'DPOY Defense Player',
       count: dpoyCount,
       icon: '🛡️',
@@ -358,7 +373,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
     },
     {
       key: 'champion',
-      title: '联盟 总冠军',
+      title: '总冠军',
       subtitle: 'Championship Ring',
       count: championCount,
       icon: '💍',
@@ -367,7 +382,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
     },
     {
       key: 'fmvp',
-      title: '总决赛 FMVP',
+      title: 'FMVP',
       subtitle: 'Finals MVP Trophy',
       count: fmvpCount,
       icon: '🏆',
@@ -376,7 +391,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
     },
     {
       key: 'allNba1st',
-      title: '最佳阵容一阵',
+      title: '最佳一阵',
       subtitle: '最佳阵容一阵',
       count: allNba1stCount,
       icon: '🥇',
@@ -385,7 +400,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
     },
     {
       key: 'allNba2nd',
-      title: '最佳阵容二阵',
+      title: '最佳二阵',
       subtitle: '最佳阵容二阵',
       count: allNba2ndCount,
       icon: '🥈',
@@ -394,7 +409,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
     },
     {
       key: 'allNba3rd',
-      title: '最佳阵容三阵',
+      title: '最佳三阵',
       subtitle: '最佳阵容三阵',
       count: allNba3rdCount,
       icon: '🥉',
@@ -403,7 +418,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
     },
     {
       key: 'allDef1st',
-      title: '最佳防守一阵',
+      title: '最佳一防',
       subtitle: 'All-Defensive 1st Team',
       count: allDef1stCount,
       icon: '🛡️🥇',
@@ -412,7 +427,7 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
     },
     {
       key: 'allDef2nd',
-      title: '最佳防守二阵',
+      title: '最佳二防',
       subtitle: 'All-Defensive 2nd Team',
       count: allDef2ndCount,
       icon: '🛡️🥈',
@@ -555,20 +570,19 @@ export const HallOfFame: React.FC<HallOfFameProps> = ({ player, careerHistory, l
               </div>
 
               {acquiredHonors.length > 0 ? (
-                <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 sm:gap-3">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   {acquiredHonors.map((h) => (
                     <div
                       key={h.key}
-                      className={`p-2.5 sm:p-3 rounded-xl border flex items-center justify-between gap-2 transition-all ${h.accentColor} ring-1 ring-amber-400/30 shadow-md`}
+                      className={`min-w-0 p-2 sm:p-3 rounded-xl border flex items-center justify-between gap-1.5 transition-all ${h.accentColor} ring-1 ring-amber-400/30 shadow-md`}
                     >
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span className="text-xl sm:text-2xl shrink-0">{h.icon}</span>
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <span className="text-base sm:text-xl shrink-0">{h.icon}</span>
                         <div className="min-w-0 flex-1">
-                          <h5 className="text-xs font-black text-white leading-tight break-words">{h.title}</h5>
-                          <p className="text-[9px] text-slate-400 font-mono truncate hidden xs:block">{h.subtitle}</p>
+                          <h5 className="text-[11px] sm:text-xs font-black text-white leading-tight truncate" title={h.subtitle}>{h.title}</h5>
                         </div>
                       </div>
-                      <span className={`text-[10px] sm:text-xs font-black font-mono px-2 py-0.5 rounded-full shrink-0 ${h.badgeBg}`}>
+                      <span className={`text-[10px] sm:text-xs font-black font-mono px-1.5 sm:px-2 py-0.5 rounded-full shrink-0 ${h.badgeBg}`}>
                         {h.count} 次
                       </span>
                     </div>

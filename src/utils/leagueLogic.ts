@@ -4,16 +4,47 @@ import { getSecondaryPosition, isCompatiblePositionPair } from './playerPosition
 
 type BalancedStarterCandidate = { id: string; name?: string; position: Position; secondaryPosition?: Position; score: number };
 
-/** Higher-rated players claim their natural position before a secondary slot. */
+/** Build the best five-man lineup as a whole: a flexible forward can move to
+ * center when that lets another starter fill power forward. If a roster truly
+ * lacks a position, use an available emergency starter. */
 export function selectBalancedStarterIds<T extends BalancedStarterCandidate>(players: T[]): Set<string> {
   const slots: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
-  const assigned = new Map<Position, T>();
-  for (const player of [...players].sort((a, b) => b.score - a.score)) {
+  type Lineup = { score: number; ids: string[] };
+  let states = new Map<number, Lineup>([[0, { score: 0, ids: [] }]]);
+  for (const player of players) {
+    const next = new Map(states);
     const secondary = getSecondaryPosition({ ...player, name: player.name || '' });
-    if (slots.includes(player.position) && !assigned.has(player.position)) assigned.set(player.position, player);
-    else if (secondary && slots.includes(secondary) && !assigned.has(secondary)) assigned.set(secondary, player);
+    for (const [mask, lineup] of states) {
+      for (let slotIndex = 0; slotIndex < slots.length; slotIndex += 1) {
+        if (mask & (1 << slotIndex)) continue;
+        const slot = slots[slotIndex];
+        if (player.position !== slot && secondary !== slot) continue;
+        const fit = player.position === slot ? 30 : 10;
+        const candidate = { score: lineup.score + player.score * 10 + fit, ids: [...lineup.ids, player.id] };
+        const nextMask = mask | (1 << slotIndex);
+        if (candidate.score > (next.get(nextMask)?.score ?? -Infinity)) next.set(nextMask, candidate);
+      }
+    }
+    states = next;
   }
-  return new Set([...assigned.values()].map((player) => player.id));
+  const best = [...states.entries()].sort((a, b) =>
+    b[1].ids.length - a[1].ids.length || b[1].score - a[1].score)[0]?.[1];
+  const starterIds = new Set(best?.ids || []);
+  // An emergency out-of-position starter is preferable to showing only four
+  // starters when a traded roster has no eligible natural/secondary center.
+  for (const player of [...players].filter((candidate) => !starterIds.has(candidate.id)).sort((a, b) => b.score - a.score)) {
+    if (starterIds.size >= Math.min(slots.length, players.length)) break;
+    starterIds.add(player.id);
+  }
+  return starterIds;
+}
+
+const ROLE_ORDER: Record<string, number> = {
+  战术核心: 0, 绝对首发: 1, 第六人: 2, 轮换替补: 3, 饮水机守门员: 4,
+};
+
+export function compareRosterRole(a: RosterPlayer, b: RosterPlayer): number {
+  return (ROLE_ORDER[a.role || ''] ?? 5) - (ROLE_ORDER[b.role || ''] ?? 5) || b.ovr - a.ovr;
 }
 
 /**
@@ -798,7 +829,9 @@ export function getCompleteTeamRoster(
     const starterIds = selectBalancedStarterIds(rawRoster.map((p) => ({ id: p.id, name: p.name, position: p.position, secondaryPosition: p.secondaryPosition, score: p.ovr })));
     const starterOrder = rawRoster.filter((p) => starterIds.has(p.id));
     const coreId = starterOrder[0]?.id;
-    const sixthManId = rawRoster.find((p) => !starterIds.has(p.id))?.id;
+    const bench = rawRoster.filter((p) => !starterIds.has(p.id));
+    const sixthManId = bench[0]?.id;
+    const rotationIds = new Set(bench.slice(1, 5).map((p) => p.id));
     const enriched = rawRoster.map((p, idx) => {
       const item = enrichRosterPlayer(p, idx, seasonIndex, teamUsageContext);
       let roleTag: '战术核心' | '绝对首发' | '第六人' | '轮换替补' | '饮水机守门员' = '饮水机守门员';
@@ -806,7 +839,7 @@ export function getCompleteTeamRoster(
       if (p.id === coreId) { roleTag = '战术核心'; mins = 35.0; }
       else if (starterIds.has(p.id)) { roleTag = '绝对首发'; mins = 30.0; }
       else if (p.id === sixthManId) { roleTag = '第六人'; mins = 24.0; }
-      else if (idx < 10) { roleTag = '轮换替补'; mins = 16.0; }
+      else if (rotationIds.has(p.id)) { roleTag = '轮换替补'; mins = 16.0; }
       else { roleTag = '饮水机守门员'; mins = 6.0; }
       return {
         ...item,
@@ -820,7 +853,7 @@ export function getCompleteTeamRoster(
       };
     });
 
-    return { roster: enriched, userMinutes: 0, userRole: '' };
+    return { roster: enriched.sort(compareRosterRole), userMinutes: 0, userRole: '' };
   }
 
   // --- USER IS ON THIS TEAM ---
@@ -1049,7 +1082,7 @@ export function getCompleteTeamRoster(
   });
 
   // Sort final roster by assigned minutes descending (tie-breaker: OVR)
-  rosterMapped.sort((a, b) => b.minutes - a.minutes || b.ovr - a.ovr);
+  rosterMapped.sort(compareRosterRole);
 
   return {
     roster: rosterMapped,

@@ -25,6 +25,7 @@ function candidate(id: string, position: Position, score: number): EvaluatedPlay
     apg: 5,
     spg: 1,
     bpg: 1,
+    tpm: 2,
     fgPct: 50,
     minutes: 34,
     statScore: score,

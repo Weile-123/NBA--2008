@@ -5,6 +5,7 @@ import { saveHallOfFameLegend } from '../utils/storage';
 import { uploadToGlobalHallOfFame } from '../lib/globalLeaderboard';
 import { flushPersistentWrites } from '../lib/persistentStorage';
 import { formatLocalDateTime } from '../utils/dateTime';
+import { leaderboardAccoladeTitles } from '../utils/localOnlyAwards';
 import {
   calculateGoatScore,
   countExclusiveTeamSelections,
@@ -111,13 +112,13 @@ export function buildFullCareerTimeline(
     let rpg = Number(Number(rawRpg).toFixed(1));
     let apg = Number(Number(rawApg).toFixed(1));
 
-    let rawAccolades: string[] = hist?.accoladesEarned ? [...hist.accoladesEarned] : [];
+    let rawAccolades: string[] = leaderboardAccoladeTitles(hist?.accoladesEarned || []);
 
     // Include accolades from player.accolades for this year
     const playerAccsForYr = (player.accolades || [])
       .filter((a) => a.year === yr)
       .map((a) => a.title);
-    playerAccsForYr.forEach((t) => {
+    leaderboardAccoladeTitles(playerAccsForYr).forEach((t) => {
       if (!rawAccolades.includes(t)) {
         rawAccolades.push(t);
       }

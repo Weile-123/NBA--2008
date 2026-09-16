@@ -71,13 +71,13 @@ test('a second point guard starts at SG only when SG is an eligible secondary po
   assert.equal(result.roster.find((candidate) => candidate.id === 'sg-starter')?.role, '绝对首发');
 });
 
-test('two PG-only players cannot both fill the PG and SG slots', () => {
+test('a second PG-only player is used only as an emergency starter when the roster has fewer than five players', () => {
   const ids = selectBalancedStarterIds([
     { id: 'top', position: 'PG', score: 99 },
     { id: 'other', position: 'PG', score: 98 },
     { id: 'shooting', position: 'SG', score: 85 },
   ]);
-  assert.deepEqual([...ids].sort(), ['shooting', 'top']);
+  assert.deepEqual([...ids].sort(), ['other', 'shooting', 'top']);
 });
 
 test('curated NPC positions keep Curry at PG and let Kobe cover SF after SG', () => {
@@ -91,11 +91,13 @@ test('curated NPC positions keep Curry at PG and let Kobe cover SF after SG', ()
   assert.deepEqual([...ids].sort(), ['curry', 'kobe', 'shooting']);
 });
 
-test('only adjacent positions may be paired, including older save data', () => {
+test('curated position pairs include PG/SF while rejecting incompatible older save data', () => {
   assert.equal(isCompatiblePositionPair('PG', 'SG'), true);
   assert.equal(isCompatiblePositionPair('SG', 'SF'), true);
   assert.equal(isCompatiblePositionPair('SF', 'PF'), true);
   assert.equal(isCompatiblePositionPair('PF', 'C'), true);
+  assert.equal(isCompatiblePositionPair('PG', 'SF'), true);
+  assert.equal(isCompatiblePositionPair('SF', 'PG'), true);
   assert.equal(isCompatiblePositionPair('PG', 'C'), false);
   assert.equal(getSecondaryPosition({ name: '旧球员', position: 'PG', secondaryPosition: 'C' }), undefined);
   assert.equal(getSecondaryPosition({ name: '埃迪·豪斯', position: 'PG' }), 'SG');
@@ -106,5 +108,37 @@ test('user and NPC compete by the same primary and secondary position rule', () 
   const user = { ...makeUser(98, 0), position: 'PG' as Position, secondaryPosition: 'SG' as Position };
   const result = getCompleteTeamRoster(team, user, 2);
   assert.ok(['绝对首发', '战术核心'].includes(result.userRole));
-  assert.equal(result.roster.find((candidate) => candidate.id === 'sg-starter')?.role, '绝对首发');
+  assert.equal(result.roster.filter((candidate) => ['战术核心', '绝对首发'].includes(candidate.role || '')).length, 5);
+  assert.equal(result.roster.find((candidate) => candidate.id === 'sg-starter')?.role, '第六人');
+});
+
+test('five-man matching moves Gasol to C so Odom can start at PF', () => {
+  const team = makeTeam();
+  team.roster = [
+    { id: 'kobe', name: '科比·布莱恩特', position: 'SG', ovr: 96 },
+    { id: 'paul', name: '克里斯·保罗', position: 'PG', ovr: 96 },
+    { id: 'gasol', name: '保罗·加索尔', position: 'PF', ovr: 92 },
+    { id: 'iguodala', name: '安德烈·伊古达拉', position: 'SF', ovr: 89 },
+    { id: 'odom', name: '拉马尔·奥多姆', position: 'SF', ovr: 81 },
+    { id: 'ariza', name: '特雷沃·阿里扎', position: 'SF', ovr: 83 },
+  ];
+  const selected = selectBalancedStarterIds(team.roster.map((p) => ({ ...p, score: p.ovr })));
+  assert.deepEqual([...selected].sort(), ['gasol', 'iguodala', 'kobe', 'odom', 'paul']);
+  const roster = getCompleteTeamRoster(team, null, 2).roster;
+  assert.equal(roster.filter((p) => ['战术核心', '绝对首发'].includes(p.role || '')).length, 5);
+  assert.deepEqual(roster.slice(0, 5).map((p) => p.id).sort(), [...selected].sort());
+  assert.equal(roster[5]?.role, '第六人');
+});
+
+test('display order is core, starters, sixth man, rotation and reserves even with a low-OVR positional starter', () => {
+  const team = makeTeam();
+  team.roster = [
+    ...team.roster.filter((p) => p.position !== 'SF'),
+    { id: 'only-sf', name: 'only-sf', position: 'SF', ovr: 67 },
+    { id: 'high-bench', name: 'high-bench', position: 'PG', ovr: 84 },
+  ];
+  const roles = getCompleteTeamRoster(team, null, 2).roster.map((p) => p.role);
+  assert.equal(roles.filter((role) => role === '战术核心' || role === '绝对首发').length, 5);
+  assert.equal(roles[5], '第六人');
+  assert.ok(roles.indexOf('饮水机守门员') === -1 || roles.indexOf('轮换替补') < roles.indexOf('饮水机守门员'));
 });

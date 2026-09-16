@@ -186,6 +186,8 @@ export interface PlayerProfile {
   careerStats: PlayerStats;
   /** Playoff game ids already included in careerStats, used to make settlement idempotent. */
   playoffStatGameIds?: string[];
+  /** Interactive playoff games whose XP and skill-point rewards have been claimed. */
+  playoffRewardGameIds?: string[];
   /** Optional destiny conditions unlocked by rewarded ads in parallel mode. */
   destinyEventAdUnlocks?: Record<string, string[]>;
   seasonStats: PlayerStats;
@@ -251,6 +253,7 @@ export interface RosterPlayer {
     apg: number;
     spg: number;
     bpg: number;
+    tpm?: number;
     fgPct: number;
     mpg?: number;
   };

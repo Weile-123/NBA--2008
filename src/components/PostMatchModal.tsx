@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { PlayerProfile, Team, MatchBoxScore } from '../types';
-import { generatePressQuestion, PressConferenceOption } from '../utils/proceduralEngine';
-import { Zap, MessageSquare, Sparkles } from 'lucide-react';
+import { Zap, Sparkles } from 'lucide-react';
 import { TeamLogo } from './TeamLogo';
+import type { PostMatchRewards } from '../utils/postMatchRewards';
 
 interface PostMatchModalProps {
   player: PlayerProfile;
@@ -11,13 +11,8 @@ interface PostMatchModalProps {
   boxScore: MatchBoxScore;
   currentYear?: number;
   careerHistory?: any[];
-  onContinue: (rewards: {
-    xpEarned: number;
-    moraleDelta: number;
-    mediaRepDelta: number;
-    fanDelta: number;
-    skillPointsEarned?: number;
-  }) => void;
+  gamesPlayedForRewards?: number;
+  onContinue: (rewards: PostMatchRewards) => void;
 }
 
 export const PostMatchModal: React.FC<PostMatchModalProps> = ({
@@ -27,6 +22,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
   boxScore,
   currentYear = 2008,
   careerHistory = [],
+  gamesPlayedForRewards,
   onContinue,
 }) => {
   const { playerStats, userTeamScore, opponentScore } = boxScore;
@@ -35,7 +31,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
   // Milestone calculation: Season 1-3 -> +1 SP every 2 games; Season 4+ -> +1 SP every 3 games
   const seasonIndex = currentYear - 2007;
   const isEarlySeasons = seasonIndex <= 2 || (careerHistory && careerHistory.length < 3);
-  const gamesPlayed = player.seasonStats.games;
+  const gamesPlayed = gamesPlayedForRewards ?? player.seasonStats.games;
   const isMatchMilestone = isEarlySeasons ? (gamesPlayed % 2 === 0) : (gamesPlayed % 3 === 0);
   const milestoneSp = isMatchMilestone ? 1 : 0;
 
@@ -61,21 +57,16 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
   const isLevelUp = nextTotalXp >= maxXp;
   const xpProgress = Math.min(100, Math.max(0, (nextTotalXp / Math.max(1, maxXp)) * 100));
 
-  const [pressQuestion] = useState(generatePressQuestion(playerStats.pts, isWin));
-  const [selectedPressOpt, setSelectedPressOpt] = useState<PressConferenceOption | null>(null);
-
   const handleFinish = () => {
-    let moraleDelta = selectedPressOpt?.moraleChange || 0;
-    let mediaRepDelta = selectedPressOpt?.mediaRepChange || 0;
-    let baseFanDelta = (selectedPressOpt?.fanChange ?? 500) + (boxScore.rewardFans || 0);
+    const baseFanDelta = 500 + (boxScore.rewardFans || 0);
 
     // Apply 3x Fan multiplier if Buzzer Beater Win
-    let fanDelta = boxScore.isBuzzerBeaterWin ? baseFanDelta * 3 : baseFanDelta;
+    const fanDelta = boxScore.isBuzzerBeaterWin ? baseFanDelta * 3 : baseFanDelta;
 
     onContinue({
       xpEarned,
-      moraleDelta,
-      mediaRepDelta,
+      moraleDelta: 0,
+      mediaRepDelta: 0,
       fanDelta,
       skillPointsEarned: totalSkillPointsEarned,
     });
@@ -218,37 +209,6 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
           )}
         </div>
 
-        {/* Press Conference Section */}
-        <div className="bg-[#0d1017] p-4 rounded-xl border border-[#232834] space-y-2">
-          <h4 className="text-xs font-black italic text-white uppercase tracking-wider flex items-center gap-1.5">
-            <MessageSquare className="w-3.5 h-3.5 text-amber-400" /> 赛后新闻发布会
-          </h4>
-          <p className="text-xs text-slate-300 italic">{pressQuestion.question}</p>
-
-          <div className="space-y-1.5 pt-1">
-            {pressQuestion.options.map((opt, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => setSelectedPressOpt(opt)}
-                className={`w-full text-left p-2.5 rounded-lg border text-xs transition-all ${
-                  selectedPressOpt === opt
-                    ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold'
-                    : 'bg-[#11141b] border-[#232834] text-slate-300 hover:bg-[#181d29]'
-                }`}
-              >
-                {opt.text}
-              </button>
-            ))}
-          </div>
-
-          {selectedPressOpt && (
-            <div className="p-2.5 bg-[#11141b] border border-amber-500/30 rounded-lg text-xs text-amber-300 font-mono">
-              💡 {selectedPressOpt.responseQuote}
-            </div>
-          )}
-        </div>
-
         </div>
 
         {/* Finish button */}
@@ -257,7 +217,7 @@ export const PostMatchModal: React.FC<PostMatchModalProps> = ({
             onClick={handleFinish}
             className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-black font-black italic rounded-xl text-xs uppercase tracking-tight shadow-xl transition-transform active:scale-95"
           >
-            完成赛后结算 · 返回赛季大厅 →
+            完成赛后结算 · 返回{boxScore.isPlayoffs ? '季后赛' : '赛季大厅'} →
           </button>
         </footer>
       </div>

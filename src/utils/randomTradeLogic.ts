@@ -1,6 +1,7 @@
 import { applyHistoricalTeamIdentityUpdates, HISTORICAL_REAL_TRADES, type ExecutedTradeDetail, type TradeModalData } from '../data/realTradesData';
 import type { Position, RosterPlayer, Team, TeamStrategy } from '../types';
-import { calculateTeamPowerRating } from './leagueLogic';
+import { calculateTeamPowerRating, selectBalancedStarterIds } from './leagueLogic';
+import { getSecondaryPosition } from './playerPositions';
 
 export interface RandomTradeOptions {
   random?: () => number;
@@ -29,14 +30,28 @@ function valueOf(player: RosterPlayer): number {
 }
 
 function positionNeed(team: Team, position: Position, excluded?: RosterPlayer): number {
-  const best = team.roster.filter((p) => p !== excluded && p.position === position).reduce((max, p) => Math.max(max, p.ovr), 60);
+  const best = team.roster.filter((p) => p !== excluded && (p.position === position || getSecondaryPosition(p) === position))
+    .reduce((max, p) => Math.max(max, p.ovr), 60);
   return 100 - best;
+}
+
+function bestAtPosition(roster: RosterPlayer[], position: Position): number {
+  return roster.reduce((best, player) => player.position === position || getSecondaryPosition(player) === position
+    ? Math.max(best, player.ovr) : best, 0);
 }
 
 function refreshTeam(team: Team): void {
   team.roster.sort((a, b) => b.ovr - a.ovr);
+  const starters = selectBalancedStarterIds(team.roster.map((p) => ({
+    id: p.id, name: p.name, position: p.position, secondaryPosition: p.secondaryPosition, score: p.ovr,
+  })));
+  const coreId = team.roster.find((p) => starters.has(p.id))?.id;
+  const bench = team.roster.filter((p) => !starters.has(p.id));
+  const sixthId = bench[0]?.id;
+  const rotationIds = new Set(bench.slice(1, 5).map((p) => p.id));
   team.roster.forEach((p, index) => {
-    p.role = index === 0 ? '战术核心' : index < 5 ? '绝对首发' : index === 5 ? '第六人' : index < 10 ? '轮换替补' : '饮水机守门员';
+    p.role = p.id === coreId ? '战术核心' : starters.has(p.id) ? '绝对首发'
+      : p.id === sixthId ? '第六人' : rotationIds.has(p.id) ? '轮换替补' : '饮水机守门员';
     p.isStar = index < 3 || p.ovr >= 86;
   });
   team.starPlayer = team.roster[0]?.name || team.starPlayer;
@@ -58,6 +73,18 @@ function eligible(team: Team, year: number, moved: Set<string>, options: RandomT
 function ratingAfterSwap(team: Team, outgoing: RosterPlayer, incoming: RosterPlayer): number {
   const roster = team.roster.map((player) => player === outgoing ? incoming : player);
   return calculateTeamPowerRating({ ...team, roster });
+}
+
+function preservesPositionCoverage(team: Team, outgoing: RosterPlayer, incoming: RosterPlayer, floors: Record<Position, number>): boolean {
+  const remaining = team.roster.filter((p) => p !== outgoing);
+  for (const position of DEPTH_POSITIONS) {
+    const before = bestAtPosition(team.roster, position);
+    const after = bestAtPosition([...remaining, incoming], position);
+    // A season-long floor stops three separate trades from each stripping a
+    // little more quality from the same slot. Existing weak slots cannot worsen.
+    if (after < Math.max(floors[position], before >= 76 ? 76 : before)) return false;
+  }
+  return true;
 }
 
 function acceptsDirection(
@@ -91,7 +118,7 @@ function directionUtility(
   return ratingDelta * 2.5 + valueDelta;
 }
 
-function findPair(teamA: Team, teamB: Team, year: number, moved: Set<string>, options: RandomTradeOptions, random: () => number, allowBlockbuster: boolean, requireBlockbuster = false): Pair | null {
+function findPair(teamA: Team, teamB: Team, year: number, moved: Set<string>, options: RandomTradeOptions, random: () => number, allowBlockbuster: boolean, requireBlockbuster: boolean, floors: Map<string, Record<Position, number>>): Pair | null {
   let best: Pair | null = null;
   const strategyA = strategyOf(teamA);
   const strategyB = strategyOf(teamB);
@@ -103,6 +130,7 @@ function findPair(teamA: Team, teamB: Team, year: number, moved: Set<string>, op
       const isBlockbuster = Math.max(playerA.ovr, playerB.ovr) >= 89;
       if (requireBlockbuster && !isBlockbuster) continue;
       if (isBlockbuster ? (!allowBlockbuster || valueGap > 5 || Math.abs(playerA.ovr - playerB.ovr) > 4) : valueGap > 5.5) continue;
+      if (!preservesPositionCoverage(teamA, playerA, playerB, floors.get(teamA.id)!) || !preservesPositionCoverage(teamB, playerB, playerA, floors.get(teamB.id)!)) continue;
 
       const oldRatingA = calculateTeamPowerRating(teamA);
       const oldRatingB = calculateTeamPowerRating(teamB);
@@ -147,10 +175,14 @@ function createDepthPlayer(team: Team, year: number, index: number, usedNames: S
   }
   if (!name) name = `训练营球员·${year}-${team.abbrev}-${index + 1}`;
   const ovr = 66 + (Math.abs(seed) % 6);
+  const position = [...DEPTH_POSITIONS].sort((a, b) => {
+    const depth = (slot: Position) => team.roster.filter((p) => p.position === slot || getSecondaryPosition(p) === slot).length;
+    return depth(a) - depth(b) || bestAtPosition(team.roster, a) - bestAtPosition(team.roster, b);
+  })[0];
   return {
     id: `parallel_depth_${year}_${team.id}_${index}`,
     name,
-    position: DEPTH_POSITIONS[Math.abs(seed) % DEPTH_POSITIONS.length],
+    position,
     ovr,
     age: 22 + (Math.abs(seed) % 6),
     peakAge: 26,
@@ -204,6 +236,10 @@ export function executeRandomTradesForSeason(currentTeams: Team[], year: number,
   );
   const rosterTargets = new Map(teams.map((team) => [team.id, team.roster.length]));
   const retirements = retirePlayers(teams, year, options);
+  const positionFloors = new Map(teams.map((team) => [team.id, Object.fromEntries(DEPTH_POSITIONS.map((position) => {
+    const best = bestAtPosition(team.roster, position);
+    return [position, best >= 76 ? Math.max(76, best - 6) : best];
+  })) as Record<Position, number>]));
   const moved = new Set<string>();
   const counts = new Map<string, number>();
   const trades: ExecutedTradeDetail[] = [];
@@ -225,7 +261,7 @@ export function executeRandomTradesForSeason(currentTeams: Team[], year: number,
     if (!teamB) continue;
     const seekBlockbuster = blockbusterCount < blockbusterTarget && attempt < 600;
     const allowBlockbuster = seekBlockbuster;
-    const pair = findPair(teamA, teamB, year, moved, options, random, allowBlockbuster, seekBlockbuster);
+    const pair = findPair(teamA, teamB, year, moved, options, random, allowBlockbuster, seekBlockbuster, positionFloors);
     if (!pair) continue;
     const indexA = teamA.roster.indexOf(pair.playerA);
     const indexB = teamB.roster.indexOf(pair.playerB);
@@ -275,7 +311,11 @@ export function inviteStarToTeam(currentTeams: Team[], userTeamId: string, sourc
   const invitedIndex = sourceTeam?.roster.findIndex((p) => p.id === starPlayerId) ?? -1;
   if (!userTeam || !sourceTeam || invitedIndex < 0) return { updatedTeams: currentTeams, error: '球星当前阵容发生变化，请重新选择' };
   const invitedPlayer = sourceTeam.roster[invitedIndex];
-  const outgoingPlayer = [...userTeam.roster].filter((p) => p.id !== userPlayerId && p.name !== userPlayerName && (p.tradeProtectionUntilYear || 0) < currentYear).sort((a, b) => a.ovr - b.ovr)[0];
+  const replaceable = userTeam.roster.filter((p) => p.id !== userPlayerId && p.name !== userPlayerName && (p.tradeProtectionUntilYear || 0) < currentYear);
+  // Replace a player at the same position when possible, so a positional
+  // reinforcement does not leave the roster more unbalanced than before.
+  const samePosition = replaceable.filter((p) => p.position === invitedPlayer.position || p.secondaryPosition === invitedPlayer.position);
+  const outgoingPlayer = [...(samePosition.length ? samePosition : replaceable)].sort((a, b) => a.ovr - b.ovr)[0];
   if (!outgoingPlayer) return { updatedTeams: currentTeams, error: '当前球队没有可调整的阵容名额' };
   const outgoingIndex = userTeam.roster.findIndex((p) => p.id === outgoingPlayer.id);
   if (outgoingIndex < 0) return { updatedTeams: currentTeams, error: '阵容调整失败，请稍后重试' };

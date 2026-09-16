@@ -324,6 +324,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
         teams={teams}
         player={player}
         currentYear={currentYear}
+        careerHistory={gameState.careerHistory}
         onUpdatePlayer={onUpdatePlayer}
         onFinishPlayoffs={(championTeam, fmvpName, settledPlayer) => {
           if (onEnterOffseason) {

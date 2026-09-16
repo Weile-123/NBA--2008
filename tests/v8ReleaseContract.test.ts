@@ -63,6 +63,7 @@ test('post-match summary keeps header and action visible without exposing raw XP
   assert.match(postMatchSource, /min-h-0 flex-1[^\"]*overflow-y-auto/);
   assert.match(postMatchSource, /<footer className="[^"]*shrink-0/);
   assert.match(postMatchSource, /成长进度/);
+  assert.doesNotMatch(postMatchSource, /赛后新闻发布会|generatePressQuestion/);
   assert.doesNotMatch(postMatchSource, /\+\{xpEarned\} XP/);
   assert.doesNotMatch(postMatchSource, /当前经验值:/);
 });

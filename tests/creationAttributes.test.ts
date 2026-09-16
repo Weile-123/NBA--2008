@@ -4,6 +4,7 @@ import { BODY_SHAPE_PRESETS, calculateAttributesAndCaps, POSITION_ARCHETYPES } f
 import { calculate2KOvr, getPlayerBaseOvr } from '../src/utils/calc2k';
 import { getAttributePointStatus } from '../src/utils/attributeTraining';
 import type { PlayerProfile, Position } from '../src/types';
+import { calculateCreationTemplateAttributes, CREATION_POSITION_COMBINATIONS, getCreationSecondaryOptions, getCreationTemplate, getCreationTemplateScoutReport } from '../src/utils/creationTemplates';
 
 test('creation OVR boost stays inside trainable attribute caps', () => {
   const positions = Object.keys(POSITION_ARCHETYPES) as Position[];
@@ -40,4 +41,51 @@ test('creation OVR boost stays inside trainable attribute caps', () => {
       }
     }
   }
+});
+
+test('all 42 body-and-position templates have distinct profiles and balanced strength', () => {
+  assert.equal(CREATION_POSITION_COMBINATIONS.length, 14);
+  const names = new Set<string>();
+  for (const combination of CREATION_POSITION_COMBINATIONS) {
+    const [primary, secondary] = combination.split('/') as [Position, Position | undefined];
+    assert.ok(getCreationSecondaryOptions(primary).includes(secondary || null));
+    for (const shape of BODY_SHAPE_PRESETS) {
+      const template = getCreationTemplate(primary, secondary || null, shape.id);
+      const normal = calculateCreationTemplateAttributes(primary, secondary || null, shape.id, 0, 70);
+      const boosted = calculateCreationTemplateAttributes(primary, secondary || null, shape.id, 10, 70);
+      for (const base of [65, 75]) {
+        for (const boost of [0, 10]) {
+          const variant = calculateCreationTemplateAttributes(primary, secondary || null, shape.id, boost, base);
+          assert.equal(variant.initialOvr, base + boost, `${template.id} ${base}+${boost}`);
+          assert.equal(calculate2KOvr(primary, variant.attributes), variant.initialOvr);
+        }
+      }
+      names.add(template.name);
+      assert.ok(template.reference.includes('·'), `${template.id} reference should use a full player name`);
+      assert.ok(!/便士|威少|麦迪|慈世平|上将/.test(template.reference), `${template.id} reference should not use a nickname`);
+      assert.equal(normal.initialOvr, 70, template.id);
+      assert.equal(boosted.initialOvr, 80, `${template.id} boosted`);
+      assert.equal(Object.keys(normal.attributes).length, 18);
+      assert.ok(new Set(Object.values(normal.attributes)).size >= 6, template.id);
+      assert.equal(Object.values(normal.attributeCaps).reduce((sum, value) => sum + value, 0), 1500, template.id);
+      const scout = getCreationTemplateScoutReport({
+        archetype: template.name, position: primary, secondaryPosition: secondary, ovr: normal.initialOvr,
+        attributes: normal.attributes,
+      });
+      assert.ok(scout, `${template.id} scout report`);
+      assert.equal(scout.starName, template.reference);
+      assert.equal(scout.starTitle, template.name);
+      assert.ok(scout.grade.length > 0 && scout.scoutComment.includes(template.name));
+      assert.equal(scout.strengths.length, 3);
+      assert.equal(scout.weaknesses.length, 2);
+      for (const [key, start, cap] of template.core) {
+        assert.equal(normal.attributes[key], start, `${template.id} ${key} start`);
+        assert.equal(normal.attributeCaps[key], cap, `${template.id} ${key} cap`);
+      }
+      for (const key of Object.keys(boosted.attributes) as Array<keyof typeof boosted.attributes>) {
+        assert.ok(boosted.attributes[key] >= 50 && boosted.attributes[key] <= boosted.attributeCaps[key], `${template.id} ${key}`);
+      }
+    }
+  }
+  assert.equal(names.size, 42);
 });

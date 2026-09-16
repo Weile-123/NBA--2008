@@ -7,9 +7,8 @@ import { completeRewardedAd } from '../lib/rewardedAd';
 import { Attributes,PlayerProfile,Position } from '../types';
 import {
 BODY_SHAPE_PRESETS,
-calculateAttributesAndCaps,
-POSITION_ARCHETYPES,
 } from '../utils/attributeCalculator';
+import { calculateCreationTemplateAttributes, getCreationSecondaryOptions, getCreationTemplate, getTemplateBodyMeasurements } from '../utils/creationTemplates';
 import { calculateUserDraftPick } from '../utils/draftLogic';
 import { isCompatiblePositionPair } from '../utils/playerPositions';
 import { MobilePersistentScrollbar } from './MobilePersistentScrollbar';
@@ -20,15 +19,9 @@ interface CreationModalProps {
   onBackToHome?: () => void;
 }
 
-const BIRTHPLACE_PRESETS = [
-  { label: '纽约', icon: '🗽' },
-  { label: '洛杉矶', icon: '🌴' },
-  { label: '芝加哥', icon: '🏙️' },
-  { label: '费城', icon: '🔔' },
-  { label: '休斯顿', icon: '🚀' },
-  { label: '迈阿密', icon: '🏖️' },
-  { label: '亚特兰大', icon: '🍑' },
-  { label: '西雅图', icon: '🌲' },
+const NATIONALITY_PRESETS = [
+  { label: '中国', icon: '🇨🇳' },
+  { label: '海外', icon: '🌍' },
 ];
 
 const FAMILY_BACKGROUND_PRESETS = [
@@ -49,7 +42,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
   const [nameSource, setNameSource] = useState<'hupu' | 'random'>('random');
   const [identityNotice, setIdentityNotice] = useState('');
   const randomNameRef = useRef('');
-  const [birthplace, setBirthplace] = useState('纽约');
+  const [nationality, setNationality] = useState('中国');
   const [familyBackground, setFamilyBackground] = useState('街头球手');
 
   const loadHupuUser = useCallback(async (forceRefresh = false) => {
@@ -82,7 +75,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
 
   // Step 2: 15 Life Simulation State
   const [events, setEvents] = useState<LifeEvent[]>(() =>
-    get15LifeSimulationEvents(birthplace, familyBackground)
+    get15LifeSimulationEvents(nationality, familyBackground)
   );
   const [currentEventIndex, setCurrentEventIndex] = useState(0);
   const [chosenHistory, setChosenHistory] = useState<Array<{ event: LifeEvent; chosen: LifeOption }>>([]);
@@ -109,18 +102,15 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
 
   // Step 4: Player Customization state
   const [jerseyNum, setJerseyNum] = useState(24);
-  const [position, setPosition] = useState<Position>('PG');
+  const [position, setPosition] = useState<Position | null>(null);
   const [secondaryPosition, setSecondaryPosition] = useState<Position | null>(null);
+  const [showPositionModal, setShowPositionModal] = useState(false);
   const [favoriteTeamId, setFavoriteTeamId] = useState<string>('');
 
   // Height & Weight state
   const [bodyShape, setBodyShape] = useState<'slim' | 'balanced' | 'heavy'>('balanced');
   const [heightCm, setHeightCm] = useState(198);
   const [weightKg, setWeightKg] = useState(92);
-
-  // Position archetype state
-  const currentArchetypes = useMemo(() => POSITION_ARCHETYPES[position] || POSITION_ARCHETYPES.PG, [position]);
-  const [selectedArchId, setSelectedArchId] = useState<string>(currentArchetypes[0].id);
 
   // Paid OVR boost state
   const [paidBoostOvr, setPaidBoostOvr] = useState(0);
@@ -162,13 +152,13 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
       window.cancelAnimationFrame(frame);
       resizeObserver?.disconnect();
     };
-  }, [step, position, selectedArchId, heightCm, weightKg, favoriteTeamId, syncCustomizationScrollbar]);
+  }, [step, position, secondaryPosition, bodyShape, favoriteTeamId, syncCustomizationScrollbar]);
 
   // Start / Restart Simulation
   const handleStartSimulation = (e: React.FormEvent) => {
     e.preventDefault();
     if (!hasPlayerName) return;
-    const newEvents = get15LifeSimulationEvents(birthplace, familyBackground);
+    const newEvents = get15LifeSimulationEvents(nationality, familyBackground);
     setEvents(newEvents);
     setCurrentEventIndex(0);
     setChosenHistory([]);
@@ -215,56 +205,48 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
     }
   };
 
-  // When position changes, reset archetype
+  // Select the primary and secondary position together in the position dialog.
   const handlePositionChange = (pos: Position) => {
     setPosition(pos);
     if (secondaryPosition && !isCompatiblePositionPair(pos, secondaryPosition)) setSecondaryPosition(null);
-    const newArchs = POSITION_ARCHETYPES[pos] || POSITION_ARCHETYPES.PG;
-    setSelectedArchId(newArchs[0].id);
+    const measurements = getTemplateBodyMeasurements(pos, bodyShape);
+    setHeightCm(measurements.heightCm);
+    setWeightKg(measurements.weightKg);
   };
 
   // Body shape preset select
   const handlePresetSelect = (presetId: 'slim' | 'balanced' | 'heavy') => {
     setBodyShape(presetId);
-    const preset = BODY_SHAPE_PRESETS.find((p) => p.id === presetId);
-    if (preset) {
-      setHeightCm(preset.heightCm);
-      setWeightKg(preset.weightKg);
+    if (position) {
+      const measurements = getTemplateBodyMeasurements(position, presetId);
+      setHeightCm(measurements.heightCm);
+      setWeightKg(measurements.weightKg);
     }
   };
 
-  // Calculate final attributes & caps based on baseOvr
-  const { attributes, attributeCaps, initialOvr } = useMemo(() => {
-    return calculateAttributesAndCaps(
-      position,
-      selectedArchId,
-      heightCm,
-      weightKg,
-      paidBoostOvr,
-      baseOvr
-    );
-  }, [position, selectedArchId, heightCm, weightKg, paidBoostOvr, baseOvr]);
-
-  const activeArch = currentArchetypes.find((a) => a.id === selectedArchId) || currentArchetypes[0];
+  const activeTemplate = position ? getCreationTemplate(position, secondaryPosition, bodyShape) : null;
+  const { attributes, attributeCaps, initialOvr } = useMemo(() =>
+    calculateCreationTemplateAttributes(position || 'PG', position ? secondaryPosition : null, bodyShape, paidBoostOvr, baseOvr),
+  [position, secondaryPosition, bodyShape, paidBoostOvr, baseOvr]);
 
   const handleSubmitFinalPlayer = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !favoriteTeamId) return;
+    if (!name.trim() || !favoriteTeamId || !position || !activeTemplate) return;
 
     const newPlayer: PlayerProfile = {
       id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? `career_${crypto.randomUUID()}`
         : `career_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
       name: name.trim(),
-      nationality: birthplace.trim() || '纽约',
-      birthplace: birthplace.trim() || '纽约',
+      nationality,
+      birthplace: nationality, // Legacy displays still read this field in older saves.
       familyBackground,
       jerseyNum,
       height: `${heightCm}cm`,
       weight: `${weightKg}kg`,
       position,
       secondaryPosition: secondaryPosition || undefined,
-      archetype: activeArch.name,
+      archetype: activeTemplate.name,
       attributes,
       attributeCaps,
       ovr: initialOvr,
@@ -426,21 +408,21 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                 )}
               </div>
 
-              {/* Birthplace / City */}
+              {/* Nationality */}
               <div>
                 <label className="block text-xs font-bold uppercase text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <Globe className="w-4 h-4 text-amber-400" /> 出身城市
+                  <Globe className="w-4 h-4 text-amber-400" /> 国籍
                 </label>
 
-                <div className="flex gap-2 overflow-x-auto overscroll-x-contain pb-2 scrollbar-thin">
-                  {BIRTHPLACE_PRESETS.map((p) => {
-                    const isSelected = birthplace === p.label;
+                <div className="grid grid-cols-2 gap-2">
+                  {NATIONALITY_PRESETS.map((p) => {
+                    const isSelected = nationality === p.label;
                     return (
                       <button
                         key={p.label}
                         type="button"
-                        onClick={() => setBirthplace(p.label)}
-                        className={`min-w-[108px] flex-1 shrink-0 p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${isSelected
+                        onClick={() => setNationality(p.label)}
+                        className={`min-w-0 p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${isSelected
                           ? 'bg-amber-500/20 border-amber-400 text-amber-300 ring-1 ring-amber-400'
                           : 'bg-[#11141b] border-[#232834] text-slate-400 hover:border-slate-600 hover:text-slate-200'
                           }`}
@@ -450,6 +432,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                     );
                   })}
                 </div>
+                <p className="mt-1.5 text-[11px] text-slate-500">国籍不同，开启不同的 15 阶段篮球人生故事。</p>
               </div>
 
               {/* Origin & Family Background */}
@@ -516,7 +499,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                     {events[currentEventIndex]?.timeLabel}
                   </span>
                   <div className="text-sm font-black text-white italic">
-                    {name} ({birthplace}) · {familyBackground} · 事件 {currentEventIndex + 1} / 15
+                    {name} ({nationality}) · {familyBackground} · 事件 {currentEventIndex + 1} / 15
                   </div>
                 </div>
 
@@ -683,7 +666,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                 生涯历程评估完成！
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                根据你在高中与NCAA阶段的15次关键择决，系统判定了你的初始新秀实力评分！
+                根据你在{nationality === '中国' ? '国内校园、青训与CBA' : '高中与NCAA'}阶段的15次关键抉择，系统判定了你的初始新秀实力评分！
               </p>
             </div>
 
@@ -756,9 +739,9 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-lg sm:text-xl shrink-0">🏀</span>
                   <div className="min-w-0">
-                    <strong className="text-white font-bold text-xs truncate block">{name} ({birthplace})</strong>
+                    <strong className="text-white font-bold text-xs truncate block">{name} ({nationality})</strong>
                     <span className="text-[10px] text-slate-400 block font-mono truncate">
-                      {position} · {heightCm}cm / {weightKg}kg · {activeArch.name}
+                      {position ? `${position}${secondaryPosition ? `/${secondaryPosition}` : ''} · ${heightCm}cm / ${weightKg}kg · ${activeTemplate?.name}` : '请选择场上位置'}
                     </span>
                   </div>
                 </div>
@@ -788,9 +771,9 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
               className="absolute inset-0 space-y-4 overflow-y-auto overscroll-contain pr-3 sm:pr-1"
             >
               {/* Section 1: Favorite draft team */}
-              <div className="bg-[#0d1017] p-3.5 rounded-xl border border-amber-500/50 space-y-3 shadow-[0_0_20px_rgba(245,158,11,0.08)]">
+              <div className="bg-[#0d1017] p-3 rounded-xl border border-amber-500/50 space-y-2.5 shadow-[0_0_20px_rgba(245,158,11,0.08)]">
                 <div>
-                  <h3 className="text-xs font-black italic uppercase text-white flex items-center gap-1.5">
+                  <h3 className="text-[11px] font-black italic uppercase text-white flex items-center gap-1.5">
                     <Heart className="w-3.5 h-3.5 text-amber-400 fill-amber-400" /> 1. 选择心仪选秀球队
                   </h3>
                 </div>
@@ -798,7 +781,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                 <button
                   type="button"
                   onClick={() => setShowTeamModal(true)}
-                  className={`w-full p-3 rounded-xl border flex items-center justify-between gap-3 text-left transition-all active:scale-[0.99] cursor-pointer ${selectedTeamObj ? 'bg-[#11141b] border-amber-500/30' : 'bg-amber-500/10 border-amber-400 animate-pulse'}`}
+                  className={`w-full p-2.5 rounded-xl border flex items-center justify-between gap-2 text-left transition-all active:scale-[0.99] cursor-pointer ${selectedTeamObj ? 'bg-[#11141b] border-amber-500/30' : 'bg-amber-500/10 border-amber-400 animate-pulse'}`}
                 >
                   {selectedTeamObj ? (
                     <div className="flex items-center gap-3 min-w-0">
@@ -818,80 +801,34 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 text-amber-300 font-black text-xs">
+                    <div className="flex items-center gap-2 text-amber-300 font-black text-[11px]">
                       <Heart className="w-4 h-4" /> 尚未选择心仪球队
                     </div>
                   )}
-                  <span className="px-3 py-2 bg-amber-500 text-black rounded-lg text-xs font-black shrink-0">
+                  <span className="px-2.5 py-1.5 bg-amber-500 text-black rounded-lg text-[11px] font-black shrink-0">
                     {selectedTeamObj ? '更换球队' : '立即选择'}
                   </span>
                 </button>
               </div>
 
               {/* Section 2: Position */}
-              <div className="bg-[#0d1017] p-3.5 rounded-xl border border-[#232834] space-y-2.5">
-              <h3 className="text-xs font-black italic uppercase text-white flex items-center gap-1.5">
+              <div className="bg-[#0d1017] p-3 rounded-xl border border-[#232834] space-y-2.5">
+              <h3 className="text-[11px] font-black italic uppercase text-white flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5 text-amber-400" /> 2. 场上位置
               </h3>
 
-              {/* Mobile Quick Pills for 1-Tap Switching */}
-              <div className="grid grid-cols-5 gap-1.5">
-                {(['PG', 'SG', 'SF', 'PF', 'C'] as Position[]).map((pos) => {
-                  const isSelected = position === pos;
-                  const posLabels: Record<Position, string> = {
-                    PG: '控卫', SG: '分卫', SF: '小前', PF: '大前', C: '中锋'
-                  };
-                  return (
-                    <button
-                      key={pos}
-                      type="button"
-                      onClick={() => handlePositionChange(pos)}
-                      className={`py-2 px-1 rounded-xl border text-center transition-all cursor-pointer ${isSelected
-                        ? 'bg-amber-500 text-black border-amber-400 font-black shadow-lg ring-1 ring-amber-400'
-                        : 'bg-[#11141b] border-[#232834] text-slate-300 font-bold hover:border-slate-600'
-                        }`}
-                    >
-                      <div className="text-xs italic">{pos}</div>
-                      <div className="text-[9px] opacity-80">{posLabels[pos]}</div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Fallback hidden select to guarantee standard DOM select binding exists */}
-              <select
-                value={position}
-                onChange={(e) => handlePositionChange(e.target.value as Position)}
-                className="hidden"
-              >
-                <option value="PG">PG · 控球后卫</option>
-                <option value="SG">SG · 得分后卫</option>
-                <option value="SF">SF · 小前锋</option>
-                <option value="PF">PF · 大前锋</option>
-                <option value="C">C · 中锋</option>
-              </select>
-              <div className="text-[11px] font-bold text-slate-400">次要位置</div>
-              <div className="flex gap-1.5">
-                {[null, ...(['PG', 'SG', 'SF', 'PF', 'C'] as Position[]).filter((pos) => isCompatiblePositionPair(position, pos))].map((pos) => (
-                  <button key={pos ?? 'none'} type="button"
-                    onClick={() => setSecondaryPosition(pos as Position | null)}
-                    className={`flex-1 rounded-lg border py-2 text-[11px] font-bold ${secondaryPosition === pos ? 'border-cyan-400 bg-cyan-500/20 text-cyan-200' : 'border-[#303744] text-slate-300'}`}>
-                    {pos ?? '无'}
-                  </button>
-                ))}
-              </div>
+              <button type="button" onClick={() => setShowPositionModal(true)}
+                className={`w-full rounded-xl border p-2.5 text-left text-[11px] font-black flex items-center justify-between gap-2 ${position ? 'border-cyan-400/50 bg-cyan-500/10 text-cyan-200' : 'border-amber-400 bg-amber-500/10 text-amber-300'}`}>
+                <span>{position ? `${position}${secondaryPosition ? ` / ${secondaryPosition}` : ''}` : '尚未选择场上位置'}</span>
+                <span className="shrink-0 rounded-lg bg-cyan-500/20 px-2.5 py-1.5 text-cyan-200">{position ? '更换位置' : '点击选择'}</span>
+              </button>
               </div>
 
             {/* Section 3: Height & Weight Selection */}
-              <div className="bg-[#0d1017] p-3.5 rounded-xl border border-[#232834] space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-black italic uppercase text-white flex items-center gap-1.5">
-                  <Sliders className="w-3.5 h-3.5 text-amber-400" /> 3. 身高体重定制
-                </h3>
-                <span className="text-xs font-mono font-bold text-amber-400">
-                  {heightCm}cm / {weightKg}kg
-                </span>
-              </div>
+              <div className="bg-[#0d1017] p-3 rounded-xl border border-[#232834] space-y-2.5">
+              <h3 className="text-[11px] font-black italic uppercase text-white flex items-center gap-1.5">
+                <Sliders className="w-3.5 h-3.5 text-amber-400" /> 3. 选择身材
+              </h3>
 
               {/* Presets */}
               <div className="grid grid-cols-3 gap-2">
@@ -900,92 +837,29 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                     key={p.id}
                     type="button"
                     onClick={() => handlePresetSelect(p.id)}
-                    className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${bodyShape === p.id
+                    className={`p-2 rounded-lg border text-center transition-all cursor-pointer ${bodyShape === p.id
                       ? 'bg-amber-500/20 border-amber-500 text-amber-300'
                       : 'bg-[#11141b] border-[#232834] text-slate-400 hover:border-slate-700'
                       }`}
                   >
-                    <div className="font-bold text-xs text-white flex items-center gap-1">
-                      <span>{p.icon}</span> {p.name}
+                    <div className="font-bold text-[11px] text-white flex items-center justify-center gap-1">
+                      <span>{p.icon}</span> {{ slim: '轻盈', balanced: '标准', heavy: '强壮' }[p.id]}
                     </div>
                   </button>
                 ))}
               </div>
 
-              {/* Fine-Tuning Sliders */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#11141b] p-3 rounded-lg border border-[#232834]">
-                <div>
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-slate-400">身高</span>
-                    <span className="font-mono font-bold text-white">{heightCm} cm</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={175}
-                    max={225}
-                    value={heightCm}
-                    onChange={(e) => {
-                      setHeightCm(Number(e.target.value));
-                      setBodyShape('balanced');
-                    }}
-                    className="w-full accent-amber-500 bg-slate-800 rounded h-1.5 cursor-pointer"
-                  />
-                </div>
+              </div>
 
-                <div>
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-slate-400">体重</span>
-                    <span className="font-mono font-bold text-white">{weightKg} kg</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={65}
-                    max={140}
-                    value={weightKg}
-                    onChange={(e) => {
-                      setWeightKg(Number(e.target.value));
-                      setBodyShape('balanced');
-                    }}
-                    className="w-full accent-amber-500 bg-slate-800 rounded h-1.5 cursor-pointer"
-                  />
-                  <div className="flex justify-between text-[9px] text-slate-500 font-mono mt-0.5">
-                    <span>65kg (轻盈)</span>
-                    <span>140kg (巨无霸)</span>
-                  </div>
+            {activeTemplate && (
+              <div className="bg-[#0d1017] p-3.5 rounded-xl border border-cyan-500/30 space-y-2">
+                <h3 className="text-xs font-black text-cyan-300 flex items-center gap-1.5"><Trophy className="w-3.5 h-3.5" /> 自动匹配：{activeTemplate.name}</h3>
+                <p className="text-[10px] text-slate-400">四项核心属性</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {activeTemplate.core.map(([key, , cap]) => <div key={key} className="rounded-lg bg-[#11141b] px-2 py-1.5 text-[10px] text-slate-300">{attrLabels.find((attr) => attr.key === key)?.label} <span className="text-amber-300 font-mono">{attributes[key]} → {cap}</span></div>)}
                 </div>
               </div>
-              </div>
-
-            {/* Section 4: Position-Specific Archetypes */}
-              <div className="bg-[#0d1017] p-3.5 rounded-xl border border-[#232834] space-y-2.5">
-              <h3 className="text-xs font-black italic uppercase text-white flex items-center gap-1.5">
-                <Trophy className="w-3.5 h-3.5 text-amber-400" /> 4. 【{position}】专属模板风格
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {currentArchetypes.map((arch) => (
-                  <button
-                    key={arch.id}
-                    type="button"
-                    onClick={() => setSelectedArchId(arch.id)}
-                    className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer ${selectedArchId === arch.id
-                      ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-md ring-1 ring-amber-500/50'
-                      : 'bg-[#11141b] border-[#232834] text-slate-400 hover:bg-[#181d29]'
-                      }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-black text-xs text-white uppercase italic flex items-center gap-1">
-                        <span>{arch.icon}</span> {arch.name}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-slate-400 leading-tight line-clamp-2">{arch.desc}</p>
-                    <div className="mt-2 pt-1.5 border-t border-slate-800 text-[9px] text-amber-400/90 font-mono">
-                      优势: {arch.highlights}
-                    </div>
-                  </button>
-                ))}
-              </div>
-              </div>
+            )}
             </div>
             {customizationScrollbar.visible && (
               <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 z-20 w-2 rounded-full border border-slate-700 bg-[#090c12] sm:hidden">
@@ -1012,14 +886,43 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
               </button>
               <button
                 type="submit"
-                disabled={!favoriteTeamId}
+                disabled={!favoriteTeamId || !position}
                 className="w-full py-3 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed text-black font-black italic rounded-xl text-xs uppercase tracking-tight shadow-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
               >
-                <span>{favoriteTeamId ? '2008选秀' : '请先选择球队'}</span>
+                <span>{!position ? '请先选择位置' : favoriteTeamId ? '2008选秀' : '请先选择球队'}</span>
                 <ArrowRight className="w-4 h-4 shrink-0" />
               </button>
             </div>
           </form>
+        )}
+
+        {showPositionModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 backdrop-blur-md">
+            <div className="w-full max-w-md rounded-2xl border border-cyan-500/40 bg-[#11141b] p-4 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-black text-white">选择场上位置</h3>
+                <button type="button" onClick={() => setShowPositionModal(false)} className="rounded-lg bg-slate-800 p-1.5 text-slate-300"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="text-xs font-bold text-slate-400">主要位置</div>
+              <div className="grid grid-cols-5 gap-1.5">
+                {(['PG', 'SG', 'SF', 'PF', 'C'] as Position[]).map((pos) => (
+                  <button key={pos} type="button" onClick={() => handlePositionChange(pos)}
+                    className={`rounded-lg border py-2 text-xs font-black ${position === pos ? 'border-amber-400 bg-amber-500 text-black' : 'border-slate-700 text-slate-300'}`}>{pos}</button>
+                ))}
+              </div>
+              {position && <>
+                <div className="text-xs font-bold text-slate-400">次要位置</div>
+                <div className="flex gap-1.5">
+                  {getCreationSecondaryOptions(position).map((pos) => (
+                    <button key={pos ?? 'none'} type="button" onClick={() => setSecondaryPosition(pos)}
+                      className={`flex-1 rounded-lg border py-2 text-xs font-black ${secondaryPosition === pos ? 'border-cyan-400 bg-cyan-500/20 text-cyan-200' : 'border-slate-700 text-slate-300'}`}>{pos ?? '无'}</button>
+                  ))}
+                </div>
+              </>}
+              <button type="button" disabled={!position} onClick={() => setShowPositionModal(false)}
+                className="w-full rounded-xl bg-amber-500 py-2.5 text-sm font-black text-black disabled:bg-slate-700 disabled:text-slate-400">确定位置</button>
+            </div>
+          </div>
         )}
 
         {/* TEAM SELECTION POPUP MODAL */}

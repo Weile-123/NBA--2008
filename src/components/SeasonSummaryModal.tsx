@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { PlayerProfile, Team, Accolade } from '../types';
 import { calculateSeasonAwards, SeasonAwards, AwardWinner, AllTeamSelection } from '../utils/awardsLogic';
 import { gameConfetti as confetti } from '../utils/gameConfetti';
-import { Trophy, Award, Crown, Sparkles, ChevronRight, ShieldCheck, UserCheck, Flame, Star } from 'lucide-react';
+import { Trophy, Award, Crown, Sparkles, ChevronRight, ShieldCheck, Flame } from 'lucide-react';
 import { TeamLogo } from './TeamLogo';
 
 interface SeasonSummaryModalProps {
@@ -56,6 +56,16 @@ export const SeasonSummaryModal: React.FC<SeasonSummaryModalProps> = ({
     }
     if (awards.scoringLeader.isUser) {
       addAccoladeIfMissing('SCORING_TITLE', '常规赛得分王', `以常规赛场均狂轰 ${awards.scoringLeader.ppg} 分加冕 ${seasonStr} 赛季 联盟 得分王`);
+    }
+    const statHonors = [
+      ['REBOUND_LEADER', '常规赛篮板王', awards.reboundLeader, 'rpg', '篮板'],
+      ['ASSIST_LEADER', '常规赛助攻王', awards.assistLeader, 'apg', '助攻'],
+      ['THREE_POINT_LEADER', '常规赛三分王', awards.threePointLeader, 'tpm', '三分'],
+      ['BLOCK_LEADER', '常规赛盖帽王', awards.blockLeader, 'bpg', '盖帽'],
+      ['STEAL_LEADER', '常规赛抢断王', awards.stealLeader, 'spg', '抢断'],
+    ] as const;
+    for (const [type, title, winner, stat, label] of statHonors) {
+      if (winner.isUser) addAccoladeIfMissing(type, title, `以场均 ${winner[stat]} 次${label}领跑 ${seasonStr} 赛季联盟`);
     }
     if (awards.dpoy.isUser) {
       addAccoladeIfMissing('DPOY', '最佳防守球员', `荣膺 ${seasonStr} 赛季 联盟 最佳防守球员`);
@@ -143,6 +153,16 @@ export const SeasonSummaryModal: React.FC<SeasonSummaryModalProps> = ({
   }, [awards]);
 
   const userTeam = teams.find((t) => t.id === player.currentTeamId);
+  const compactAwards: Array<{ title: string; winner: AwardWinner; value: number; unit: string; color: string }> = [
+    { title: '最佳第六人', winner: awards.sixthMan, value: awards.sixthMan.ppg, unit: '分', color: 'text-violet-400' },
+    { title: '最佳新秀', winner: awards.roy, value: awards.roy.ppg, unit: '分', color: 'text-emerald-400' },
+    { title: '得分王', winner: awards.scoringLeader, value: awards.scoringLeader.ppg, unit: '分', color: 'text-rose-400' },
+    { title: '篮板王', winner: awards.reboundLeader, value: awards.reboundLeader.rpg, unit: '板', color: 'text-sky-400' },
+    { title: '助攻王', winner: awards.assistLeader, value: awards.assistLeader.apg, unit: '助', color: 'text-teal-400' },
+    { title: '三分王', winner: awards.threePointLeader, value: awards.threePointLeader.tpm, unit: '三分', color: 'text-amber-400' },
+    { title: '盖帽王', winner: awards.blockLeader, value: awards.blockLeader.bpg, unit: '帽', color: 'text-cyan-400' },
+    { title: '抢断王', winner: awards.stealLeader, value: awards.stealLeader.spg, unit: '断', color: 'text-purple-400' },
+  ];
 
   return (
     <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
@@ -170,7 +190,7 @@ export const SeasonSummaryModal: React.FC<SeasonSummaryModalProps> = ({
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Crown className="w-3.5 h-3.5" /> 五大年度单项大奖
+            <Crown className="w-3.5 h-3.5" /> 赛季奖项
           </button>
           <button
             type="button"
@@ -250,79 +270,26 @@ export const SeasonSummaryModal: React.FC<SeasonSummaryModalProps> = ({
               </div>
             </div>
 
-            {/* 得分王 (Scoring Title) */}
-            <div className={`p-4 rounded-xl border relative overflow-hidden transition-all ${
-              awards.scoringLeader?.isUser ? 'bg-rose-500/15 border-rose-400 ring-2 ring-rose-400/50' : 'bg-[#11141b] border-[#232834]'
-            }`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-black uppercase text-rose-400 flex items-center gap-1.5">
-                  <Flame className="w-4 h-4 text-rose-400 fill-rose-400" /> 常规赛得分王
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className={`text-lg font-black ${awards.scoringLeader?.isUser ? 'text-rose-300' : 'text-white'}`}>
-                    {awards.scoringLeader?.isUser ? `🔥 ${awards.scoringLeader.name} (玩家)` : awards.scoringLeader?.name}
-                  </h4>
-                  <p className="text-xs text-slate-400 font-mono">
-                    {awards.scoringLeader?.teamName} · {awards.scoringLeader?.position}
-                  </p>
+            <div className="md:col-span-2 grid grid-cols-2 gap-2 sm:gap-3">
+              {compactAwards.map(({ title, winner, value, unit, color }) => (
+                <div
+                  key={title}
+                  className={`min-w-0 rounded-xl border px-2.5 py-2.5 sm:px-4 sm:py-3 ${winner.isUser ? 'bg-amber-500/10 border-amber-400/70' : 'bg-[#11141b] border-[#232834]'}`}
+                >
+                  <div className={`text-[10px] sm:text-xs font-black whitespace-nowrap ${color}`}>{title}</div>
+                  <div className="mt-1.5 flex items-baseline justify-between gap-1 min-w-0">
+                    <span className={`min-w-0 truncate text-xs sm:text-base font-black ${winner.isUser ? 'text-amber-300' : 'text-white'}`} title={winner.name}>
+                      {winner.name}
+                    </span>
+                    <span className={`shrink-0 text-[10px] sm:text-sm font-black font-mono whitespace-nowrap ${color}`}>
+                      {value.toFixed(1)} {unit}
+                    </span>
+                  </div>
+                  <div className="mt-0.5 truncate text-[10px] text-slate-500" title={winner.teamName}>
+                    {winner.teamAbbrev} · {winner.position}{winner.isUser ? ' · 你' : ''}
+                  </div>
                 </div>
-                <div className="text-right font-mono">
-                  <div className="text-base font-black text-rose-400">{awards.scoringLeader?.ppg} PPG</div>
-                  <div className="text-[11px] text-slate-400">{awards.scoringLeader?.rpg} RPG · {awards.scoringLeader?.apg} APG</div>
-                </div>
-              </div>
-            </div>
-
-            {/* 6th Man */}
-            <div className={`p-4 rounded-xl border relative overflow-hidden transition-all ${
-              awards.sixthMan.isUser ? 'bg-amber-500/15 border-amber-400 ring-2 ring-amber-400/50' : 'bg-[#11141b] border-[#232834]'
-            }`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-black uppercase text-purple-400 flex items-center gap-1.5">
-                  <UserCheck className="w-4 h-4 text-purple-400" /> 最佳第六人
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className={`text-lg font-black ${awards.sixthMan.isUser ? 'text-amber-300' : 'text-white'}`}>
-                    {awards.sixthMan.isUser ? `⚡ ${awards.sixthMan.name} (玩家)` : awards.sixthMan.name}
-                  </h4>
-                  <p className="text-xs text-slate-400 font-mono">
-                    {awards.sixthMan.teamName} · {awards.sixthMan.position}
-                  </p>
-                </div>
-                <div className="text-right font-mono">
-                  <div className="text-sm font-black text-purple-400">{awards.sixthMan.ppg} PPG</div>
-                  <div className="text-[11px] text-slate-400">{awards.sixthMan.apg} APG</div>
-                </div>
-              </div>
-            </div>
-
-            {/* ROY */}
-            <div className={`p-4 rounded-xl border relative overflow-hidden transition-all ${
-              awards.roy.isUser ? 'bg-amber-500/15 border-amber-400 ring-2 ring-amber-400/50' : 'bg-[#11141b] border-[#232834]'
-            }`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-black uppercase text-emerald-400 flex items-center gap-1.5">
-                  <Star className="w-4 h-4 text-emerald-400 fill-emerald-400" /> 最佳新秀
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className={`text-lg font-black ${awards.roy.isUser ? 'text-amber-300' : 'text-white'}`}>
-                    {awards.roy.isUser ? `⭐ ${awards.roy.name} (玩家)` : awards.roy.name}
-                  </h4>
-                  <p className="text-xs text-slate-400 font-mono">
-                    {awards.roy.teamName} · {awards.roy.position}
-                  </p>
-                </div>
-                <div className="text-right font-mono">
-                  <div className="text-sm font-black text-emerald-400">{awards.roy.ppg} PPG</div>
-                  <div className="text-[11px] text-slate-400">{awards.roy.rpg} RPG · {awards.roy.apg} APG</div>
-                </div>
-              </div>
+              ))}
             </div>
 
           </div>

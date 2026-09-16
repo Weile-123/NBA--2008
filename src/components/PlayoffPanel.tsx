@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { Team, PlayerProfile, MatchBoxScore } from '../types';
+import { Team, PlayerProfile, MatchBoxScore, GameState } from '../types';
 import { getPersistentValue, hydratePersistentValues, removePersistentValue, setPersistentValue } from '../lib/persistentStorage';
 import { TeamLogo } from './TeamLogo';
 import { calculateMatchScores, getCompleteTeamRoster, calculateTeamPowerRating, getShortTeamName, simulatePlayerMatchStats } from '../utils/leagueLogic';
@@ -11,6 +11,8 @@ import { getSeasonSimulationPowerRating } from '../utils/parallelSeasonBalance';
 import { MatchSimulator } from './MatchSimulator';
 import { applyPlayoffGamesToCareer } from '../utils/playoffStats';
 import { calculateFinalsAverages, selectFinalsMvp } from '../utils/finalsStats';
+import { applyPlayoffPostMatchRewards, type PostMatchRewards } from '../utils/postMatchRewards';
+import { PostMatchModal } from './PostMatchModal';
 
 export interface PlayoffSeries {
   id: string;
@@ -45,6 +47,7 @@ interface SavedPlayoffState {
   seriesList: PlayoffSeries[];
   champion: Team | null;
   careerSignature?: string;
+  pendingPostMatch?: { gameId: string; boxScore: MatchBoxScore } | null;
 }
 
 function playoffKey(year: number) { return `${PLAYOFF_STORAGE_KEY_PREFIX}${year}`; }
@@ -77,9 +80,9 @@ function loadPlayoffState(year: number, careerSignature: string, hasStableCareer
   ) ? parsed : null;
 }
 
-function savePlayoffState(year: number, currentRound: 1 | 2 | 3 | 4, seriesList: PlayoffSeries[], champion: Team | null, careerSignature: string) {
+function savePlayoffState(year: number, currentRound: 1 | 2 | 3 | 4, seriesList: PlayoffSeries[], champion: Team | null, careerSignature: string, pendingPostMatch: SavedPlayoffState['pendingPostMatch']) {
   if (seriesList.length > 0) {
-    setPersistentValue(playoffKey(year), { currentYear: year, currentRound, seriesList, champion, careerSignature });
+    setPersistentValue(playoffKey(year), { currentYear: year, currentRound, seriesList, champion, careerSignature, pendingPostMatch });
   }
 }
 
@@ -93,6 +96,7 @@ interface PlayoffPanelProps {
   teams: Team[];
   player: PlayerProfile;
   currentYear: number;
+  careerHistory?: GameState['careerHistory'];
   onUpdatePlayer?: (player: PlayerProfile) => void;
   onFinishPlayoffs: (championTeam: Team, fmvpName?: string, settledPlayer?: PlayerProfile) => void;
 }
@@ -103,6 +107,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
   teams,
   player,
   currentYear,
+  careerHistory = [],
   onUpdatePlayer,
   onFinishPlayoffs,
 }) => {
@@ -123,6 +128,9 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
   });
   const [showHonorsModal, setShowHonorsModal] = useState(false);
   const [interactiveSeriesId, setInteractiveSeriesId] = useState<string | null>(null);
+  const [pendingPostMatch, setPendingPostMatch] = useState<SavedPlayoffState['pendingPostMatch']>(() =>
+    loadPlayoffState(currentYear, careerSignature, hasStableCareerId)?.pendingPostMatch || null,
+  );
 
   const autoSimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const honorsFrameRef = useRef<number | null>(null);
@@ -136,6 +144,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
         setCurrentRound(saved.currentRound);
         setSeriesList(saved.seriesList);
         setChampion(saved.champion);
+        setPendingPostMatch(saved.pendingPostMatch || null);
       }
     });
   }, [careerSignature, currentYear, hasStableCareerId]);
@@ -175,9 +184,9 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
   // Auto-save playoff state whenever seriesList, currentRound, or champion changes
   useEffect(() => {
     if (seriesList.length > 0) {
-      savePlayoffState(currentYear, currentRound, seriesList, champion, careerSignature);
+      savePlayoffState(currentYear, currentRound, seriesList, champion, careerSignature, pendingPostMatch);
     }
-  }, [careerSignature, currentYear, currentRound, seriesList, champion]);
+  }, [careerSignature, currentYear, currentRound, seriesList, champion, pendingPostMatch]);
 
   useLayoutEffect(() => {
     if (!onUpdatePlayer) return;
@@ -193,6 +202,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
       setSeriesList(saved.seriesList);
       setCurrentRound(saved.currentRound);
       setChampion(saved.champion);
+      setPendingPostMatch(saved.pendingPostMatch || null);
       return;
     }
 
@@ -527,17 +537,19 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
         const finalsSeries = currentRoundSeries[0];
         const champ = finalsSeries.winnerId === finalsSeries.teamA.id ? finalsSeries.teamA : finalsSeries.teamB;
         setChampion(champ);
-        if (honorsFrameRef.current !== null) cancelAnimationFrame(honorsFrameRef.current);
-        honorsFrameRef.current = requestAnimationFrame(() => {
-          honorsFrameRef.current = null;
-          setShowHonorsModal(true);
-          if (champ.id === userTeam.id) {
-            confetti({ particleCount: 90, spread: 110, origin: { y: 0.4 } });
-          }
-        });
+        if (!pendingPostMatch) {
+          if (honorsFrameRef.current !== null) cancelAnimationFrame(honorsFrameRef.current);
+          honorsFrameRef.current = requestAnimationFrame(() => {
+            honorsFrameRef.current = null;
+            setShowHonorsModal(true);
+            if (champ.id === userTeam.id) {
+              confetti({ particleCount: 90, spread: 110, origin: { y: 0.4 } });
+            }
+          });
+        }
       }
     }
-  }, [seriesList, currentRound, champion, userTeam.id]);
+  }, [seriesList, currentRound, champion, userTeam.id, pendingPostMatch]);
 
   // Auto-simulation timer loop
   useEffect(() => {
@@ -577,6 +589,12 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
     const targetSeriesId = interactiveSeriesId;
     if (!targetSeriesId || interactiveFinishHandledRef.current) return;
     interactiveFinishHandledRef.current = true;
+    const activeSeries = seriesList.find((series) => series.id === targetSeriesId);
+    if (!activeSeries) return;
+    setPendingPostMatch({
+      gameId: `${targetSeriesId}:G${activeSeries.winsA + activeSeries.winsB + 1}`,
+      boxScore,
+    });
 
     setSeriesList((prevList) => {
       const targetSeries = prevList.find(
@@ -628,6 +646,16 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
     });
 
     setInteractiveSeriesId(null);
+  };
+
+  const finishPlayoffPostMatch = (rewards: PostMatchRewards) => {
+    if (!pendingPostMatch) return;
+    const allGames = seriesList.flatMap((series) => series.userGames || []);
+    const settledPlayer = applyPlayoffGamesToCareer(player, allGames);
+    const rewardedPlayer = applyPlayoffPostMatchRewards(settledPlayer, pendingPostMatch.gameId, rewards);
+    onUpdatePlayer?.(rewardedPlayer);
+    setPendingPostMatch(null);
+    if (champion) setShowHonorsModal(true);
   };
 
   const getRoundLabel = (r: number) => {
@@ -967,6 +995,19 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
           </React.Suspense>
         );
       })()}
+
+      {pendingPostMatch && (
+        <PostMatchModal
+          player={player}
+          userTeam={userTeam}
+          oppTeam={teams.find((team) => team.id === pendingPostMatch.boxScore.opponentTeamId) || userTeam}
+          boxScore={pendingPostMatch.boxScore}
+          currentYear={currentYear}
+          careerHistory={careerHistory}
+          gamesPlayedForRewards={player.seasonStats.games + seriesList.reduce((count, series) => count + (series.userGames?.length || 0), 0)}
+          onContinue={finishPlayoffPostMatch}
+        />
+      )}
 
       {/* Champion Banner if crowned */}
       {champion && (

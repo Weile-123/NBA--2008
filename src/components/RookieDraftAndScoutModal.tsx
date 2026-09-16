@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PlayerProfile, Team, Position } from '../types';
 import { TeamLogo } from './TeamLogo';
 import { resolveUserDraftTeam } from '../utils/draftLogic';
+import { getCreationTemplateScoutReport } from '../utils/creationTemplates';
 import { gameConfetti as confetti } from '../utils/gameConfetti';
 import { Award, Sparkles, CheckCircle2, ChevronRight, Zap, Target, Shield, Flame, Radio } from 'lucide-react';
 
@@ -156,7 +157,7 @@ export const RookieDraftAndScoutModal: React.FC<RookieDraftAndScoutModalProps> =
       : `2008 次轮第 ${pick - 30} 顺位`;
 
   // Scout comparison object
-  const scout = getScoutTemplate(player.position, player.archetype, player.ovr);
+  const scout = getCreationTemplateScoutReport(player) || getScoutTemplate(player.position, player.archetype, player.ovr);
 
   // Spotlight reveal timer & confetti
   useEffect(() => {
@@ -235,6 +236,7 @@ export const RookieDraftAndScoutModal: React.FC<RookieDraftAndScoutModalProps> =
                     <h4 className="text-sm sm:text-base font-black text-white italic">
                       {scout.starName}
                     </h4>
+                    <span className="text-[10px] text-slate-400">{scout.starTitle}</span>
                   </div>
                 </div>
               </div>

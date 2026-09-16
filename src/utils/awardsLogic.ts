@@ -14,6 +14,7 @@ export interface AwardWinner {
   apg: number;
   spg: number;
   bpg: number;
+  tpm: number;
   fgPct: number;
   isUser: boolean;
   probabilityPct?: number;
@@ -29,6 +30,11 @@ export interface AllTeamSelection {
 export interface SeasonAwards {
   mvp: AwardWinner;
   scoringLeader: AwardWinner;
+  reboundLeader: AwardWinner;
+  assistLeader: AwardWinner;
+  stealLeader: AwardWinner;
+  blockLeader: AwardWinner;
+  threePointLeader: AwardWinner;
   dpoy: AwardWinner;
   sixthMan: AwardWinner;
   roy: AwardWinner;
@@ -65,6 +71,7 @@ export interface EvaluatedPlayer {
   apg: number;
   spg: number;
   bpg: number;
+  tpm: number;
   fgPct: number;
   minutes: number;
   // Score metrics
@@ -154,6 +161,19 @@ function hashString(str: string): number {
   return Math.abs(hash);
 }
 
+// NPC box scores are not retained for all 82 games. Derive a stable season
+// three-point estimate from the simulated scoring, role and shooting profile.
+// The user's actual regular-season total always overrides this estimate.
+function estimateNpcThreePointersMade(player: RosterPlayer, ppg: number, minutes: number): number {
+  const eliteShooters = ['斯蒂芬·库里', '克莱·汤普森', '达米安·利拉德', '詹姆斯·哈登', '雷·阿伦', '雷吉·米勒'];
+  const limitedShooters = ['德怀特·霍华德', '沙奎尔·奥尼尔', '德安德烈·乔丹', '鲁迪·戈贝尔'];
+  if (limitedShooters.some((name) => player.name.includes(name))) return 0.1;
+  const perimeterFactor = player.position === 'PG' || player.position === 'SG' ? 1 : player.position === 'SF' ? 0.8 : player.position === 'PF' ? 0.48 : 0.22;
+  const shootingFactor = eliteShooters.some((name) => player.name.includes(name)) ? 1.65 : 1;
+  const seasonVariance = 0.92 + (hashString(`${player.id}_${player.name}_three`) % 17) / 100;
+  return +Math.min(5.2, Math.max(0, (0.55 + ppg * 0.085) * perimeterFactor * shootingFactor * Math.min(1, minutes / 30) * seasonVariance)).toFixed(1);
+}
+
 /**
  * Classic mode intentionally has no historical roster data after 2025. Build a
  * stable, year-specific award pool instead of relabelling an existing veteran
@@ -171,6 +191,7 @@ export function createFutureRookieAwardPool(teams: Team[], currentYear: number):
     const apg = +(2.4 + ((index * 11 + currentYear) % 50) / 10).toFixed(1);
     const spg = +(0.7 + ((index * 3 + currentYear) % 9) / 10).toFixed(1);
     const bpg = +(0.3 + ((index * 5 + currentYear) % 12) / 10).toFixed(1);
+    const tpm = estimateNpcThreePointersMade(prospect, ppg, Math.max(22, 33 - index));
     const rookieScore = ppg * 1.8 + rpg * 0.8 + apg + spg + bpg;
     return {
       id: `future_rookie_${currentYear}_${index + 1}`,
@@ -193,6 +214,7 @@ export function createFutureRookieAwardPool(teams: Team[], currentYear: number):
       apg,
       spg,
       bpg,
+      tpm,
       fgPct: +(43.5 + variance).toFixed(1),
       minutes: Math.max(22, 33 - index),
       statScore: rookieScore,
@@ -297,6 +319,7 @@ export function evaluateAllLeaguePlayers(
       let apg = p.stats?.apg || 2;
       let spg = p.stats?.spg || 0.8;
       let bpg = p.stats?.bpg || 0.4;
+      let tpm = p.stats?.tpm ?? estimateNpcThreePointersMade(p, ppg, p.minutes || 20);
       let fgPct = p.stats?.fgPct || 45;
       let minutes = p.minutes || 20;
 
@@ -307,6 +330,7 @@ export function evaluateAllLeaguePlayers(
         apg = +(userPlayer.seasonStats.ast / gp).toFixed(1);
         spg = +(userPlayer.seasonStats.stl / gp).toFixed(1);
         bpg = +(userPlayer.seasonStats.blk / gp).toFixed(1);
+        tpm = +(userPlayer.seasonStats.tpm / gp).toFixed(1);
         fgPct = userPlayer.seasonStats.fga > 0 ? +((userPlayer.seasonStats.fgm / userPlayer.seasonStats.fga) * 100).toFixed(1) : 45.0;
         minutes = +(userPlayer.seasonStats.minutes / gp).toFixed(1);
       } else {
@@ -315,6 +339,7 @@ export function evaluateAllLeaguePlayers(
         ppg = +(ppg * v).toFixed(1);
         rpg = +(rpg * (0.9 + (v - 0.81) * 0.5)).toFixed(1);
         apg = +(apg * (0.9 + (1.20 - v) * 0.5)).toFixed(1);
+        if (p.stats?.tpm === undefined) tpm = estimateNpcThreePointersMade(p, ppg, p.minutes || 20);
       }
 
       // Calculate Scores
@@ -336,52 +361,14 @@ export function evaluateAllLeaguePlayers(
       // MVP score: High scoring weight + team success (heavily rewards high scorers on winning teams)
       const mvpScore = ppg * 2.5 + rpg * 0.7 + apg * 1.1 + spg * 1.0 + bpg * 1.0 + winFactor * 22.0;
 
-// Defensive score calculation - highly optimized and realistic
-      const eliteDefenders = [
-        '凯文·加内特', '蒂姆·邓肯', '德怀特·霍华德', '本·华莱士', '罗恩·阿泰斯特', '慈善·世界和平', '慈世平',
-        '肖恩·巴蒂尔', '泰肖恩·普林斯', '安德烈·基里连科', '拉简·隆多', '托尼·阿伦', '克里斯·保罗', '科比·布莱恩特',
-        '勒布朗·詹姆斯', '德维恩·韦德', '德拉蒙德·格林', '科怀·莱昂纳德', '鲁迪·戈贝尔', '安东尼·戴维斯',
-        '扬尼斯·阿德托昆博', '保罗·乔治', '安德烈·伊格达拉', '朱·霍勒迪', '马库斯·斯玛特', '帕特里克·贝弗利',
-        '埃弗里·布拉德利', '塞布尔', '马蒂斯·塞布尔', '德章泰·穆雷', '亚历克斯·卡鲁索', '德里克·怀特',
-        '杰森·基德', '萨博·塞福罗萨', '乔金·诺阿', '马克·加索尔', '塞尔吉·伊巴卡', '德安德烈·乔丹',
-        '哈桑·怀特塞德', '罗伯特·考文顿', 'P.J. 塔克', '米卡尔·布里奇斯', 'O.G. 阿努诺比', '阿努诺比',
-        '巴姆·阿德巴约', '杰登·麦克丹尼尔斯', '麦克丹尼尔斯', '埃文·莫布里', '莫布里', '赫伯·琼斯', '赫伯特·琼斯',
-        '肯德里克·帕金斯', '詹姆斯·波西', '尤杜尼斯·哈斯勒姆', '泰森·钱德勒'
-      ];
-
-      const defensiveLiabilities = [
-        '斯蒂芬·库里', '库里', '詹姆斯·哈登', '哈登', '凯里·欧文', '欧文', '史蒂夫·纳什', '纳什',
-        '达米安·利拉德', '利拉德', '卢卡·东契奇', '东契奇', '特雷·杨', '尼古拉·约基奇', '约基奇',
-        '阿伦·艾弗森', '艾弗森', '德里克·罗斯', '罗斯', '卡梅隆·安东尼', '卡尔-安东尼·唐斯', '唐斯',
-        '多曼塔斯·萨博尼斯', '萨博尼斯', '德玛尔·德罗赞', '德罗赞', '扎克·拉文', '拉文',
-        '贾·莫兰特', '莫兰特', '布拉德利·比尔', '比尔', 'C.J. 麦科勒姆', '麦科勒姆',
-        '阿玛雷·斯塔德迈尔', '小斯', '斯塔德迈尔', '克里斯·波什', '波什', '安德里亚·巴尔尼亚尼', '巴尔尼亚尼',
-        '凯文·马丁', '贾马尔·克劳福德', '克劳福德', '路易斯·威廉姆斯', '路威'
-      ];
-
-      const isDefensiveLiability = defensiveLiabilities.some(n => p.name.includes(n)) && !p.name.includes('安东尼·戴维斯');
-      const isEliteDefender = eliteDefenders.some(n => p.name.includes(n));
-
-      const baseDefensiveScore = spg * 4.5 + bpg * 5.0 + rpg * 1.0;
-      const teamDefensiveFactor = winFactor * 10.0;
-      const ovrDefBonus = (p.ovr >= 85 && !isDefensiveLiability) ? 6 : 0;
-
-      let defMultiplier = 1.0;
-      if (isUser) {
-        const avgDefAttr = (userPlayer.attributes.perimeterDef + userPlayer.attributes.interiorDef) / 2;
-        if (avgDefAttr >= 85) defMultiplier = 1.45;
-        else if (avgDefAttr >= 75) defMultiplier = 1.15;
-        else if (avgDefAttr < 65) defMultiplier = 0.5;
-        else if (avgDefAttr < 70) defMultiplier = 0.75;
-      } else {
-        if (isEliteDefender) {
-          defMultiplier = 1.45;
-        } else if (isDefensiveLiability) {
-          defMultiplier = 0.45;
-        }
-      }
-
-      const defensiveScore = (baseDefensiveScore + teamDefensiveFactor + ovrDefBonus) * defMultiplier;
+      // Let actual defensive production lead. Wins and player defensive ability
+      // are small tie-breakers, never reputation/name multipliers.
+      const defensiveProduction = rpg * 0.8 + spg * 6 + bpg * 6;
+      const teamDefensiveBonus = winFactor * 4;
+      const defensiveAbilityBonus = isUser
+        ? Math.max(-2, Math.min(2, ((userPlayer.attributes.perimeterDef + userPlayer.attributes.interiorDef) / 2 - 75) * 0.08))
+        : Math.max(0, Math.min(2, (p.ovr - 80) * 0.1));
+      const defensiveScore = defensiveProduction + teamDefensiveBonus + defensiveAbilityBonus;
 
       // Sixth man score
       const sixthManScore = ppg * 2.0 + rpg * 0.8 + apg * 1.1 + winFactor * 10.0;
@@ -413,6 +400,7 @@ export function evaluateAllLeaguePlayers(
         apg,
         spg,
         bpg,
+        tpm,
         fgPct,
         minutes,
         statScore,
@@ -468,6 +456,7 @@ export function calculateSeasonAwards(
       apg: safeP?.apg || 0,
       spg: safeP?.spg || 0,
       bpg: safeP?.bpg || 0,
+      tpm: safeP?.tpm || 0,
       fgPct: safeP?.fgPct || 0,
       isUser: safeP?.isUser || false,
       probabilityPct: probPct,
@@ -508,27 +497,21 @@ export function calculateSeasonAwards(
       : '全联盟最高单季得分火力！'
   );
 
-  // 2. DPOY: Top 10 defensive candidates from playoff teams -> Probability roll
-  let dpoyCandidates = allPlayers
-    .filter((p) => p.isPlayoffTeam)
-    .sort((a, b) => b.defensiveScore - a.defensiveScore)
-    .slice(0, 10);
+  const statisticalLeader = (stat: 'rpg' | 'apg' | 'spg' | 'bpg' | 'tpm'): AwardWinner => {
+    const leader = [...allPlayers].sort((a, b) => b[stat] - a[stat] || b.ppg - a.ppg || a.id.localeCompare(b.id))[0];
+    return toWinner(leader);
+  };
+  const reboundLeader = statisticalLeader('rpg');
+  const assistLeader = statisticalLeader('apg');
+  const stealLeader = statisticalLeader('spg');
+  const blockLeader = statisticalLeader('bpg');
+  const threePointLeader = statisticalLeader('tpm');
 
-  if (dpoyCandidates.length === 0) {
-    dpoyCandidates = [...allPlayers].sort((a, b) => b.defensiveScore - a.defensiveScore).slice(0, 10);
-  }
-
-  const minDpoyScore = dpoyCandidates.length > 0 ? dpoyCandidates[dpoyCandidates.length - 1].defensiveScore : 0;
-  const dpoyWeightedItems = dpoyCandidates.map((p) => ({
-    item: p,
-    weight: Math.pow(Math.max(1, p.defensiveScore - minDpoyScore + 3), 2.0),
-  }));
-
-  const { selected: dpoyPlayer, probPct: dpoyProb } = weightedRandomSelect(dpoyWeightedItems);
-  const safeDpoy = dpoyPlayer || dpoyCandidates[0] || allPlayers[0];
+  // 2. DPOY: every league player is eligible; the highest defensive score wins.
+  const safeDpoy = [...allPlayers].sort((a, b) => b.defensiveScore - a.defensiveScore || a.id.localeCompare(b.id))[0];
   const dpoy = toWinner(
     safeDpoy,
-    dpoyProb,
+    100,
     safeDpoy
       ? `防守端建起禁飞区，场均 ${safeDpoy.spg}抢断 ${safeDpoy.bpg}盖帽 ${safeDpoy.rpg}篮板，筑牢球队防线！`
       : '最佳防守核心！'
@@ -602,6 +585,7 @@ export function calculateSeasonAwards(
         apg: 6.2,
         spg: 1.2,
         bpg: 0.4,
+        tpm: estimateNpcThreePointersMade(topDraft, 18.5, 32),
         fgPct: 46.5,
         minutes: 32,
         statScore: 30,
@@ -777,6 +761,11 @@ export function calculateSeasonAwards(
   return {
     mvp,
     scoringLeader,
+    reboundLeader,
+    assistLeader,
+    stealLeader,
+    blockLeader,
+    threePointLeader,
     dpoy,
     sixthMan,
     roy,

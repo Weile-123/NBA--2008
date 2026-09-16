@@ -5,6 +5,8 @@ import type { Attributes, PlayerProfile, Team } from '../src/types';
 import { applyAttributeAdReward } from '../src/utils/attributeTraining';
 import { calculateSeasonAwards } from '../src/utils/awardsLogic';
 import { calculateBuzzerBeaterSuccessRate } from '../src/utils/matchEvents';
+import { calculateGoatScore } from '../src/utils/calc2k';
+import { isLocalOnlyStatTitle, leaderboardAccoladeTitles, LOCAL_ONLY_STAT_TITLES } from '../src/utils/localOnlyAwards';
 
 const attributes = Object.fromEntries([
   'midRange', 'threePoint', 'freeThrow', 'layup', 'dunk', 'insideFinish', 'postMove', 'ballHandle',
@@ -47,6 +49,60 @@ test('a 60-win high-OVR 25+5+5 player reaches an all-league top two team', () =>
 test('a 70-win high-OVR 24+3+15 player reaches an all-league top two team', () => {
   const tier = allNbaTier(makeTeams(70), makePlayer(24, 3, 15));
   assert.ok(tier !== undefined && tier <= 2, `expected first or second team, received ${tier}`);
+});
+
+test('statistical leaders use regular-season simulation and the user actual three-point total', () => {
+  const player = makePlayer(36, 24, 22);
+  player.seasonStats.stl = 6 * 82;
+  player.seasonStats.blk = 8 * 82;
+  player.seasonStats.tpm = 7 * 82;
+  const awards = calculateSeasonAwards(makeTeams(60), player, 2008);
+  assert.equal(awards.reboundLeader.isUser, true);
+  assert.equal(awards.assistLeader.isUser, true);
+  assert.equal(awards.stealLeader.isUser, true);
+  assert.equal(awards.blockLeader.isUser, true);
+  assert.equal(awards.threePointLeader.isUser, true);
+  assert.equal(awards.threePointLeader.tpm, 7);
+});
+
+test('DPOY rewards dominant defensive production even outside the playoffs', () => {
+  const player = makePlayer(12, 15.4, 2);
+  player.attributes = { ...attributes, perimeterDef: 70, interiorDef: 70 };
+  player.seasonStats.stl = 2.1 * 82;
+  player.seasonStats.blk = 3.9 * 82;
+
+  const teams = makeTeams(20);
+  for (const team of teams) {
+    if (team.conference === 'West' && team.id !== 'lal') {
+      team.wins = 50;
+      team.losses = 32;
+    }
+  }
+  const memphis = teams.find((team) => team.id === 'mem');
+  const gasol = memphis?.roster.find((rosterPlayer) => rosterPlayer.name === '马克·加索尔');
+  assert.ok(memphis && gasol);
+  memphis.wins = 60;
+  memphis.losses = 22;
+  gasol.ovr = 90;
+  gasol.stats = { ppg: 15, rpg: 11.2, apg: 3, spg: 0.8, bpg: 2.1, fgPct: 50 };
+
+  const awards = calculateSeasonAwards(teams, player, 2008);
+  assert.equal(awards.userMadePlayoffs, false);
+  assert.equal(awards.dpoy.isUser, true);
+  assert.equal(awards.dpoy.probabilityPct, 100);
+});
+
+test('new local stat honors do not change GOAT score or enter retired leaderboard titles', () => {
+  const player = makePlayer(25, 10, 10);
+  player.accolades = [];
+  const baseline = calculateGoatScore(player).score;
+  player.accolades = LOCAL_ONLY_STAT_TITLES.map((title, index) => ({
+    year: 2008, seasonStr: '2008-2009', title, type: ['REBOUND_LEADER', 'ASSIST_LEADER', 'THREE_POINT_LEADER', 'BLOCK_LEADER', 'STEAL_LEADER'][index],
+  }));
+  assert.equal(calculateGoatScore(player).score, baseline);
+  assert.ok(LOCAL_ONLY_STAT_TITLES.every(isLocalOnlyStatTitle));
+  assert.equal(isLocalOnlyStatTitle('常规赛得分王'), false);
+  assert.deepEqual(leaderboardAccoladeTitles(['常规赛得分王', ...LOCAL_ONLY_STAT_TITLES]), ['常规赛得分王']);
 });
 
 test('buzzer-beater odds rise with the relevant scoring attributes', () => {

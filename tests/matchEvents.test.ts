@@ -85,6 +85,10 @@ test('quarter play-by-play reconciles to its fixed scoreboard target', () => {
   reconcileQuarterTeamScore(events, 1, 'opp', 24, '客队');
   assert.equal(events.reduce((sum, event) => sum + event.userPtsDelta, 0), 25);
   assert.equal(events.reduce((sum, event) => sum + event.oppPtsDelta, 0), 24);
+  for (const side of ['user', 'opp'] as const) {
+    const times = events.filter((event) => event.id.includes(`${side}_score_reconcile`)).map((event) => event.targetSeconds);
+    assert.ok(Math.max(...times) - Math.min(...times) >= 400, `${side}补分不应挤在几分钟内`);
+  }
 });
 
 test('buzzer-beater prompt appears only when the user is actually down one', () => {

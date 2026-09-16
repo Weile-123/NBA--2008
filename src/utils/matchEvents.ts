@@ -249,11 +249,19 @@ export function reconcileQuarterTeamScore(
     }
   }
 
-  let eventNumber = 0;
+  const addedPoints: number[] = [];
   while (current < targetPoints) {
     const remaining = targetPoints - current;
     const points = remaining >= 3 ? (Math.random() < 0.35 ? 3 : 2) : remaining;
-    const targetSeconds = Math.max(12, 690 - eventNumber * 22);
+    addedPoints.push(points);
+    current += points;
+  }
+  addedPoints.forEach((points, eventNumber) => {
+    // Spread reconciliation baskets across the *whole* quarter. Placing all
+    // missing points in the opening minutes created huge artificial runs and
+    // made the opponent appear to stop scoring during late comebacks.
+    const slot = (eventNumber + 1) / (addedPoints.length + 1);
+    const targetSeconds = Math.max(12, Math.min(690, 700 - Math.round(slot * 680) + (side === 'user' ? 5 : -5)));
     events.push({
       id: `q${quarter}_${side}_score_reconcile_${eventNumber}`,
       quarter,
@@ -268,9 +276,7 @@ export function reconcileQuarterTeamScore(
       userPtsDelta: side === 'user' ? points : 0,
       oppPtsDelta: side === 'opp' ? points : 0,
     });
-    current += points;
-    eventNumber += 1;
-  }
+  });
   return events;
 }
 

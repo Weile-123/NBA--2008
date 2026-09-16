@@ -86,7 +86,9 @@ const SECONDARY_BY_NAME: Record<string, Position> = {
 
 export function isCompatiblePositionPair(primary: Position, secondary: Position): boolean {
   const positions: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
-  return Math.abs(positions.indexOf(primary) - positions.indexOf(secondary)) === 1;
+  return Math.abs(positions.indexOf(primary) - positions.indexOf(secondary)) === 1
+    || (primary === 'PG' && secondary === 'SF')
+    || (primary === 'SF' && secondary === 'PG');
 }
 
 export function getSecondaryPosition(player: {
