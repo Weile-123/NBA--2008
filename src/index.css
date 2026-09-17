@@ -282,3 +282,57 @@
   animation: none !important;
   transition: none !important;
 }
+
+/* Keep career summaries in view while the season columns scroll horizontally. */
+.season-comparison-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  min-width: max-content;
+}
+
+.season-comparison-table :is(th, td):first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  min-width: 80px;
+  width: 80px;
+  padding-inline: 6px;
+  background: #151922;
+  box-shadow: 1px 0 0 #39404d;
+}
+
+.season-comparison-table th:first-child {
+  z-index: 4;
+  background: #0d1017;
+}
+
+.season-comparison-table :is(th, td):not(:first-child):not(:last-child):not(.season-comparison-spacer) {
+  min-width: 70px;
+  width: 70px;
+  padding-inline: 3px;
+}
+
+.season-comparison-table .season-comparison-spacer {
+  width: auto;
+  padding: 0;
+}
+
+.season-comparison-table :is(th, td):last-child {
+  position: sticky;
+  z-index: 2;
+  min-width: 82px;
+  width: 82px;
+  padding-inline: 3px;
+  background: #211f1c;
+  box-shadow: -1px 0 0 #39404d;
+}
+
+.season-comparison-table :is(th, td):last-child {
+  right: 0;
+}
+
+.season-comparison-table th:last-child {
+  z-index: 3;
+  background: #29231a;
+}

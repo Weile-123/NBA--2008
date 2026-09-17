@@ -550,7 +550,7 @@ export function calculateSeasonAwards(
       : '第二阵容最强火炮！'
   );
 
-  // 4. 最佳新秀: ONLY rookies -> Probability roll
+  // 4. Best rookie: strictly select the strongest rookie season by production.
   let rookieCandidates = allPlayers
     .filter((p) => p.isRookie)
     .sort((a, b) => b.rookieScore - a.rookieScore)
@@ -598,17 +598,10 @@ export function calculateSeasonAwards(
     ];
   }
 
-  const minRookieScore = rookieCandidates.length > 0 ? rookieCandidates[rookieCandidates.length - 1].rookieScore : 0;
-  const rookieWeightedItems = rookieCandidates.map((p) => ({
-    item: p,
-    weight: Math.pow(Math.max(1, p.rookieScore - minRookieScore + 2), 2.0),
-  }));
-
-  const { selected: royPlayer, probPct: royProb } = weightedRandomSelect(rookieWeightedItems);
-  const safeRoy = royPlayer || rookieCandidates[0] || allPlayers[0];
+  const safeRoy = rookieCandidates[0] || allPlayers[0];
   const roy = toWinner(
     safeRoy,
-    royProb,
+    100,
     safeRoy
       ? `新秀赛季打出轰动表现，场均 ${safeRoy.ppg}分 ${safeRoy.rpg}板 ${safeRoy.apg}助，未来不可限量！`
       : '最具潜力的年度最佳新秀！'

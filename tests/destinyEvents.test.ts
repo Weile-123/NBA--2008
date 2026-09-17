@@ -115,6 +115,8 @@ test('season entry reports a completed decision instead of unmet conditions', ()
   };
   const evaluation = evaluateDestinyEvent(decisionTwo, 2014, [], [], records);
   assert.equal(getDestinyEventEntrySummary([evaluation], 2014), '本赛季命定事件已完成');
+  const unresolved = evaluateDestinyEvent(decisionTwo, 2014, [], [], {});
+  assert.equal(getDestinyEventEntrySummary([evaluation, unresolved], 2014), '本赛季尚有待决定的命定事件');
 });
 
 test('Melo to New York is blocked only when decision one selected Broadway', () => {

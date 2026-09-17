@@ -1378,7 +1378,9 @@ export function enrichRosterPlayer(
   const rawPpg = +(expectedPpg36 * timeFactor * seasonVariance).toFixed(1);
   let finalPpg = teamContext ? applyUsageCongestionToPpg(rawPpg, p.ovr, index === 0, teamContext) : rawPpg;
   if (teamContext?.starCongestionTier === 'solo_95_pure' && p.ovr >= 95) {
-    finalPpg = calculateExpectedPpg36(p.ovr);
+    // Preserve the season's variation even when a superstar carries the offense.
+    // The former fixed override made 99 OVR stars average exactly 35.0 every year.
+    finalPpg = +(calculateExpectedPpg36(p.ovr) * seasonVariance).toFixed(1);
   }
 
   // 2. RPG based on reboundRating & calculateExpectedRpg36

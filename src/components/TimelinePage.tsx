@@ -25,6 +25,7 @@ interface TimelinePageProps {
     spg: number;
     bpg: number;
     fgPct: number;
+    playoffResult?: string;
     accoladesEarned: string[];
   }[];
   leagueHistory?: {
@@ -32,6 +33,7 @@ interface TimelinePageProps {
     seasonStr: string;
     champion: string;
     championId: string;
+    finalist?: string;
     mvp: string;
     fmvp: string;
     dpoy: string;
@@ -248,6 +250,7 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({
         seasonStr: simulatedHist.seasonStr,
         champion: simulatedHist.champion,
         championId: simulatedHist.championId,
+        finalist: simulatedHist.finalist,
         mvp: simulatedHist.mvp,
         scoringLeader: simulatedHist.scoringLeader || realHist?.scoringLeader || '待定',
         fmvp: simulatedHist.fmvp,
@@ -402,6 +405,7 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({
                         <span className={`text-xs font-black tracking-wide ${isUserTeamChampion ? 'text-amber-300' : 'text-white'}`}>
                           {t.champion}
                         </span>
+                        {'finalist' in t && t.finalist && <span className="text-[10px] text-slate-400">总决赛对手：{t.finalist}</span>}
                       </div>
                     </div>
                   {/* Additional User Accolades for this year */}
@@ -488,6 +492,9 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({
                           </span>
                           <span className="text-xs font-bold text-white font-sans">
                             {userHistForYr.teamName}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono block">
+                            {userHistForYr.wins}-{userHistForYr.losses} · {userHistForYr.playoffResult || (isUserTeamChampion ? '总冠军' : '赛季成绩未记录')}
                           </span>
                         </div>
                       </div>

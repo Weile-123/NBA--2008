@@ -537,6 +537,7 @@ export function getDestinyEventEntrySummary(evaluations: DestinyEventEvaluation[
   const available = evaluations.find((item) => item.status === 'available');
   if (available) return available.event.title;
   const currentEvents = evaluations.filter((item) => item.event.year === currentYear);
+  if (currentEvents.some((item) => item.status === 'unavailable')) return '本赛季尚有待决定的命定事件';
   if (currentEvents.some((item) => item.status === 'triggered')) return '本赛季命定事件已完成';
   if (currentEvents.some((item) => item.status === 'ignored')) return '本赛季命定事件已忽略';
   if (currentEvents.length > 0) return '本赛季事件条件尚未满足';

@@ -51,6 +51,23 @@ test('a 70-win high-OVR 24+3+15 player reaches an all-league top two team', () =
   assert.ok(tier !== undefined && tier <= 2, `expected first or second team, received ${tier}`);
 });
 
+test('best rookie goes to the stronger first-season production', () => {
+  const player = makePlayer(15, 3, 8);
+  player.isRookie = true;
+  const teams = makeTeams(40);
+  const rival = teams.find((team) => team.id === 'bos')?.roster.at(-1);
+  assert.ok(rival);
+  rival.isRookie = true;
+  rival.stats = { ppg: 8, rpg: 2, apg: 3, spg: 0, bpg: 0, fgPct: 45 };
+  for (const team of teams) team.roster = [];
+  const boston = teams.find((team) => team.id === 'bos');
+  assert.ok(boston);
+  boston.roster = [rival];
+
+  const awards = calculateSeasonAwards(teams, player, 2008);
+  assert.equal(awards.roy.isUser, true, `winner: ${awards.roy.name} ${awards.roy.ppg}+${awards.roy.rpg}+${awards.roy.apg}`);
+});
+
 test('statistical leaders use regular-season simulation and the user actual three-point total', () => {
   const player = makePlayer(36, 24, 22);
   player.seasonStats.stl = 6 * 82;

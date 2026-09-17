@@ -91,12 +91,12 @@ test('curated NPC positions keep Curry at PG and let Kobe cover SF after SG', ()
   assert.deepEqual([...ids].sort(), ['curry', 'kobe', 'shooting']);
 });
 
-test('curated position pairs include PG/SF while rejecting incompatible older save data', () => {
+test('only adjacent position pairs are compatible, including for older save data', () => {
   assert.equal(isCompatiblePositionPair('PG', 'SG'), true);
   assert.equal(isCompatiblePositionPair('SG', 'SF'), true);
   assert.equal(isCompatiblePositionPair('SF', 'PF'), true);
   assert.equal(isCompatiblePositionPair('PF', 'C'), true);
-  assert.equal(isCompatiblePositionPair('PG', 'SF'), true);
+  assert.equal(isCompatiblePositionPair('PG', 'SF'), false);
   assert.equal(isCompatiblePositionPair('SF', 'PG'), true);
   assert.equal(isCompatiblePositionPair('PG', 'C'), false);
   assert.equal(getSecondaryPosition({ name: '旧球员', position: 'PG', secondaryPosition: 'C' }), undefined);

@@ -208,7 +208,7 @@ function CareerApp({
 
       {/* Title / Home Screen Phase */}
       {phase === 'home' && (
-          <HomeScreen
+          storageReady ? <HomeScreen
             onLaunchMode={(targetMode, action) => {
               if (targetMode !== gameMode) {
                 onSelectGameMode(targetMode, action);
@@ -233,7 +233,7 @@ function CareerApp({
               setPrevPhase(phase);
               setPhase('legendary_hof');
             }}
-          />
+          /> : <div className="min-h-screen bg-[#0a0d14] text-amber-300 flex items-center justify-center font-black tracking-widest">正在读取本地存档…</div>
       )}
 
       {/* Creation Phase */}

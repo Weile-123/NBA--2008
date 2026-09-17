@@ -1,16 +1,18 @@
 import { Dispatch,SetStateAction } from 'react';
 import { INITIAL_ENDORSEMENTS,PERSONAL_ASSETS } from '../data/nbaData2008';
-import { PlayerProfile,SignatureShoe } from '../types';
+import { GameState, PlayerProfile,SignatureShoe } from '../types';
 import { getPlayerBaseOvr, getPlayerCareerPeakOvr } from '../utils/calc2k';
 import { completeRewardedAd } from '../lib/rewardedAd';
 import { getAssetPurchaseState } from '../utils/economy';
 import { applyAttributeAdReward, resetPlayerAttribute, spendPlayerAttributePoints } from '../utils/attributeTraining';
+import { retargetUnplayedSchedule } from '../utils/scheduleTrade';
 
 export function usePlayerActions(
   player: PlayerProfile | null,
   setPlayer: Dispatch<SetStateAction<PlayerProfile | null>>,
   careerSeasons: number,
   currentYear: number,
+  setSchedule?: Dispatch<SetStateAction<GameState['schedule']>>,
 ) {
   const spendAttributePoints = (
     attrKey: keyof PlayerProfile['attributes'],
@@ -218,7 +220,11 @@ export function usePlayerActions(
 
   // Trade request handler
   const handleRequestTrade = (targetTeamId: string) => {
-    if (!player) return;
+    if (!player || targetTeamId === player.currentTeamId) return;
+    const previousTeamId = player.currentTeamId;
+    // The schedule follows the player. A previously scheduled game against the
+    // destination team becomes a game against their former team instead.
+    setSchedule?.((current) => retargetUnplayedSchedule(current, targetTeamId, previousTeamId));
     setPlayer({
       ...player,
       currentTeamId: targetTeamId,

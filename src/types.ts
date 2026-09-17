@@ -186,6 +186,8 @@ export interface PlayerProfile {
   careerStats: PlayerStats;
   /** Playoff game ids already included in careerStats, used to make settlement idempotent. */
   playoffStatGameIds?: string[];
+  /** Per-season playoff totals, separate from regular-season seasonStats. */
+  playoffStatsByYear?: Record<number, PlayerStats>;
   /** Interactive playoff games whose XP and skill-point rewards have been claimed. */
   playoffRewardGameIds?: string[];
   /** Optional destiny conditions unlocked by rewarded ads in parallel mode. */
@@ -425,6 +427,9 @@ export interface GameState {
     bpg: number;
     fgPct: number;
     ovr?: number;
+    regularStats?: PlayerStats;
+    playoffStats?: PlayerStats;
+    playoffResult?: string;
     accoladesEarned: string[];
   }[];
   leagueHistory?: {
@@ -432,6 +437,8 @@ export interface GameState {
     seasonStr: string;
     champion: string;
     championId: string;
+    finalist?: string;
+    finalistId?: string;
     mvp: string;
     scoringLeader?: string;
     fmvp: string;

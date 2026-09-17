@@ -11,6 +11,7 @@ import { progressLeagueForNewSeason } from '../utils/progressionLogic';
 import { clearGameStorage,hydrateGameStorage,loadGameFromStorage,SavedData } from '../utils/storage';
 import { useAutoSave } from './useAutoSave';
 import { usePlayerActions } from './usePlayerActions';
+import { retargetUnplayedSchedule } from '../utils/scheduleTrade';
 import { calculateDisposableSalary } from '../utils/economy';
 import { useSeasonSimulation } from './useSeasonSimulation';
 
@@ -201,7 +202,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     setUsedOffseasonEventIds((prev) => new Set([...prev, eventId]));
   };
 
-  const handleEnterOffseason = (championTeam?: Team, passedFmvpName?: string, settledSeasonAwards?: SeasonAwards, settledPlayer?: PlayerProfile) => {
+  const handleEnterOffseason = (championTeam?: Team, passedFmvpName?: string, settledSeasonAwards?: SeasonAwards, settledPlayer?: PlayerProfile, outcome?: { finalist: Team; playoffResult: string }) => {
     const transitionPlayer = settledPlayer || player;
     isLeavingRegularSeasonRef.current = true;
     setShowAgeDeclineModal(false);
@@ -276,6 +277,11 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
         spg,
         bpg,
         fgPct,
+        regularStats: { ...transitionPlayer.seasonStats },
+        playoffStats: transitionPlayer.playoffStatsByYear?.[currentYear]
+          ? { ...transitionPlayer.playoffStatsByYear[currentYear] }
+          : undefined,
+        playoffResult: outcome?.playoffResult,
         ovr: transitionPlayer.ovr,
         accoladesEarned,
       };
@@ -302,6 +308,8 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
         seasonStr,
         champion: championTeam ? championTeam.name : '未知球队',
         championId: championTeam ? championTeam.id : '',
+        finalist: outcome?.finalist.name,
+        finalistId: outcome?.finalist.id,
         mvp: computedAwards.mvp.name,
         scoringLeader: computedAwards.scoringLeader?.name,
         fmvp: fmvpName,
@@ -518,11 +526,22 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
 
   // Load saved game state on initial mount
   useEffect(() => {
-    void hydrateGameStorage(gameMode).then(() => {
-      const saved = loadGameFromStorage(gameMode);
-      if (resumeOnMount && saved?.player) handleLoadSaveData(saved);
-      setStorageReady(true);
-    });
+    let cancelled = false;
+    void hydrateGameStorage(gameMode)
+      .then(() => {
+        if (cancelled) return;
+        const saved = loadGameFromStorage(gameMode);
+        if (resumeOnMount && saved?.player) handleLoadSaveData(saved);
+      })
+      .catch((error) => {
+        // A failed bridge read must not leave the entire app on a blank loading
+        // screen. Keep the local save untouched so a later retry can recover it.
+        console.error('Unable to restore career save:', error);
+      })
+      .finally(() => {
+        if (!cancelled) setStorageReady(true);
+      });
+    return () => { cancelled = true; };
   }, [gameMode, resumeOnMount]);
 
   const saveSnapshot = useMemo<SavedData | null>(() => {
@@ -603,7 +622,10 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     setTeams(applyHistoricalTeamIdentityUpdates(data.teams || NBA_TEAMS_2008, data.currentYear || 2008));
     const loadedPlayer = syncPlayerAgeDecay(data.player);
     setPlayer(loadedPlayer);
-    setSchedule(data.schedule || []);
+    const fallbackOpponentId = (data.teams || NBA_TEAMS_2008).find((team) => team.id !== loadedPlayer.currentTeamId)?.id;
+    setSchedule(fallbackOpponentId
+      ? retargetUnplayedSchedule(data.schedule || [], loadedPlayer.currentTeamId, fallbackOpponentId)
+      : data.schedule || []);
     setTweets(data.tweets || []);
     setCareerHistory(data.careerHistory || []);
     setLeagueHistory(data.leagueHistory || []);
@@ -917,7 +939,7 @@ export function useCareerGame(gameMode: GameMode, resumeOnMount = true) {
     setTweets,
   });
 
-  const { handleUpgradeAttribute, handleAddSkillPoints, handleWatchAttributeAd, handleAllInAttribute, handleResetAttribute, handleWorkout, handleRest, handleUnlockEndorsement, handleCreateSignatureShoe, handleBuyLuxuryItem, handleRequestTrade } = usePlayerActions(player, setPlayer, careerHistory.length, currentYear);
+  const { handleUpgradeAttribute, handleAddSkillPoints, handleWatchAttributeAd, handleAllInAttribute, handleResetAttribute, handleWorkout, handleRest, handleUnlockEndorsement, handleCreateSignatureShoe, handleBuyLuxuryItem, handleRequestTrade } = usePlayerActions(player, setPlayer, careerHistory.length, currentYear, setSchedule);
 
   // Advance to next season handler
   const handleNextSeason = () => {

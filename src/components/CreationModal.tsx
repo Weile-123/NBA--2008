@@ -10,7 +10,6 @@ BODY_SHAPE_PRESETS,
 } from '../utils/attributeCalculator';
 import { calculateCreationTemplateAttributes, getCreationSecondaryOptions, getCreationTemplate, getTemplateBodyMeasurements } from '../utils/creationTemplates';
 import { calculateUserDraftPick } from '../utils/draftLogic';
-import { isCompatiblePositionPair } from '../utils/playerPositions';
 import { MobilePersistentScrollbar } from './MobilePersistentScrollbar';
 import { TeamLogo } from './TeamLogo';
 
@@ -208,7 +207,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
   // Select the primary and secondary position together in the position dialog.
   const handlePositionChange = (pos: Position) => {
     setPosition(pos);
-    if (secondaryPosition && !isCompatiblePositionPair(pos, secondaryPosition)) setSecondaryPosition(null);
+    if (secondaryPosition && !getCreationSecondaryOptions(pos).includes(secondaryPosition)) setSecondaryPosition(null);
     const measurements = getTemplateBodyMeasurements(pos, bodyShape);
     setHeightCm(measurements.heightCm);
     setWeightKg(measurements.weightKg);
@@ -224,10 +223,12 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
     }
   };
 
-  const activeTemplate = position ? getCreationTemplate(position, secondaryPosition, bodyShape) : null;
+  const validSecondaryPosition = position && secondaryPosition && getCreationSecondaryOptions(position).includes(secondaryPosition)
+    ? secondaryPosition : null;
+  const activeTemplate = position ? getCreationTemplate(position, validSecondaryPosition, bodyShape) : null;
   const { attributes, attributeCaps, initialOvr } = useMemo(() =>
-    calculateCreationTemplateAttributes(position || 'PG', position ? secondaryPosition : null, bodyShape, paidBoostOvr, baseOvr),
-  [position, secondaryPosition, bodyShape, paidBoostOvr, baseOvr]);
+    calculateCreationTemplateAttributes(position || 'PG', validSecondaryPosition, bodyShape, paidBoostOvr, baseOvr),
+  [position, validSecondaryPosition, bodyShape, paidBoostOvr, baseOvr]);
 
   const handleSubmitFinalPlayer = (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,7 +246,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
       height: `${heightCm}cm`,
       weight: `${weightKg}kg`,
       position,
-      secondaryPosition: secondaryPosition || undefined,
+      secondaryPosition: validSecondaryPosition || undefined,
       archetype: activeTemplate.name,
       attributes,
       attributeCaps,
@@ -499,7 +500,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                     {events[currentEventIndex]?.timeLabel}
                   </span>
                   <div className="text-sm font-black text-white italic">
-                    {name} ({nationality}) · {familyBackground} · 事件 {currentEventIndex + 1} / 15
+                    {nationality} · {familyBackground} · 事件 {currentEventIndex + 1} / 15
                   </div>
                 </div>
 
@@ -515,12 +516,9 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
 
                   <div className="flex items-center gap-2 bg-[#11141b] border border-amber-500/30 px-3 py-1.5 rounded-lg">
                     <Trophy className="w-4 h-4 text-amber-400" />
-                    <div className="text-right">
-                      <span className="text-[9px] text-slate-400 uppercase block font-bold">当前基础评分</span>
-                      <span className="text-xs font-black text-amber-400 font-mono">
-                        {accumulatedScore.toFixed(1)} OVR
-                      </span>
-                    </div>
+                    <span className="text-xs font-black text-amber-400 font-mono">
+                      {accumulatedScore.toFixed(1)} OVR
+                    </span>
                   </div>
                 </div>
               </div>
@@ -541,17 +539,10 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" /> 阶段 {stageResult.eventIndex + 1} 抉择后果评定
                 </div>
 
-                <div className="space-y-1">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest block">你的重要抉择</span>
-                  <h3 className="text-base sm:text-lg font-black text-amber-300 italic">
-                    "{stageResult.option.text}"
-                  </h3>
-                </div>
-
                 {/* Effect desc box */}
                 <div className="bg-[#11141b] p-4 rounded-xl border border-[#232834] space-y-2 text-left">
                   <div className="text-xs font-bold text-white flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-amber-400" /> 事件结果与球探评估反馈:
+                    <Zap className="w-4 h-4 text-amber-400" /> 事件结果
                   </div>
                   <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-medium">
                     {stageResult.option.effectDesc}
@@ -741,7 +732,7 @@ export const CreationModal: React.FC<CreationModalProps> = ({ onComplete, onBack
                   <div className="min-w-0">
                     <strong className="text-white font-bold text-xs truncate block">{name} ({nationality})</strong>
                     <span className="text-[10px] text-slate-400 block font-mono truncate">
-                      {position ? `${position}${secondaryPosition ? `/${secondaryPosition}` : ''} · ${heightCm}cm / ${weightKg}kg · ${activeTemplate?.name}` : '请选择场上位置'}
+                      {position ? `${position}${validSecondaryPosition ? `/${validSecondaryPosition}` : ''} · ${heightCm}cm / ${weightKg}kg · ${activeTemplate?.name}` : '请选择场上位置'}
                     </span>
                   </div>
                 </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { scheduleRootScrollToTop } from '../utils/scroll';
-import { Team, PlayerProfile, GameState, MatchRosterStats, SingleGamePlayerStats } from '../types';
+import { Team, PlayerProfile, GameState, MatchRosterStats, SingleGamePlayerStats, PlayerStats } from '../types';
 import { Trophy, Award, BarChart3, Sparkles, Target, Activity, Users, Crown, Zap, Eye, X, Star, Calendar, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { enrichRosterPlayer, getCompleteTeamRoster, generateFullMatchRosterStats, calculateMatchScores, calculateTeamPowerRating, getPlayerCategoryRatings, getUserPlayerCategoryRatings, calculateTeamUsageContext } from '../utils/leagueLogic';
 import { TeamLogo } from './TeamLogo';
@@ -340,6 +340,7 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
   const seasonIndex = currentYear - 2007;
   const seasonStr = `${currentYear}-${(currentYear + 1).toString().slice(-2)} 赛季`;
   const [activeSubNav, setActiveSubNav] = useState<'standings' | 'userStats'>('userStats');
+  const [historyScope, setHistoryScope] = useState<'regular' | 'playoffs'>('regular');
 
   useEffect(() => {
     const animationFrame = scheduleRootScrollToTop();
@@ -859,141 +860,157 @@ export const LeagueStandings: React.FC<LeagueStandingsProps> = ({
           {/* Experienced Seasons vs Career Stats Table */}
           {(() => {
             const currentSeasonStr = `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
-            const activeSeasonAvg = {
-              seasonStr: currentSeasonStr,
-              games: season.games,
-              ppg: sPpg,
-              rpg: sRpg,
-              apg: sApg,
-              spg: sSpg,
-              bpg: sBpg,
-              fgPct: season.fga > 0 ? ((season.fgm / season.fga) * 100).toFixed(1) + '%' : '0.0%',
-              t3pPct: season.tpa > 0 ? ((season.tpm / season.tpa) * 100).toFixed(1) + '%' : '0.0%',
-              ftPct: season.fta > 0 ? ((season.ftm / season.fta) * 100).toFixed(1) + '%' : '0.0%',
-              mpg: (season.minutes / (season.games || 1)).toFixed(1),
-            };
-
-            const pastSeasonsList = (careerHistory || []).map((h) => ({
-              seasonStr: h.seasonStr,
-              games: h.games || 0,
-              ppg: (h.ppg || 0).toFixed(1),
-              rpg: (h.rpg || 0).toFixed(1),
-              apg: (h.apg || 0).toFixed(1),
-              spg: (h.spg || 0).toFixed(1),
-              bpg: (h.bpg || 0).toFixed(1),
-              fgPct: (h.fgPct || 45.0).toFixed(1) + '%',
-              t3pPct: (h.t3pPct || 35.0).toFixed(1) + '%',
-              ftPct: (h.ftPct || 75.0).toFixed(1) + '%',
-              mpg: (h.mpg || 0).toFixed(1),
-            }));
-
+            const displayStats = (seasonStr: string, stats?: PlayerStats) => ({
+              seasonStr,
+              games: stats?.games ?? '—',
+              ppg: stats?.games ? (stats.pts / stats.games).toFixed(1) : '—',
+              rpg: stats?.games ? (stats.reb / stats.games).toFixed(1) : '—',
+              apg: stats?.games ? (stats.ast / stats.games).toFixed(1) : '—',
+              spg: stats?.games ? (stats.stl / stats.games).toFixed(1) : '—',
+              bpg: stats?.games ? (stats.blk / stats.games).toFixed(1) : '—',
+              fgPct: stats?.fga ? ((stats.fgm / stats.fga) * 100).toFixed(1) + '%' : '—',
+              t3pPct: stats?.tpa ? ((stats.tpm / stats.tpa) * 100).toFixed(1) + '%' : '—',
+              ftPct: stats?.fta ? ((stats.ftm / stats.fta) * 100).toFixed(1) + '%' : '—',
+              mpg: stats?.games ? (stats.minutes / stats.games).toFixed(1) : '—',
+            });
+            const pastSeasonsList = (careerHistory || []).map((h) => {
+              const stats = historyScope === 'regular' ? h.regularStats : h.playoffStats;
+              const display = displayStats(h.seasonStr, stats);
+              // Older saves only stored the regular-season averages. Do not invent
+              // games, minutes or shooting splits that were never recorded.
+              if (!stats && historyScope === 'regular') {
+                display.ppg = typeof h.ppg === 'number' ? h.ppg.toFixed(1) : '—';
+                display.rpg = typeof h.rpg === 'number' ? h.rpg.toFixed(1) : '—';
+                display.apg = typeof h.apg === 'number' ? h.apg.toFixed(1) : '—';
+                display.spg = typeof h.spg === 'number' ? h.spg.toFixed(1) : '—';
+                display.bpg = typeof h.bpg === 'number' ? h.bpg.toFixed(1) : '—';
+                display.fgPct = typeof h.fgPct === 'number' ? h.fgPct.toFixed(1) + '%' : '—';
+              }
+              return display;
+            });
+            const activeSeasonAvg = displayStats(currentSeasonStr,
+              historyScope === 'regular' ? season as PlayerStats : player?.playoffStatsByYear?.[currentYear]);
             const allSeasons = [...pastSeasonsList, activeSeasonAvg];
-
+            const playoffTotals = (Object.values(player?.playoffStatsByYear || {}) as PlayerStats[]).reduce((totals, stats) => {
+              for (const key of ['games', 'pts', 'reb', 'ast', 'stl', 'blk', 'fgm', 'fga', 'tpm', 'tpa', 'ftm', 'fta', 'minutes'] as const) {
+                totals[key] += stats[key] || 0;
+              }
+              return totals;
+            }, { games: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0, fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, minutes: 0 });
+            const totals: typeof playoffTotals = historyScope === 'playoffs' ? playoffTotals : Object.fromEntries(
+              Object.keys(playoffTotals).map((key) => [key, Math.max(0, (career as unknown as Record<string, number>)[key] - (playoffTotals as Record<string, number>)[key])]),
+            ) as typeof playoffTotals;
             return (
-              <div className="overflow-x-auto pt-1">
+              <div className="pt-1">
                 <div className="text-[11px] sm:text-xs font-black uppercase text-slate-400 mb-2 flex items-center justify-between">
                   <span className="flex items-center gap-1.5 sm:gap-2">
                     <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" /> 历经赛季与生涯对比
                   </span>
-                  <span className="text-[9px] sm:text-[10px] text-slate-500 font-normal">已展示 {allSeasons.length} 赛季</span>
+                  <div className="flex rounded-lg border border-[#303847] overflow-hidden text-[10px]">
+                    <button type="button" onClick={() => setHistoryScope('regular')} className={`px-2 py-1 ${historyScope === 'regular' ? 'bg-amber-500 text-black' : 'text-slate-300'}`}>常规赛</button>
+                    <button type="button" onClick={() => setHistoryScope('playoffs')} className={`px-2 py-1 ${historyScope === 'playoffs' ? 'bg-amber-500 text-black' : 'text-slate-300'}`}>季后赛</button>
+                  </div>
                 </div>
+                <p className="mb-2 text-[10px] leading-relaxed text-slate-500">旧存档部分数据可能显示“—”；仅影响展示，不影响游戏，新开档后正常记录。</p>
 
-                <table className="w-full text-left text-xs whitespace-nowrap">
+                <div className="overflow-x-auto">
+                <table className="season-comparison-table text-left text-xs whitespace-nowrap">
                   <thead>
                     <tr className="border-b border-[#232834] text-[9px] sm:text-[10px] text-slate-500 uppercase font-mono bg-[#0d1017]">
                       <th className="py-2 px-2 sm:px-3">统计指标</th>
                       {allSeasons.map((s) => (
                         <th key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-amber-400/90 font-bold">
-                          {s.seasonStr}
+                          {s.seasonStr.replace(/\s*赛季$/, '')}
                         </th>
                       ))}
+                      <th className="season-comparison-spacer" aria-hidden="true" />
                       <th className="py-2 px-2 sm:px-3 text-center bg-amber-500/10 text-amber-300">生涯累计</th>
-                      <th className="py-2 px-2 sm:px-3 text-center bg-amber-500/10 text-amber-300">生涯场均</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#232834]/50 font-mono text-[11px] sm:text-xs">
                     <tr className="hover:bg-[#181d29]/50">
                       <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">出场数</td>
                       {allSeasons.map((s) => (
-                        <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-slate-200">{s.games}场</td>
+                        <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-slate-200">{s.games === '—' ? '—' : `${s.games}场`}</td>
                       ))}
-                      <td className="py-2 px-2 sm:px-3 text-center text-amber-400 font-bold bg-amber-500/5">{career.games}场</td>
-                      <td className="py-2 px-2 sm:px-3 text-center text-slate-400 bg-amber-500/5">-</td>
+                      <td className="season-comparison-spacer" aria-hidden="true" />
+                      <td className="py-2 px-2 sm:px-3 text-center text-amber-400 font-bold bg-amber-500/5">{totals.games}场</td>
                     </tr>
                     <tr className="hover:bg-[#181d29]/50">
                       <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">得分</td>
                       {allSeasons.map((s) => (
-                        <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-amber-400 font-bold">{s.ppg}分</td>
+                        <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-amber-400 font-bold">{s.ppg === '—' ? '—' : `${s.ppg}分`}</td>
                       ))}
-                      <td className="py-2 px-2 sm:px-3 text-center text-amber-400 font-bold bg-amber-500/5">{career.pts}分</td>
-                      <td className="py-2 px-2 sm:px-3 text-center text-amber-400 font-bold bg-amber-500/5">{cPpg}分</td>
+                      <td className="season-comparison-spacer" aria-hidden="true" />
+                      <td className="py-2 px-2 sm:px-3 text-center text-amber-400 font-bold bg-amber-500/5">{totals.pts}分</td>
                     </tr>
                     <tr className="hover:bg-[#181d29]/50">
                       <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">篮板</td>
                       {allSeasons.map((s) => (
-                        <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-blue-400 font-bold">{s.rpg}个</td>
+                        <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-blue-400 font-bold">{s.rpg === '—' ? '—' : `${s.rpg}个`}</td>
                       ))}
-                      <td className="py-2 px-2 sm:px-3 text-center text-blue-400 font-bold bg-amber-500/5">{career.reb}个</td>
-                      <td className="py-2 px-2 sm:px-3 text-center text-blue-400 font-bold bg-amber-500/5">{cRpg}个</td>
+                      <td className="season-comparison-spacer" aria-hidden="true" />
+                      <td className="py-2 px-2 sm:px-3 text-center text-blue-400 font-bold bg-amber-500/5">{totals.reb}个</td>
                     </tr>
                     <tr className="hover:bg-[#181d29]/50">
                       <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">助攻</td>
                       {allSeasons.map((s) => (
-                        <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-emerald-400 font-bold">{s.apg}次</td>
+                        <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-emerald-400 font-bold">{s.apg === '—' ? '—' : `${s.apg}次`}</td>
                       ))}
-                      <td className="py-2 px-2 sm:px-3 text-center text-emerald-400 font-bold bg-amber-500/5">{career.ast}次</td>
-                      <td className="py-2 px-2 sm:px-3 text-center text-emerald-400 font-bold bg-amber-500/5">{cApg}次</td>
+                      <td className="season-comparison-spacer" aria-hidden="true" />
+                      <td className="py-2 px-2 sm:px-3 text-center text-emerald-400 font-bold bg-amber-500/5">{totals.ast}次</td>
                     </tr>
                     <tr className="hover:bg-[#181d29]/50">
                       <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">抢断</td>
                       {allSeasons.map((s) => (
-                        <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-purple-400 font-bold">{s.spg}次</td>
+                        <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-purple-400 font-bold">{s.spg === '—' ? '—' : `${s.spg}次`}</td>
                       ))}
-                      <td className="py-2 px-2 sm:px-3 text-center text-purple-400 font-bold bg-amber-500/5">{career.stl}次</td>
-                      <td className="py-2 px-2 sm:px-3 text-center text-purple-400 font-bold bg-amber-500/5">{cSpg}次</td>
+                      <td className="season-comparison-spacer" aria-hidden="true" />
+                      <td className="py-2 px-2 sm:px-3 text-center text-purple-400 font-bold bg-amber-500/5">{totals.stl}次</td>
                     </tr>
                     <tr className="hover:bg-[#181d29]/50">
                       <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">盖帽</td>
                       {allSeasons.map((s) => (
-                        <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-cyan-400 font-bold">{s.bpg}次</td>
+                        <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-cyan-400 font-bold">{s.bpg === '—' ? '—' : `${s.bpg}次`}</td>
                       ))}
-                      <td className="py-2 px-2 sm:px-3 text-center text-cyan-400 font-bold bg-amber-500/5">{career.blk}次</td>
-                      <td className="py-2 px-2 sm:px-3 text-center text-cyan-400 font-bold bg-amber-500/5">{cBpg}次</td>
+                      <td className="season-comparison-spacer" aria-hidden="true" />
+                      <td className="py-2 px-2 sm:px-3 text-center text-cyan-400 font-bold bg-amber-500/5">{totals.blk}次</td>
                     </tr>
                     <tr className="hover:bg-[#181d29]/50">
                       <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">投篮命中</td>
                       {allSeasons.map((s) => (
                         <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-slate-200">{s.fgPct}</td>
                       ))}
-                      <td className="py-2 px-2 sm:px-3 text-center text-slate-300 bg-amber-500/5">{career.fgm}/{career.fga}</td>
-                      <td className="py-2 px-2 sm:px-3 text-center text-slate-300 bg-amber-500/5">{cFgPct}</td>
+                      <td className="season-comparison-spacer" aria-hidden="true" />
+                      <td className="py-2 px-2 sm:px-3 text-center text-slate-300 bg-amber-500/5">{totals.fgm}/{totals.fga}</td>
                     </tr>
                     <tr className="hover:bg-[#181d29]/50">
                       <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">三分命中</td>
                       {allSeasons.map((s) => (
                         <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-amber-300">{s.t3pPct}</td>
                       ))}
-                      <td className="py-2 px-2 sm:px-3 text-center text-amber-300 bg-amber-500/5">{career.tpm}/{career.tpa}</td>
-                      <td className="py-2 px-2 sm:px-3 text-center text-amber-300 bg-amber-500/5">{c3pPct}</td>
+                      <td className="season-comparison-spacer" aria-hidden="true" />
+                      <td className="py-2 px-2 sm:px-3 text-center text-amber-300 bg-amber-500/5">{totals.tpm}/{totals.tpa}</td>
                     </tr>
                     <tr className="hover:bg-[#181d29]/50">
                       <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">罚球命中</td>
                       {allSeasons.map((s) => (
                         <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-emerald-300">{s.ftPct}</td>
                       ))}
-                      <td className="py-2 px-2 sm:px-3 text-center text-emerald-300 bg-amber-500/5">{career.ftm}/{career.fta}</td>
-                      <td className="py-2 px-2 sm:px-3 text-center text-emerald-300 bg-amber-500/5">{cFtPct}</td>
+                      <td className="season-comparison-spacer" aria-hidden="true" />
+                      <td className="py-2 px-2 sm:px-3 text-center text-emerald-300 bg-amber-500/5">{totals.ftm}/{totals.fta}</td>
                     </tr>
                     <tr className="hover:bg-[#181d29]/50">
                       <td className="py-2 px-2 sm:px-3 font-bold text-slate-300">场均时间</td>
                       {allSeasons.map((s) => (
-                        <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-slate-300">{s.mpg}分</td>
+                        <td key={s.seasonStr} className="py-2 px-2 sm:px-3 text-center text-slate-300">{s.mpg === '—' ? '—' : `${s.mpg}分`}</td>
                       ))}
-                      <td className="py-2 px-2 sm:px-3 text-center text-slate-300 bg-amber-500/5">{career.minutes.toFixed(0)}分</td>
-                      <td className="py-2 px-2 sm:px-3 text-center text-slate-300 bg-amber-500/5">{(career.minutes / cGames).toFixed(1)}分</td>
+                      <td className="season-comparison-spacer" aria-hidden="true" />
+                      <td className="py-2 px-2 sm:px-3 text-center text-slate-300 bg-amber-500/5">{totals.minutes.toFixed(0)}分</td>
                     </tr>
                   </tbody>
                 </table>
+                </div>
               </div>
             );
           })()}

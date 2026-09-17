@@ -41,7 +41,8 @@ test('new nationality options feed the life story without treating China as a US
     );
     assert.notEqual(event.title, overseas[index].title);
   });
-  assert.match(domestic[0].story, /国内/);
+  assert.equal(domestic[0].title, '第一次真正的选拔');
+  assert.match(domestic[0].story, /市里组织青少年篮球选拔/);
   assert.match(domestic[9].timeLabel, /CBA/);
   assert.match(domestic[14].story, /CBA/);
   assert.match(overseas[0].story, /海外/);

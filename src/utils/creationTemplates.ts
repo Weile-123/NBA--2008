@@ -1,6 +1,7 @@
 import type { Attributes, PlayerProfile, Position } from '../types';
 import { calculate2KOvr } from './calc2k';
 import { calculateAttributesAndCaps } from './attributeCalculator';
+import { CREATION_SCOUT_REPORTS } from '../data/creationScoutReports';
 
 export type BodyShape = 'slim' | 'balanced' | 'heavy';
 type Attribute = keyof Attributes;
@@ -24,7 +25,7 @@ const TEMPLATES: Record<string, readonly [TemplateRow, TemplateRow, TemplateRow]
   SF: [
     ['投防型小前锋', '保罗·乔治', [['threePoint', 77, 97], ['perimeterDef', 77, 98], ['steal', 75, 95], ['speed', 74, 94]]],
     ['全能型小前锋', '斯科蒂·皮蓬', [['perimeterDef', 79, 99], ['passing', 77, 97], ['steal', 76, 97], ['rebounding', 74, 94]]],
-    ['技巧型小前锋', '保罗·皮尔斯', [['midRange', 79, 98], ['strength', 77, 97], ['postMove', 76, 96], ['threePoint', 74, 94]]],
+    ['强攻型小前锋', '卡梅隆·安东尼', [['midRange', 79, 98], ['strength', 77, 97], ['postMove', 76, 96], ['insideFinish', 74, 94]]],
   ],
   PF: [
     ['空间型大前锋', '德克·诺维茨基', [['midRange', 80, 99], ['threePoint', 79, 99], ['freeThrow', 77, 97], ['postMove', 74, 95]]],
@@ -83,7 +84,13 @@ const TEMPLATES: Record<string, readonly [TemplateRow, TemplateRow, TemplateRow]
   ],
 };
 
-export const CREATION_POSITION_COMBINATIONS = Object.keys(TEMPLATES);
+export const CREATION_POSITION_COMBINATIONS = Object.keys(TEMPLATES).filter((combination) => {
+  if (!combination.includes('/')) return true;
+  if (combination === 'SF/PG') return true;
+  const [primary, secondary] = combination.split('/') as [Position, Position];
+  return Math.abs((['PG', 'SG', 'SF', 'PF', 'C'] as Position[]).indexOf(primary) -
+    (['PG', 'SG', 'SF', 'PF', 'C'] as Position[]).indexOf(secondary)) === 1;
+});
 const SHAPES: BodyShape[] = ['slim', 'balanced', 'heavy'];
 const POSITION_BODY_MEASUREMENTS: Record<Position, readonly [readonly [number, number], readonly [number, number], readonly [number, number]]> = {
   PG: [[183, 76], [190, 87], [194, 98]],
@@ -136,13 +143,26 @@ export function getCreationTemplateScoutReport(player: Pick<PlayerProfile, 'arch
     const row = rows.find(([name]) => name === player.archetype);
     if (!row) continue;
     const [name, starName, core] = row;
+    const curated = CREATION_SCOUT_REPORTS[`${combination}_${SHAPES[rows.indexOf(row)]}`];
+    const grade = player.ovr >= 80 ? 'A+（顶级新秀）' : player.ovr >= 75 ? 'A（重点培养）' : player.ovr >= 70 ? 'A-（潜力新秀）' : 'B+（发展型新秀）';
+    if (curated && curated.name === name && curated.starName === starName) {
+      return {
+        starName,
+        starTitle: name,
+        avatar: ({ PG: '🏀', SG: '🎯', SF: '⭐', PF: '💪', C: '🛡️' } as const)[player.position],
+        similarity: 93,
+        grade,
+        strengths: curated.strengths,
+        weaknesses: curated.weaknesses,
+        scoutComment: curated.scoutComment,
+      };
+    }
     const coreKeys = new Set(core.map(([key]) => key));
     const weakest = ATTRIBUTE_KEYS.filter((key) => !coreKeys.has(key))
       .sort((a, b) => player.attributes[a] - player.attributes[b] || a.localeCompare(b))
       .slice(0, 2);
     const weaknesses = weakest.map((key) => SCOUT_TRAITS[key][1]);
     const strengths = core.slice(0, 3).map(([key]) => SCOUT_TRAITS[key][0]);
-    const grade = player.ovr >= 80 ? 'A+（顶级新秀）' : player.ovr >= 75 ? 'A（重点培养）' : player.ovr >= 70 ? 'A-（潜力新秀）' : 'B+（发展型新秀）';
     const [firstKey, secondKey] = core;
     return {
       starName,
@@ -159,7 +179,8 @@ export function getCreationTemplateScoutReport(player: Pick<PlayerProfile, 'arch
 }
 
 export function getCreationSecondaryOptions(position: Position): Array<Position | null> {
-  return [null, ...(['PG', 'SG', 'SF', 'PF', 'C'] as Position[]).filter((secondary) => `${position}/${secondary}` in TEMPLATES)];
+  return [null, ...(['PG', 'SG', 'SF', 'PF', 'C'] as Position[]).filter((secondary) =>
+    CREATION_POSITION_COMBINATIONS.includes(`${position}/${secondary}`))];
 }
 
 export function calculateCreationTemplateAttributes(

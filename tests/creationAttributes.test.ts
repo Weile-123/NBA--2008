@@ -5,6 +5,7 @@ import { calculate2KOvr, getPlayerBaseOvr } from '../src/utils/calc2k';
 import { getAttributePointStatus } from '../src/utils/attributeTraining';
 import type { PlayerProfile, Position } from '../src/types';
 import { calculateCreationTemplateAttributes, CREATION_POSITION_COMBINATIONS, getCreationSecondaryOptions, getCreationTemplate, getCreationTemplateScoutReport } from '../src/utils/creationTemplates';
+import { CREATION_SCOUT_REPORTS } from '../src/data/creationScoutReports';
 
 test('creation OVR boost stays inside trainable attribute caps', () => {
   const positions = Object.keys(POSITION_ARCHETYPES) as Position[];
@@ -43,7 +44,7 @@ test('creation OVR boost stays inside trainable attribute caps', () => {
   }
 });
 
-test('all 42 body-and-position templates have distinct profiles and balanced strength', () => {
+test('all available body-and-position templates have distinct profiles and balanced strength', () => {
   assert.equal(CREATION_POSITION_COMBINATIONS.length, 14);
   const names = new Set<string>();
   for (const combination of CREATION_POSITION_COMBINATIONS) {
@@ -75,7 +76,7 @@ test('all 42 body-and-position templates have distinct profiles and balanced str
       assert.ok(scout, `${template.id} scout report`);
       assert.equal(scout.starName, template.reference);
       assert.equal(scout.starTitle, template.name);
-      assert.ok(scout.grade.length > 0 && scout.scoutComment.includes(template.name));
+      assert.ok(scout.grade.length > 0 && scout.scoutComment.length > 20);
       assert.equal(scout.strengths.length, 3);
       assert.equal(scout.weaknesses.length, 2);
       for (const [key, start, cap] of template.core) {
@@ -88,4 +89,36 @@ test('all 42 body-and-position templates have distinct profiles and balanced str
     }
   }
   assert.equal(names.size, 42);
+});
+
+test('creation offers SF/PG but not PG/SF, and the heavy single-position SF uses the Melo template', () => {
+  assert.ok(!getCreationSecondaryOptions('PG').includes('SF'));
+  assert.ok(getCreationSecondaryOptions('SF').includes('PG'));
+  const template = getCreationTemplate('SF', null, 'heavy');
+  assert.equal(template.reference, '卡梅隆·安东尼');
+  assert.equal(template.name, '强攻型小前锋');
+  assert.equal(template.core[3][0], 'insideFinish');
+});
+
+test('all authored scout reports match their saved archetype and reference, including legacy SF/PG', () => {
+  const combinations = CREATION_POSITION_COMBINATIONS;
+  assert.equal(Object.keys(CREATION_SCOUT_REPORTS).length, 42);
+  for (const combination of combinations) {
+    const [primary, secondary] = combination.split('/') as [Position, Position | undefined];
+    for (const shape of BODY_SHAPE_PRESETS) {
+      const result = calculateCreationTemplateAttributes(primary, secondary || null, shape.id, 0, 69);
+      const scout = getCreationTemplateScoutReport({
+        archetype: result.template.name, position: primary, secondaryPosition: secondary,
+        ovr: result.initialOvr, attributes: result.attributes,
+      });
+      assert.ok(scout, result.template.id);
+      assert.deepEqual(scout.strengths, CREATION_SCOUT_REPORTS[result.template.id].strengths);
+      assert.deepEqual(scout.weaknesses, CREATION_SCOUT_REPORTS[result.template.id].weaknesses);
+      assert.equal(scout.scoutComment, CREATION_SCOUT_REPORTS[result.template.id].scoutComment);
+      assert.equal(scout.starName, result.template.reference, result.template.id);
+      assert.equal(scout.strengths.length, 3, result.template.id);
+      assert.equal(scout.weaknesses.length, 2, result.template.id);
+      assert.ok(scout.scoutComment.length > 35, result.template.id);
+    }
+  }
 });

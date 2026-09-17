@@ -47,7 +47,7 @@ interface SeasonDashboardProps {
   onRest: () => void;
   onAdvanceWeek: () => void;
   onEnterPlayoffs?: () => void;
-  onEnterOffseason?: (championTeam?: Team, fmvpName?: string, seasonAwards?: SeasonAwards, settledPlayer?: PlayerProfile) => void;
+  onEnterOffseason?: (championTeam?: Team, fmvpName?: string, seasonAwards?: SeasonAwards, settledPlayer?: PlayerProfile, outcome?: { finalist: Team; playoffResult: string }) => void;
   onNextSeason?: () => void;
   onUpdatePlayer?: (player: PlayerProfile) => void;
   onUpdateTeams?: (teams: Team[]) => void;
@@ -125,7 +125,7 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
     ? getDestinyEventEvaluations(currentYear, teams, leagueHistory, destinyEventRecords, player.destinyEventAdUnlocks)
     : [];
   const isDestinyDeadlinePassed = currentGame > DESTINY_EVENT_DEADLINE_GAME;
-  const unresolvedDestinyEvents = destinyEvaluations.filter((item) =>
+  const unresolvedDestinyEvents = destinyEvaluations.filter((item) => !isDestinyDeadlinePassed &&
     item.event.year === currentYear && (item.status === 'available' || item.status === 'unavailable')
   );
   const destinyEventEntrySummary = isDestinyDeadlinePassed
@@ -326,9 +326,9 @@ export const SeasonDashboard: React.FC<SeasonDashboardProps> = ({
         currentYear={currentYear}
         careerHistory={gameState.careerHistory}
         onUpdatePlayer={onUpdatePlayer}
-        onFinishPlayoffs={(championTeam, fmvpName, settledPlayer) => {
+        onFinishPlayoffs={(championTeam, fmvpName, settledPlayer, outcome) => {
           if (onEnterOffseason) {
-            onEnterOffseason(championTeam, fmvpName, settledSeasonAwardsRef.current || undefined, settledPlayer);
+            onEnterOffseason(championTeam, fmvpName, settledSeasonAwardsRef.current || undefined, settledPlayer, outcome);
           } else if (onNextSeason) {
             onNextSeason();
           }

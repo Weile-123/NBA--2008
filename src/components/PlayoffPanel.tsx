@@ -9,7 +9,7 @@ import { getUserPlayoffStatus, settleInteractivePlayoffGame } from '../utils/pla
 import type { GameMode } from '../gameMode';
 import { getSeasonSimulationPowerRating } from '../utils/parallelSeasonBalance';
 import { MatchSimulator } from './MatchSimulator';
-import { applyPlayoffGamesToCareer } from '../utils/playoffStats';
+import { applyPlayoffGamesToCareer, migrateLegacyPlayoffGamesForYear } from '../utils/playoffStats';
 import { calculateFinalsAverages, selectFinalsMvp } from '../utils/finalsStats';
 import { applyPlayoffPostMatchRewards, type PostMatchRewards } from '../utils/postMatchRewards';
 import { PostMatchModal } from './PostMatchModal';
@@ -98,7 +98,7 @@ interface PlayoffPanelProps {
   currentYear: number;
   careerHistory?: GameState['careerHistory'];
   onUpdatePlayer?: (player: PlayerProfile) => void;
-  onFinishPlayoffs: (championTeam: Team, fmvpName?: string, settledPlayer?: PlayerProfile) => void;
+  onFinishPlayoffs: (championTeam: Team, fmvpName?: string, settledPlayer?: PlayerProfile, outcome?: { finalist: Team; playoffResult: string }) => void;
 }
 
 export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
@@ -121,6 +121,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
     const saved = loadPlayoffState(currentYear, careerSignature, hasStableCareerId);
     return saved ? saved.seriesList : [];
   });
+  const cachedGamesAtLoadRef = useRef<PlayoffGameSummary[]>(seriesList.flatMap((series) => series.userGames || []));
   const [isAutoSimulating, setIsAutoSimulating] = useState(false);
   const [champion, setChampion] = useState<Team | null>(() => {
     const saved = loadPlayoffState(currentYear, careerSignature, hasStableCareerId);
@@ -141,6 +142,9 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
     void hydratePersistentValues([playoffKey(currentYear)]).then(() => {
       const saved = loadPlayoffState(currentYear, careerSignature, hasStableCareerId);
       if (saved) {
+        if (cachedGamesAtLoadRef.current.length === 0) {
+          cachedGamesAtLoadRef.current = saved.seriesList.flatMap((series) => series.userGames || []);
+        }
         setCurrentRound(saved.currentRound);
         setSeriesList(saved.seriesList);
         setChampion(saved.champion);
@@ -191,9 +195,10 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
   useLayoutEffect(() => {
     if (!onUpdatePlayer) return;
     const games = seriesList.flatMap((series) => series.userGames || []);
-    const updatedPlayer = applyPlayoffGamesToCareer(player, games);
+    const migratedPlayer = migrateLegacyPlayoffGamesForYear(player, cachedGamesAtLoadRef.current, currentYear);
+    const updatedPlayer = applyPlayoffGamesToCareer(migratedPlayer, games, currentYear);
     if (updatedPlayer !== player) onUpdatePlayer(updatedPlayer);
-  }, [onUpdatePlayer, player, seriesList]);
+  }, [onUpdatePlayer, player, seriesList, currentYear]);
 
   // Initialize Playoff Series on mount if no saved state exists for currentYear
   useEffect(() => {
@@ -651,7 +656,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
   const finishPlayoffPostMatch = (rewards: PostMatchRewards) => {
     if (!pendingPostMatch) return;
     const allGames = seriesList.flatMap((series) => series.userGames || []);
-    const settledPlayer = applyPlayoffGamesToCareer(player, allGames);
+    const settledPlayer = applyPlayoffGamesToCareer(player, allGames, currentYear);
     const rewardedPlayer = applyPlayoffPostMatchRewards(settledPlayer, pendingPostMatch.gameId, rewards);
     onUpdatePlayer?.(rewardedPlayer);
     setPendingPostMatch(null);
@@ -1302,6 +1307,7 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
                     const settledPlayer = applyPlayoffGamesToCareer(
                       player,
                       seriesList.flatMap((series) => series.userGames || []),
+                      currentYear,
                     );
                     let nextAccolades = [...(player.accolades || [])];
                     if (fmvp.isUser) {
@@ -1340,7 +1346,16 @@ export const PlayoffPanel: React.FC<PlayoffPanelProps> = ({
                     onUpdatePlayer?.(completedPlayer);
                     clearPlayoffStorage(currentYear);
                     setShowHonorsModal(false);
-                    onFinishPlayoffs(champion, fmvp.name, completedPlayer);
+                    const finalSeries = seriesList.find((series) => series.round === 4);
+                    const finalist = finalSeries?.teamA.id === champion.id ? finalSeries.teamB : finalSeries?.teamA;
+                    const userLoss = seriesList.find((series) =>
+                      series.winnerId && series.winnerId !== userTeam.id &&
+                      (series.teamA.id === userTeam.id || series.teamB.id === userTeam.id),
+                    );
+                    const playoffResult = champion.id === userTeam.id ? '总冠军'
+                      : userLoss ? ({ 1: '止步首轮', 2: '止步次轮', 3: '止步分区决赛', 4: '总决赛亚军' } as const)[userLoss.round]
+                      : '未进季后赛';
+                    onFinishPlayoffs(champion, fmvp.name, completedPlayer, finalist ? { finalist, playoffResult } : undefined);
                   }}
                   className="w-full py-3 sm:py-4 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-black font-black italic text-xs sm:text-sm rounded-2xl transition-all shadow-2xl flex items-center justify-center gap-2 uppercase tracking-wide cursor-pointer"
                 >
